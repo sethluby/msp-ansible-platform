@@ -1,0 +1,171 @@
+---
+# CMMC Compliance Main Tasks
+# Author: thndrchkkn
+# Purpose: Orchestrate implementation of all CMMC control families for defense contractor compliance
+
+- name: "CMMC Compliance | Display compliance information"
+  debug:
+    msg:
+      - "Starting CMMC {{ cmmc_level }} compliance implementation"
+      - "Client ID: {{ cmmc_client_id }}"
+      - "Environment: {{ cmmc_environment }}"
+      - "Control families enabled: {{ enabled_families }}"
+  vars:
+    # Create dynamic list of enabled control families for transparency
+    enabled_families: >-
+      {{
+        (cmmc_enable_access_control | bool | ternary(['Access Control (AC)'], [])) +
+        (cmmc_enable_audit_accountability | bool | ternary(['Audit and Accountability (AU)'], [])) +
+        (cmmc_enable_config_management | bool | ternary(['Configuration Management (CM)'], [])) +
+        (cmmc_enable_identification_auth | bool | ternary(['Identification and Authentication (IA)'], [])) +
+        (cmmc_enable_system_protection | bool | ternary(['System and Communications Protection (SC)'], [])) +
+        (cmmc_enable_system_integrity | bool | ternary(['System and Information Integrity (SI)'], []))
+      }}
+  tags:
+    - always
+    - cmmc_info
+
+- name: "CMMC Compliance | Validate system compatibility"
+  include_tasks: validation.yml
+  # Verify system meets minimum requirements for CMMC implementation
+  # Checks OS version, available packages, and system resources
+  tags:
+    - cmmc_validation
+    - cmmc_prerequisites
+
+- name: "CMMC Compliance | Create compliance directory structure"
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /etc/cmmc                    # Main CMMC configuration directory
+    - /etc/cmmc/configs           # Control-specific configurations
+    - /etc/cmmc/baselines         # System baseline configurations
+    - /var/log/cmmc               # CMMC-specific log directory
+    - /var/log/cmmc/reports       # Compliance report storage
+    - /var/lib/cmmc               # CMMC state and data files
+    - /var/lib/cmmc/validation    # Validation scripts and results
+  # Creates standardized directory structure for CMMC artifacts
+  # Ensures consistent file organization across all client systems
+  tags:
+    - cmmc_setup
+    - cmmc_directories
+
+- name: "CMMC Compliance | Install compliance validation tools"
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - src: compliance_validator.py
+      dest: /usr/local/bin/cmmc_validator.py
+      mode: '0755'
+    - src: cmmc_controls.yaml
+      dest: /etc/cmmc/cmmc_controls.yaml
+      mode: '0644'
+  # Installs custom validation tools for ongoing compliance checking
+  # Tools can operate independently for graceful disconnection scenarios
+  tags:
+    - cmmc_tools
+    - cmmc_validation
+
+# Access Control (AC) Implementation
+- name: "CMMC Compliance | Implement Access Control (AC) controls"
+  include_tasks: access_control.yml
+  when: cmmc_enable_access_control | bool
+  # Implements AC.1.001-003 controls for user access management
+  # Configures SSH, user restrictions, and access monitoring
+  tags:
+    - cmmc_access_control
+    - cmmc_ac
+
+# Audit and Accountability (AU) Implementation  
+- name: "CMMC Compliance | Implement Audit and Accountability (AU) controls"
+  include_tasks: audit_accountability.yml
+  when: cmmc_enable_audit_accountability | bool
+  # Implements AU.1.006-012 controls for comprehensive audit logging
+  # Configures auditd, log retention, and audit event monitoring
+  tags:
+    - cmmc_audit_accountability
+    - cmmc_au
+
+# Configuration Management (CM) Implementation
+- name: "CMMC Compliance | Implement Configuration Management (CM) controls"
+  include_tasks: config_management.yml
+  when: cmmc_enable_config_management | bool
+  # Implements CM.1.073 controls for baseline configuration management
+  # Establishes system baselines and change tracking mechanisms
+  tags:
+    - cmmc_config_management
+    - cmmc_cm
+
+# Identification and Authentication (IA) Implementation
+- name: "CMMC Compliance | Implement Identification and Authentication (IA) controls"
+  include_tasks: identification_auth.yml
+  when: cmmc_enable_identification_auth | bool
+  # Implements IA.1.076-077 controls for strong authentication
+  # Configures multi-factor authentication and identity management
+  tags:
+    - cmmc_identification_auth
+    - cmmc_ia
+
+# System and Communications Protection (SC) Implementation
+- name: "CMMC Compliance | Implement System and Communications Protection (SC) controls"
+  include_tasks: system_protection.yml
+  when: cmmc_enable_system_protection | bool
+  # Implements SC.1.175-178 controls for data protection and encryption
+  # Configures encryption, secure communications, and system hardening
+  tags:
+    - cmmc_system_protection
+    - cmmc_sc
+
+# System and Information Integrity (SI) Implementation
+- name: "CMMC Compliance | Implement System and Information Integrity (SI) controls"
+  include_tasks: system_integrity.yml
+  when: cmmc_enable_system_integrity | bool
+  # Implements SI.1.210-214 controls for system integrity monitoring
+  # Configures file integrity monitoring and security alert systems
+  tags:
+    - cmmc_system_integrity
+    - cmmc_si
+
+# Post-Implementation Validation
+- name: "CMMC Compliance | Run comprehensive compliance validation"
+  include_tasks: validation.yml
+  vars:
+    validation_mode: "post_implementation"
+  # Validates all implemented controls are functioning correctly
+  # Generates compliance status report for verification
+  tags:
+    - cmmc_validation
+    - cmmc_post_check
+
+# Compliance Reporting
+- name: "CMMC Compliance | Generate compliance reports"
+  include_tasks: reporting.yml
+  when: cmmc_reporting_enabled | bool
+  # Generates detailed compliance reports in specified formats
+  # Supports both local storage and MSP integration endpoints
+  tags:
+    - cmmc_reporting
+    - cmmc_reports
+
+- name: "CMMC Compliance | Display completion summary"
+  debug:
+    msg:
+      - "CMMC {{ cmmc_level }} compliance implementation completed"
+      - "Client: {{ cmmc_client_id }}"
+      - "Compliance report location: {{ cmmc_reporting_destination }}"
+      - "Validation tools installed: /usr/local/bin/cmmc_validator.py"
+      - "Configuration directory: /etc/cmmc"
+      - "Log directory: /var/log/cmmc"
+  # Provides summary of completed implementation for operator awareness
+  # Includes key file locations for ongoing management
+  tags:
+    - always
+    - cmmc_summary
