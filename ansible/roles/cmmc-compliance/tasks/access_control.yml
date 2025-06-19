@@ -1,0 +1,269 @@
+---
+# CMMC Access Control (AC) Implementation
+# Author: thndrchckn
+# Purpose: Implement AC.1.001-003 controls for authorized access management
+
+- name: "AC Controls | Display access control implementation start"
+  debug:
+    msg:
+      - "Implementing CMMC Access Control (AC) controls"
+      - "AC.1.001: Limit system access to authorized users"
+      - "AC.1.002: Limit system access to authorized transactions"
+      - "AC.1.003: Control information on publicly accessible systems"
+  # Inform operator of which AC controls are being implemented
+  tags:
+    - cmmc_ac_info
+
+# AC.1.001 - Limit information system access to authorized users
+- name: "AC.1.001 | Configure SSH for authorized access only"
+  block:
+    - name: "AC.1.001 | Backup original SSH configuration"
+      copy:
+        src: /etc/ssh/sshd_config
+        dest: /etc/ssh/sshd_config.backup.{{ ansible_date_time.epoch }}
+        remote_src: true
+        owner: root
+        group: root
+        mode: '0600'
+      # Create timestamped backup of SSH config for rollback capability
+      # Essential for graceful disconnection and emergency recovery
+
+    - name: "AC.1.001 | Generate SSH configuration from template"
+      template:
+        src: sshd_config.j2
+        dest: /etc/ssh/sshd_config
+        owner: root
+        group: root
+        mode: '0644'
+        backup: true
+        validate: 'sshd -t -f %s'
+      notify: restart sshd
+      # Deploy CMMC-compliant SSH configuration
+      # Validation ensures configuration is syntactically correct before application
+
+    - name: "AC.1.001 | Disable password authentication"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+        state: present
+      notify: restart sshd
+      # Explicitly disable password-based authentication
+      # Enforces key-based authentication for enhanced security
+
+    - name: "AC.1.001 | Enable and require public key authentication"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?PubkeyAuthentication'
+        line: 'PubkeyAuthentication yes'
+        state: present
+      notify: restart sshd
+      # Ensure public key authentication is enabled and required
+
+    - name: "AC.1.001 | Configure SSH port (if non-standard)"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?Port'
+        line: "Port {{ cmmc_ac_ssh_port }}"
+        state: present
+      notify: restart sshd
+      when: cmmc_ac_ssh_port != 22
+      # Configure non-standard SSH port for security through obscurity
+      # Only applied when different from default port 22
+
+    - name: "AC.1.001 | Restrict SSH access to authorized users"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?AllowUsers'
+        line: "AllowUsers {{ cmmc_ac_allowed_users | join(' ') }}"
+        state: present
+      notify: restart sshd
+      when: cmmc_ac_allowed_users | length > 0
+      # Explicitly define authorized users for SSH access
+      # Implements principle of least privilege access
+
+    - name: "AC.1.001 | Set authentication attempt limits"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?MaxAuthTries'
+        line: "MaxAuthTries {{ cmmc_ac_max_auth_tries }}"
+        state: present
+      notify: restart sshd
+      # Limit authentication attempts to prevent brute force attacks
+
+    - name: "AC.1.001 | Configure login grace time"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?LoginGraceTime'
+        line: "LoginGraceTime {{ cmmc_ac_login_grace_time }}"
+        state: present
+      notify: restart sshd
+      # Set timeout for login attempts to prevent resource exhaustion
+
+  tags:
+    - cmmc_ac_001
+    - cmmc_ssh_config
+
+# AC.1.002 - Limit information system access to authorized transactions
+- name: "AC.1.002 | Configure sudo restrictions for authorized transactions"
+  block:
+    - name: "AC.1.002 | Create CMMC sudo configuration"
+      template:
+        src: sudoers_cmmc.j2
+        dest: /etc/sudoers.d/10-cmmc-restrictions
+        owner: root
+        group: root
+        mode: '0440'
+        validate: 'visudo -cf %s'
+      # Deploy CMMC-compliant sudo restrictions
+      # Validation ensures sudoers syntax is correct before application
+
+    - name: "AC.1.002 | Enable sudo logging for transaction tracking"
+      lineinfile:
+        path: /etc/sudoers
+        regexp: '^Defaults.*logfile'
+        line: 'Defaults logfile=/var/log/sudo.log'
+        state: present
+        validate: 'visudo -cf %s'
+      # Enable detailed sudo logging for audit trail compliance
+      # Tracks all privileged command execution
+
+    - name: "AC.1.002 | Configure sudo session timeout"
+      lineinfile:
+        path: /etc/sudoers
+        regexp: '^Defaults.*timestamp_timeout'
+        line: 'Defaults timestamp_timeout=5'
+        state: present
+        validate: 'visudo -cf %s'
+      # Set aggressive sudo session timeout for security
+      # Requires re-authentication every 5 minutes
+
+    - name: "AC.1.002 | Enable sudo command logging"
+      lineinfile:
+        path: /etc/sudoers
+        regexp: '^Defaults.*log_output'
+        line: 'Defaults log_output'
+        state: present
+        validate: 'visudo -cf %s'
+      # Log all sudo command output for comprehensive audit trail
+
+  tags:
+    - cmmc_ac_002
+    - cmmc_sudo_config
+
+# AC.1.003 - Control information posted or processed on publicly accessible systems
+- name: "AC.1.003 | Configure system information disclosure controls"
+  block:
+    - name: "AC.1.003 | Remove system information from login banners"
+      copy:
+        content: |
+          WARNING: This system is for authorized use only.
+          
+          All activities on this system are monitored and recorded.
+          By using this system, you consent to such monitoring.
+          Unauthorized access is prohibited and may be subject to
+          criminal and civil penalties.
+          
+          Disconnect immediately if you are not an authorized user.
+        dest: /etc/issue
+        owner: root
+        group: root
+        mode: '0644'
+      # Deploy security-focused login banner without system information disclosure
+      # Removes potentially useful information for attackers
+
+    - name: "AC.1.003 | Configure network login banner"
+      copy:
+        content: |
+          WARNING: This system is for authorized use only.
+          
+          All activities on this system are monitored and recorded.
+          By using this system, you consent to such monitoring.
+          Unauthorized access is prohibited and may be subject to
+          criminal and civil penalties.
+          
+          Disconnect immediately if you are not an authorized user.
+        dest: /etc/issue.net
+        owner: root
+        group: root
+        mode: '0644'
+      # Deploy network login banner for remote access warnings
+
+    - name: "AC.1.003 | Hide system information in SSH banner"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?Banner'
+        line: 'Banner /etc/issue.net'
+        state: present
+      notify: restart sshd
+      # Configure SSH to display warning banner instead of system information
+
+    - name: "AC.1.003 | Disable SSH version disclosure"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?DebianBanner'
+        line: 'DebianBanner no'
+        state: present
+      notify: restart sshd
+      when: ansible_os_family == "Debian"
+      # Disable version information disclosure in SSH on Debian systems
+
+    - name: "AC.1.003 | Configure secure SSH protocol settings"
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?{{ item.setting }}'
+        line: "{{ item.setting }} {{ item.value }}"
+        state: present
+      loop:
+        - { setting: 'Protocol', value: '2' }
+        - { setting: 'X11Forwarding', value: 'no' }
+        - { setting: 'AllowAgentForwarding', value: 'no' }
+        - { setting: 'AllowTcpForwarding', value: 'no' }
+        - { setting: 'PermitRootLogin', value: 'no' }
+        - { setting: 'PermitEmptyPasswords', value: 'no' }
+        - { setting: 'PermitUserEnvironment', value: 'no' }
+      notify: restart sshd
+      # Configure SSH security settings to minimize attack surface
+      # Disables potentially dangerous features and root access
+
+  tags:
+    - cmmc_ac_003
+    - cmmc_system_disclosure
+
+# Validation and Verification
+- name: "AC Controls | Validate SSH service configuration"
+  command: sshd -t
+  register: sshd_test
+  changed_when: false
+  failed_when: sshd_test.rc != 0
+  # Validate SSH configuration syntax before proceeding
+  # Ensures service will start successfully after configuration changes
+
+- name: "AC Controls | Verify SSH service is running"
+  systemd:
+    name: sshd
+    state: started
+    enabled: true
+  # Ensure SSH service is running and enabled for system startup
+  # Critical for maintaining remote access after configuration changes
+
+- name: "AC Controls | Create access control validation script"
+  template:
+    src: validate_access_control.sh.j2
+    dest: /var/lib/cmmc/validation/validate_access_control.sh
+    owner: root
+    group: root
+    mode: '0755'
+  # Deploy validation script for ongoing access control verification
+  # Enables independent validation during graceful disconnection
+
+- name: "AC Controls | Log access control implementation completion"
+  lineinfile:
+    path: /var/log/cmmc/implementation.log
+    line: "{{ ansible_date_time.iso8601 }} - Access Control (AC) controls implemented successfully"
+    create: true
+    owner: root
+    group: root
+    mode: '0644'
+  # Log successful implementation for audit trail and troubleshooting
+  # Provides timestamp record of compliance implementation

@@ -1,6 +1,6 @@
 ---
 # CMMC Compliance Main Tasks
-# Author: thndrchkkn
+# Author: thndrchckn
 # Purpose: Orchestrate implementation of all CMMC control families for defense contractor compliance
 
 - name: "CMMC Compliance | Display compliance information"
