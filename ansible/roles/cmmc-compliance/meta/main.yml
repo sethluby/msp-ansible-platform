@@ -1,0 +1,37 @@
+---
+galaxy_info:
+  author: MSP CMMC Team
+  description: CMMC (Cybersecurity Maturity Model Certification) compliance automation
+  company: MSP Solutions
+  license: MIT
+  min_ansible_version: 2.12
+  
+  platforms:
+    - name: EL
+      versions:
+        - 7
+        - 8
+        - 9
+    - name: Ubuntu
+      versions:
+        - 18.04
+        - 20.04
+        - 22.04
+    - name: SLES
+      versions:
+        - 12
+        - 15
+
+  galaxy_tags:
+    - security
+    - compliance
+    - cmmc
+    - hardening
+    - audit
+    - defense
+
+dependencies:
+  - role: common
+    when: cmmc_install_common | default(true)
+  - role: security-hardening
+    when: cmmc_enable_hardening | default(true)

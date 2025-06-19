@@ -1,0 +1,78 @@
+---
+# CMMC Compliance Role Defaults
+
+# Compliance Level Configuration
+cmmc_level: "level2"  # level1, level2, level3
+cmmc_client_id: "{{ client_id | default('default') }}"
+cmmc_environment: "{{ environment | default('production') }}"
+
+# Control Family Enablement
+cmmc_enable_access_control: true        # AC - Access Control
+cmmc_enable_audit_accountability: true  # AU - Audit and Accountability  
+cmmc_enable_config_management: true     # CM - Configuration Management
+cmmc_enable_identification_auth: true   # IA - Identification and Authentication
+cmmc_enable_system_protection: true     # SC - System and Communications Protection
+cmmc_enable_system_integrity: true      # SI - System and Information Integrity
+
+# Access Control (AC) Configuration
+cmmc_ac_allowed_users:
+  - ansible-service
+  - "{{ ansible_user | default('admin') }}"
+
+cmmc_ac_ssh_port: 2022
+cmmc_ac_disable_password_auth: true
+cmmc_ac_require_pubkey_auth: true
+cmmc_ac_max_auth_tries: 3
+cmmc_ac_login_grace_time: 60
+
+# Audit and Accountability (AU) Configuration
+cmmc_au_enable_auditd: true
+cmmc_au_log_retention_days: 90
+cmmc_au_max_log_file_size: 100  # MB
+cmmc_au_space_left_action: "email"
+cmmc_au_admin_space_left_action: "suspend"
+
+# Configuration Management (CM) Configuration
+cmmc_cm_enable_aide: true
+cmmc_cm_aide_check_frequency: "daily"
+cmmc_cm_baseline_config_path: "/etc/cmmc/baseline"
+
+# Identification and Authentication (IA) Configuration  
+cmmc_ia_password_min_length: 14
+cmmc_ia_password_complexity: true
+cmmc_ia_account_lockout_attempts: 5
+cmmc_ia_account_lockout_duration: 900  # 15 minutes
+
+# System and Communications Protection (SC) Configuration
+cmmc_sc_disable_weak_protocols: true
+cmmc_sc_enable_firewall: true
+cmmc_sc_allowed_services:
+  - ssh
+  - https
+
+# System and Information Integrity (SI) Configuration
+cmmc_si_enable_antivirus: false  # Most Linux environments use other methods
+cmmc_si_enable_host_intrusion_detection: true
+cmmc_si_enable_file_integrity_monitoring: true
+
+# Reporting Configuration
+cmmc_reporting_enabled: true
+cmmc_reporting_format: "json"  # json, yaml, html
+cmmc_reporting_destination: "/var/log/cmmc"
+cmmc_send_reports_to_msp: true
+cmmc_msp_reporting_endpoint: "{{ msp_reporting_url | default('') }}"
+
+# Emergency Response Configuration
+cmmc_emergency_contact: "{{ emergency_contact | default('') }}"
+cmmc_incident_response_enabled: true
+cmmc_auto_isolation_enabled: false
+
+# Validation Configuration
+cmmc_validation_enabled: true
+cmmc_validation_frequency: "daily"
+cmmc_validation_on_change: true
+
+# Backup Configuration
+cmmc_config_backup_enabled: true
+cmmc_config_backup_frequency: "daily"
+cmmc_config_backup_retention: 30  # days
