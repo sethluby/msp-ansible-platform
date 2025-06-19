@@ -1,0 +1,516 @@
+---
+# CMMC Control Definitions and Implementation Mappings
+# Author: thndrchckn
+# Purpose: Centralized control definitions for automated validation and reporting
+
+# =============================================================================
+# CMMC CONTROL FAMILY DEFINITIONS
+# =============================================================================
+
+control_families:
+  AC:
+    name: "Access Control"
+    description: "Controls for limiting information system access to authorized users, processes, or devices"
+    
+  AU:
+    name: "Audit and Accountability"
+    description: "Controls for creating, protecting, and retaining information audit records"
+    
+  CM:
+    name: "Configuration Management"
+    description: "Controls for establishing and maintaining baseline configurations"
+    
+  IA:
+    name: "Identification and Authentication"
+    description: "Controls for identifying and authenticating users and processes"
+    
+  SC:
+    name: "System and Communications Protection"
+    description: "Controls for protecting information and systems from unauthorized access"
+    
+  SI:
+    name: "System and Information Integrity"
+    description: "Controls for identifying, reporting, and correcting system flaws"
+
+# =============================================================================
+# ACCESS CONTROL (AC) CONTROLS
+# =============================================================================
+
+controls:
+  AC.1.001:
+    family: "AC"
+    level: 1
+    title: "Limit information system access to authorized users, processes acting on behalf of authorized users, or devices (including other information systems)"
+    description: |
+      This control requires organizations to limit access to information systems to authorized users only.
+      Implementation includes proper authentication mechanisms, user account management, and access restrictions.
+    
+    implementation_methods:
+      - "SSH key-based authentication"
+      - "User account restrictions via AllowUsers"
+      - "Disabled password authentication"
+      - "Multi-factor authentication where applicable"
+      
+    validation_criteria:
+      - "PasswordAuthentication set to 'no' in SSH configuration"
+      - "PubkeyAuthentication set to 'yes' in SSH configuration"
+      - "AllowUsers directive properly configured"
+      - "SSH service active and properly configured"
+      
+    ansible_tasks:
+      - "Configure SSH daemon with secure settings"
+      - "Disable password authentication"
+      - "Enable public key authentication"
+      - "Restrict user access via AllowUsers"
+      
+    files_affected:
+      - "/etc/ssh/sshd_config"
+      - "/etc/ssh/ssh_host_*"
+      - "/home/*/.ssh/authorized_keys"
+      
+    services_affected:
+      - "sshd"
+      
+    audit_events:
+      - "SSH login attempts"
+      - "Authentication failures"
+      - "User account changes"
+
+  AC.1.002:
+    family: "AC"
+    level: 1
+    title: "Limit information system access to the types of transactions and functions that authorized users are permitted to execute"
+    description: |
+      This control requires limiting system access to only the transactions and functions
+      that users are authorized to perform, implementing principle of least privilege.
+    
+    implementation_methods:
+      - "Sudo restrictions and privilege limitations"
+      - "Role-based access control (RBAC)"
+      - "Command auditing and logging"
+      - "Session timeouts and controls"
+      
+    validation_criteria:
+      - "Sudo configuration restricts privileged access"
+      - "Sudo logging enabled for audit trail"
+      - "Session timeouts configured"
+      - "Command execution monitoring active"
+      
+    ansible_tasks:
+      - "Configure sudo restrictions"
+      - "Enable sudo command logging"
+      - "Set session timeout limits"
+      - "Implement privilege auditing"
+      
+    files_affected:
+      - "/etc/sudoers"
+      - "/etc/sudoers.d/10-cmmc-restrictions"
+      - "/var/log/sudo.log"
+      - "/etc/security/limits.conf"
+      
+    services_affected:
+      - "sudo"
+      - "systemd-logind"
+      
+    audit_events:
+      - "Privileged command execution"
+      - "Sudo usage"
+      - "Session establishment and termination"
+
+  AC.1.003:
+    family: "AC"
+    level: 1
+    title: "Control information posted or processed on publicly accessible information systems"
+    description: |
+      This control addresses information that may be posted or processed on publicly
+      accessible systems, ensuring no sensitive information is disclosed.
+    
+    implementation_methods:
+      - "Login banner configuration"
+      - "System information disclosure prevention"
+      - "Service banner hardening"
+      - "Web service information hiding"
+      
+    validation_criteria:
+      - "Login banners configured without system information"
+      - "SSH banner properly configured"
+      - "No version information in service responses"
+      - "System information properly masked"
+      
+    ansible_tasks:
+      - "Configure security login banners"
+      - "Remove system information from banners"
+      - "Configure SSH banner warnings"
+      - "Disable service version disclosure"
+      
+    files_affected:
+      - "/etc/issue"
+      - "/etc/issue.net"
+      - "/etc/motd"
+      - "/etc/ssh/sshd_config"
+      
+    services_affected:
+      - "sshd"
+      - "getty"
+      
+    audit_events:
+      - "Login banner displays"
+      - "System information access attempts"
+
+# =============================================================================
+# AUDIT AND ACCOUNTABILITY (AU) CONTROLS
+# =============================================================================
+
+  AU.1.006:
+    family: "AU"
+    level: 1
+    title: "Create and retain information system audit records to the extent needed to enable the monitoring, analysis, investigation, and reporting of unlawful, unauthorized, or inappropriate information system activity"
+    description: |
+      This control requires comprehensive audit logging to support security monitoring,
+      incident investigation, and compliance reporting activities.
+    
+    implementation_methods:
+      - "Linux audit daemon (auditd) configuration"
+      - "Comprehensive audit rule implementation"
+      - "Log retention and rotation policies"
+      - "Centralized log collection"
+      
+    validation_criteria:
+      - "Auditd service active and enabled"
+      - "Comprehensive audit rules loaded"
+      - "Audit logs being generated"
+      - "Log retention policies enforced"
+      
+    ansible_tasks:
+      - "Install and configure auditd"
+      - "Deploy comprehensive audit rules"
+      - "Configure log retention policies"
+      - "Set up log rotation"
+      
+    files_affected:
+      - "/etc/audit/auditd.conf"
+      - "/etc/audit/rules.d/audit.rules"
+      - "/var/log/audit/audit.log"
+      - "/etc/logrotate.d/audit"
+      
+    services_affected:
+      - "auditd"
+      - "rsyslog"
+      
+    audit_events:
+      - "System calls"
+      - "File access"
+      - "Authentication events"
+      - "Privilege escalation"
+
+  AU.1.012:
+    family: "AU"
+    level: 1
+    title: "Provide audit record generation capability for the defined list of auditable events"
+    description: |
+      This control requires the capability to generate audit records for all events
+      defined as auditable by the organization or compliance framework.
+    
+    implementation_methods:
+      - "Audit rule configuration for specific events"
+      - "System call monitoring"
+      - "File and directory monitoring"
+      - "Network event auditing"
+      
+    validation_criteria:
+      - "Required audit rules configured"
+      - "Audit capability for all defined events"
+      - "Audit rule syntax validation"
+      - "Event generation testing"
+      
+    ansible_tasks:
+      - "Configure specific audit rules"
+      - "Enable file integrity monitoring"
+      - "Set up privileged command auditing"
+      - "Configure network event monitoring"
+      
+    files_affected:
+      - "/etc/audit/rules.d/cmmc.rules"
+      - "/etc/audit/rules.d/privileged.rules"
+      - "/etc/audit/rules.d/access.rules"
+      
+    services_affected:
+      - "auditd"
+      
+    audit_events:
+      - "File system changes"
+      - "User account modifications"
+      - "Privileged command execution"
+      - "Network configuration changes"
+
+# =============================================================================
+# CONFIGURATION MANAGEMENT (CM) CONTROLS
+# =============================================================================
+
+  CM.1.073:
+    family: "CM"
+    level: 1
+    title: "Establish and maintain baseline configurations and inventories of organizational systems (including hardware, software, firmware, and documentation) as the basis for information system change control"
+    description: |
+      This control requires establishing and maintaining baseline configurations
+      of all system components to support effective change control processes.
+    
+    implementation_methods:
+      - "System baseline documentation"
+      - "Configuration management database"
+      - "Automated configuration monitoring"
+      - "Change control procedures"
+      
+    validation_criteria:
+      - "Baseline configuration documented"
+      - "System inventory maintained"
+      - "Configuration drift detection"
+      - "Change control process active"
+      
+    ansible_tasks:
+      - "Generate system baseline"
+      - "Document current configuration"
+      - "Set up configuration monitoring"
+      - "Implement change tracking"
+      
+    files_affected:
+      - "/etc/cmmc/baselines/system_baseline.yaml"
+      - "/etc/cmmc/inventory/system_inventory.json"
+      - "/var/lib/cmmc/configuration_state.db"
+      
+    services_affected:
+      - "aide"
+      - "tripwire"
+      
+    audit_events:
+      - "Configuration changes"
+      - "Software installation/removal"
+      - "System updates"
+
+# =============================================================================
+# IDENTIFICATION AND AUTHENTICATION (IA) CONTROLS
+# =============================================================================
+
+  IA.1.076:
+    family: "IA"
+    level: 1
+    title: "Identify users, processes acting on behalf of users, or devices"
+    description: |
+      This control requires unique identification of all users, processes,
+      and devices accessing the information system.
+    
+    implementation_methods:
+      - "Unique user account creation"
+      - "Service account management"
+      - "Device identification mechanisms"
+      - "Process identification tracking"
+      
+    validation_criteria:
+      - "All users have unique accounts"
+      - "Service accounts properly configured"
+      - "Device certificates implemented"
+      - "Process identification logging"
+      
+    ansible_tasks:
+      - "Configure user account policies"
+      - "Set up service account management"
+      - "Implement device identification"
+      - "Enable process tracking"
+      
+    files_affected:
+      - "/etc/passwd"
+      - "/etc/shadow"
+      - "/etc/login.defs"
+      - "/etc/security/pwquality.conf"
+      
+    services_affected:
+      - "systemd-logind"
+      - "sssd"
+      
+    audit_events:
+      - "User identification events"
+      - "Authentication attempts"
+      - "Account creation/modification"
+
+  IA.1.077:
+    family: "IA"
+    level: 1
+    title: "Authenticate users, processes acting on behalf of users, or devices"
+    description: |
+      This control requires authentication of all identified users, processes,
+      and devices before granting access to system resources.
+    
+    implementation_methods:
+      - "Multi-factor authentication"
+      - "Strong password policies"
+      - "Certificate-based authentication"
+      - "Token-based authentication"
+      
+    validation_criteria:
+      - "Strong authentication mechanisms enabled"
+      - "Multi-factor authentication for privileged accounts"
+      - "Password complexity requirements enforced"
+      - "Certificate validation active"
+      
+    ansible_tasks:
+      - "Configure multi-factor authentication"
+      - "Set strong password policies"
+      - "Implement certificate authentication"
+      - "Configure authentication logging"
+      
+    files_affected:
+      - "/etc/pam.d/system-auth"
+      - "/etc/security/pwquality.conf"
+      - "/etc/ssh/sshd_config"
+      - "/etc/ssl/certs/"
+      
+    services_affected:
+      - "sshd"
+      - "systemd-logind"
+      - "pam"
+      
+    audit_events:
+      - "Authentication successes/failures"
+      - "Multi-factor authentication events"
+      - "Certificate validation events"
+
+# =============================================================================
+# SYSTEM AND COMMUNICATIONS PROTECTION (SC) CONTROLS
+# =============================================================================
+
+  SC.1.175:
+    family: "SC"
+    level: 1
+    title: "Protect the confidentiality of CUI at rest and in transit"
+    description: |
+      This control requires protection of Controlled Unclassified Information (CUI)
+      through encryption when stored and transmitted.
+    
+    implementation_methods:
+      - "Data encryption at rest"
+      - "Transport layer security (TLS)"
+      - "VPN for data transmission"
+      - "Encrypted file systems"
+      
+    validation_criteria:
+      - "Encryption enabled for data at rest"
+      - "TLS/SSL configured for network services"
+      - "Strong encryption algorithms in use"
+      - "Key management procedures active"
+      
+    ansible_tasks:
+      - "Configure file system encryption"
+      - "Enable TLS for network services"
+      - "Set up VPN connectivity"
+      - "Implement key management"
+      
+    files_affected:
+      - "/etc/crypttab"
+      - "/etc/ssl/openssl.cnf"
+      - "/etc/nginx/nginx.conf"
+      - "/etc/apache2/ssl.conf"
+      
+    services_affected:
+      - "nginx"
+      - "apache2"
+      - "strongswan"
+      - "openvpn"
+      
+    audit_events:
+      - "Encryption key usage"
+      - "TLS connection establishment"
+      - "VPN connections"
+
+# =============================================================================
+# SYSTEM AND INFORMATION INTEGRITY (SI) CONTROLS
+# =============================================================================
+
+  SI.1.210:
+    family: "SI"
+    level: 1
+    title: "Identify, report, and correct system flaws in a timely manner"
+    description: |
+      This control requires processes for identifying, reporting, and correcting
+      system vulnerabilities and flaws promptly.
+    
+    implementation_methods:
+      - "Automated vulnerability scanning"
+      - "Patch management processes"
+      - "Security update monitoring"
+      - "Flaw remediation tracking"
+      
+    validation_criteria:
+      - "Vulnerability scanning active"
+      - "Patch management system operational"
+      - "Security updates current"
+      - "Flaw tracking system in use"
+      
+    ansible_tasks:
+      - "Configure vulnerability scanning"
+      - "Set up automated patching"
+      - "Implement update monitoring"
+      - "Create flaw tracking system"
+      
+    files_affected:
+      - "/etc/cron.d/vulnerability-scan"
+      - "/etc/yum/automatic.conf"
+      - "/etc/apt/apt.conf.d/50unattended-upgrades"
+      
+    services_affected:
+      - "yum-cron"
+      - "unattended-upgrades"
+      - "lynis"
+      
+    audit_events:
+      - "Vulnerability scan results"
+      - "Patch installation"
+      - "System updates"
+
+# =============================================================================
+# VALIDATION CONFIGURATION
+# =============================================================================
+
+validation_settings:
+  default_timeout: 30  # seconds
+  retry_attempts: 3
+  log_level: "INFO"
+  
+  required_services:
+    - "sshd"
+    - "auditd"
+    - "rsyslog"
+    
+  critical_files:
+    - "/etc/ssh/sshd_config"
+    - "/etc/audit/auditd.conf"
+    - "/etc/passwd"
+    - "/etc/shadow"
+    
+  compliance_thresholds:
+    minimum_pass_rate: 85  # percentage
+    critical_control_failures: 0
+    warning_threshold: 95  # percentage
+
+# =============================================================================
+# REPORTING CONFIGURATION
+# =============================================================================
+
+reporting_settings:
+  formats:
+    - "json"
+    - "yaml"
+    - "html"
+    
+  distribution:
+    local_storage: true
+    msp_endpoint: true
+    email_notifications: true
+    
+  retention:
+    days: 90
+    max_reports: 100
+    
+  templates:
+    executive_summary: true
+    technical_details: true
+    remediation_guide: true

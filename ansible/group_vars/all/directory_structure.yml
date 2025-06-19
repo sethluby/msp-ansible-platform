@@ -1,0 +1,222 @@
+---
+# Global Directory Structure Variables
+# Author: thndrchckn
+# Purpose: Centralized directory path configuration for maximum flexibility across all roles
+
+# =============================================================================
+# BASE DIRECTORY STRUCTURE
+# =============================================================================
+
+# Primary CMMC configuration root directory
+cmmc_base_dir: "/etc/cmmc"
+
+# CMMC subdirectories
+cmmc_config_dir: "{{ cmmc_base_dir }}/configs"          # Control-specific configurations
+cmmc_baseline_dir: "{{ cmmc_base_dir }}/baselines"      # System baseline configurations  
+cmmc_policies_dir: "{{ cmmc_base_dir }}/policies"       # Security policy templates
+cmmc_certificates_dir: "{{ cmmc_base_dir }}/certificates" # Certificate storage
+cmmc_keys_dir: "{{ cmmc_base_dir }}/keys"               # SSH and encryption keys
+cmmc_templates_dir: "{{ cmmc_base_dir }}/templates"     # Configuration templates
+
+# =============================================================================
+# LOGGING AND AUDIT DIRECTORIES
+# =============================================================================
+
+# Primary CMMC log directory
+cmmc_log_base_dir: "/var/log/cmmc"
+
+# CMMC log subdirectories
+cmmc_audit_log_dir: "{{ cmmc_log_base_dir }}/audit"         # Audit-specific logs
+cmmc_compliance_log_dir: "{{ cmmc_log_base_dir }}/compliance" # Compliance validation logs
+cmmc_reports_dir: "{{ cmmc_log_base_dir }}/reports"         # Generated compliance reports
+cmmc_security_log_dir: "{{ cmmc_log_base_dir }}/security"   # Security event logs
+cmmc_implementation_log_dir: "{{ cmmc_log_base_dir }}/implementation" # Role execution logs
+
+# Individual log files
+cmmc_main_log_file: "{{ cmmc_implementation_log_dir }}/implementation.log"
+cmmc_compliance_log_file: "{{ cmmc_compliance_log_dir }}/compliance.log"
+cmmc_security_log_file: "{{ cmmc_security_log_dir }}/security.log"
+cmmc_audit_log_file: "{{ cmmc_audit_log_dir }}/cmmc_audit.log"
+
+# =============================================================================
+# STATE AND DATA DIRECTORIES
+# =============================================================================
+
+# Primary CMMC state directory
+cmmc_state_base_dir: "/var/lib/cmmc"
+
+# CMMC state subdirectories
+cmmc_validation_dir: "{{ cmmc_state_base_dir }}/validation"  # Validation scripts and results
+cmmc_backup_dir: "{{ cmmc_state_base_dir }}/backup"         # Configuration backups
+cmmc_cache_dir: "{{ cmmc_state_base_dir }}/cache"           # Temporary cache files
+cmmc_database_dir: "{{ cmmc_state_base_dir }}/database"     # Local compliance database
+cmmc_inventory_dir: "{{ cmmc_state_base_dir }}/inventory"   # System inventory data
+
+# =============================================================================
+# SECURITY CONFIGURATION DIRECTORIES  
+# =============================================================================
+
+# SSH configuration paths
+ssh_config_dir: "/etc/ssh"
+ssh_config_file: "{{ ssh_config_dir }}/sshd_config"
+ssh_config_backup_dir: "{{ cmmc_backup_dir }}/ssh"
+ssh_keys_dir: "{{ ssh_config_dir }}/keys"
+ssh_host_keys_dir: "{{ ssh_config_dir }}"
+
+# System security directories
+security_config_dir: "/etc/security"
+pam_config_dir: "/etc/pam.d"
+sudoers_config_dir: "/etc/sudoers.d"
+audit_config_dir: "/etc/audit"
+firewall_config_dir: "/etc/firewalld"  # RHEL/CentOS
+ufw_config_dir: "/etc/ufw"             # Ubuntu
+
+# =============================================================================
+# SYSTEM DIRECTORIES (STANDARD UNIX PATHS)
+# =============================================================================
+
+# Standard system directories (configurable for non-standard systems)
+etc_dir: "/etc"
+var_dir: "/var"
+usr_dir: "/usr"
+opt_dir: "/opt"
+tmp_dir: "/tmp"
+home_dir: "/home"
+root_dir: "/root"
+
+# Binary and script directories
+bin_dir: "/usr/bin"
+sbin_dir: "/usr/sbin"
+local_bin_dir: "/usr/local/bin"
+local_sbin_dir: "/usr/local/sbin"
+
+# Library and data directories
+lib_dir: "/usr/lib"
+local_lib_dir: "/usr/local/lib"
+share_dir: "/usr/share"
+local_share_dir: "/usr/local/share"
+
+# =============================================================================
+# SERVICE-SPECIFIC DIRECTORIES
+# =============================================================================
+
+# Systemd service directories
+systemd_system_dir: "/etc/systemd/system"
+systemd_user_dir: "/etc/systemd/user"
+systemd_config_dir: "/etc/systemd"
+
+# Cron and scheduling directories
+cron_dir: "/etc/cron.d"
+cron_daily_dir: "/etc/cron.daily"
+cron_weekly_dir: "/etc/cron.weekly"
+cron_monthly_dir: "/etc/cron.monthly"
+
+# Log rotation directories
+logrotate_dir: "/etc/logrotate.d"
+rsyslog_config_dir: "/etc/rsyslog.d"
+
+# =============================================================================
+# BACKUP AND RECOVERY DIRECTORIES
+# =============================================================================
+
+# Backup configuration
+backup_base_dir: "{{ cmmc_state_base_dir }}/backup"
+backup_configs_dir: "{{ backup_base_dir }}/configs"        # Configuration file backups
+backup_databases_dir: "{{ backup_base_dir }}/databases"    # Database backups
+backup_logs_dir: "{{ backup_base_dir }}/logs"              # Log file backups
+backup_keys_dir: "{{ backup_base_dir }}/keys"              # Key and certificate backups
+
+# Backup retention settings
+backup_retention_days: 30
+backup_compression: true
+backup_encryption: true
+
+# =============================================================================
+# TEMPORARY AND WORKING DIRECTORIES
+# =============================================================================
+
+# Working directories for role execution
+cmmc_temp_dir: "{{ tmp_dir }}/cmmc"
+cmmc_work_dir: "{{ cmmc_temp_dir }}/work"
+cmmc_download_dir: "{{ cmmc_temp_dir }}/downloads"
+cmmc_staging_dir: "{{ cmmc_temp_dir }}/staging"
+
+# Lock and PID file directories
+cmmc_lock_dir: "/var/lock/cmmc"
+cmmc_run_dir: "/var/run/cmmc"
+
+# =============================================================================
+# CLIENT-SPECIFIC DIRECTORY OVERRIDES
+# =============================================================================
+
+# These can be overridden in client-specific group_vars
+# Format: group_vars/client_<id>/directory_structure.yml
+
+# Example client-specific overrides:
+# cmmc_base_dir: "/opt/client_specific/cmmc"
+# cmmc_log_base_dir: "/var/log/client_specific/cmmc"
+# cmmc_state_base_dir: "/var/lib/client_specific/cmmc"
+
+# =============================================================================
+# ENVIRONMENT-SPECIFIC DIRECTORY OVERRIDES  
+# =============================================================================
+
+# Development environment overrides
+# When cmmc_environment == "development"
+cmmc_dev_base_dir: "/opt/cmmc-dev"
+cmmc_dev_log_dir: "/var/log/cmmc-dev"
+cmmc_dev_state_dir: "/var/lib/cmmc-dev"
+
+# Staging environment overrides  
+# When cmmc_environment == "staging"
+cmmc_staging_base_dir: "/opt/cmmc-staging"
+cmmc_staging_log_dir: "/var/log/cmmc-staging"
+cmmc_staging_state_dir: "/var/lib/cmmc-staging"
+
+# Production environment uses standard paths (defined above)
+
+# =============================================================================
+# DIRECTORY CREATION PERMISSIONS
+# =============================================================================
+
+# Default directory permissions
+cmmc_dir_mode: "0755"           # Standard directory permissions
+cmmc_secure_dir_mode: "0750"    # Secure directory permissions  
+cmmc_private_dir_mode: "0700"   # Private directory permissions
+
+# Default file permissions
+cmmc_file_mode: "0644"          # Standard file permissions
+cmmc_secure_file_mode: "0640"   # Secure file permissions
+cmmc_private_file_mode: "0600"  # Private file permissions
+cmmc_executable_mode: "0755"    # Executable file permissions
+
+# Default ownership
+cmmc_default_owner: "root"
+cmmc_default_group: "root"
+cmmc_service_user: "cmmc-service"   # Service account for CMMC operations
+cmmc_service_group: "cmmc-service"
+
+# =============================================================================
+# DERIVED PATHS (COMPUTED FROM BASE VARIABLES)
+# =============================================================================
+
+# These are computed automatically and should not be overridden directly
+cmmc_full_config_path: "{{ cmmc_config_dir }}/{{ cmmc_client_id | default('default') }}"
+cmmc_client_log_dir: "{{ cmmc_log_base_dir }}/{{ cmmc_client_id | default('default') }}"
+cmmc_client_state_dir: "{{ cmmc_state_base_dir }}/{{ cmmc_client_id | default('default') }}"
+cmmc_environment_prefix: "{{ cmmc_environment | default('production') }}"
+
+# =============================================================================
+# VALIDATION SETTINGS
+# =============================================================================
+
+# Directory validation settings
+cmmc_validate_paths: true              # Validate all paths before use
+cmmc_create_missing_dirs: true         # Auto-create missing directories
+cmmc_check_permissions: true           # Verify directory permissions
+cmmc_fix_permissions: true             # Auto-fix incorrect permissions
+
+# Safety settings
+cmmc_backup_before_changes: true       # Backup configs before modification
+cmmc_validate_before_apply: true       # Validate configurations before applying
+cmmc_rollback_on_failure: true         # Auto-rollback on configuration failure

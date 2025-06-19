@@ -35,19 +35,42 @@
 
 - name: "CMMC Compliance | Create compliance directory structure"
   file:
-    path: "{{ item }}"
+    path: "{{ item.path }}"
     state: directory
-    owner: root
-    group: root
-    mode: '0755'
+    owner: "{{ item.owner | default(cmmc_default_owner) }}"
+    group: "{{ item.group | default(cmmc_default_group) }}"
+    mode: "{{ item.mode | default(cmmc_dir_mode) }}"
   loop:
-    - /etc/cmmc                    # Main CMMC configuration directory
-    - /etc/cmmc/configs           # Control-specific configurations
-    - /etc/cmmc/baselines         # System baseline configurations
-    - /var/log/cmmc               # CMMC-specific log directory
-    - /var/log/cmmc/reports       # Compliance report storage
-    - /var/lib/cmmc               # CMMC state and data files
-    - /var/lib/cmmc/validation    # Validation scripts and results
+    - path: "{{ cmmc_base_dir }}"
+      mode: "{{ cmmc_secure_dir_mode }}"
+    - path: "{{ cmmc_config_dir }}"
+      mode: "{{ cmmc_secure_dir_mode }}"
+    - path: "{{ cmmc_baseline_dir }}"
+      mode: "{{ cmmc_secure_dir_mode }}"
+    - path: "{{ cmmc_policies_dir }}"
+      mode: "{{ cmmc_secure_dir_mode }}"
+    - path: "{{ cmmc_certificates_dir }}"
+      mode: "{{ cmmc_private_dir_mode }}"
+    - path: "{{ cmmc_keys_dir }}"
+      mode: "{{ cmmc_private_dir_mode }}"
+    - path: "{{ cmmc_log_base_dir }}"
+      mode: "{{ cmmc_dir_mode }}"
+    - path: "{{ cmmc_compliance_log_dir }}"
+      mode: "{{ cmmc_dir_mode }}"
+    - path: "{{ cmmc_reports_dir }}"
+      mode: "{{ cmmc_dir_mode }}"
+    - path: "{{ cmmc_security_log_dir }}"
+      mode: "{{ cmmc_dir_mode }}"
+    - path: "{{ cmmc_implementation_log_dir }}"
+      mode: "{{ cmmc_dir_mode }}"
+    - path: "{{ cmmc_state_base_dir }}"
+      mode: "{{ cmmc_secure_dir_mode }}"
+    - path: "{{ cmmc_validation_dir }}"
+      mode: "{{ cmmc_secure_dir_mode }}"
+    - path: "{{ cmmc_backup_dir }}"
+      mode: "{{ cmmc_private_dir_mode }}"
+    - path: "{{ cmmc_database_dir }}"
+      mode: "{{ cmmc_secure_dir_mode }}"
   # Creates standardized directory structure for CMMC artifacts
   # Ensures consistent file organization across all client systems
   tags:
@@ -58,16 +81,16 @@
   copy:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
-    owner: root
-    group: root
+    owner: "{{ cmmc_default_owner }}"
+    group: "{{ cmmc_default_group }}"
     mode: "{{ item.mode }}"
   loop:
     - src: compliance_validator.py
-      dest: /usr/local/bin/cmmc_validator.py
-      mode: '0755'
+      dest: "{{ local_bin_dir }}/cmmc_validator.py"
+      mode: "{{ cmmc_executable_mode }}"
     - src: cmmc_controls.yaml
-      dest: /etc/cmmc/cmmc_controls.yaml
-      mode: '0644'
+      dest: "{{ cmmc_base_dir }}/cmmc_controls.yaml"
+      mode: "{{ cmmc_secure_file_mode }}"
   # Installs custom validation tools for ongoing compliance checking
   # Tools can operate independently for graceful disconnection scenarios
   tags:
@@ -160,10 +183,10 @@
     msg:
       - "CMMC {{ cmmc_level }} compliance implementation completed"
       - "Client: {{ cmmc_client_id }}"
-      - "Compliance report location: {{ cmmc_reporting_destination }}"
-      - "Validation tools installed: /usr/local/bin/cmmc_validator.py"
-      - "Configuration directory: /etc/cmmc"
-      - "Log directory: /var/log/cmmc"
+      - "Compliance report location: {{ cmmc_reports_dir }}"
+      - "Validation tools installed: {{ local_bin_dir }}/cmmc_validator.py"
+      - "Configuration directory: {{ cmmc_base_dir }}"
+      - "Log directory: {{ cmmc_log_base_dir }}"
   # Provides summary of completed implementation for operator awareness
   # Includes key file locations for ongoing management
   tags:

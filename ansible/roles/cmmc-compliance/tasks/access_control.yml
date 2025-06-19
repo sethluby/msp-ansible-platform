@@ -19,22 +19,22 @@
   block:
     - name: "AC.1.001 | Backup original SSH configuration"
       copy:
-        src: /etc/ssh/sshd_config
-        dest: /etc/ssh/sshd_config.backup.{{ ansible_date_time.epoch }}
+        src: "{{ ssh_config_file }}"
+        dest: "{{ ssh_config_backup_dir }}/sshd_config.backup.{{ ansible_date_time.epoch }}"
         remote_src: true
-        owner: root
-        group: root
-        mode: '0600'
+        owner: "{{ cmmc_default_owner }}"
+        group: "{{ cmmc_default_group }}"
+        mode: "{{ cmmc_private_file_mode }}"
       # Create timestamped backup of SSH config for rollback capability
       # Essential for graceful disconnection and emergency recovery
 
     - name: "AC.1.001 | Generate SSH configuration from template"
       template:
         src: sshd_config.j2
-        dest: /etc/ssh/sshd_config
-        owner: root
-        group: root
-        mode: '0644'
+        dest: "{{ ssh_config_file }}"
+        owner: "{{ cmmc_default_owner }}"
+        group: "{{ cmmc_default_group }}"
+        mode: "{{ cmmc_secure_file_mode }}"
         backup: true
         validate: 'sshd -t -f %s'
       notify: restart sshd
@@ -43,7 +43,7 @@
 
     - name: "AC.1.001 | Disable password authentication"
       lineinfile:
-        path: /etc/ssh/sshd_config
+        path: "{{ ssh_config_file }}"
         regexp: '^#?PasswordAuthentication'
         line: 'PasswordAuthentication no'
         state: present
@@ -53,7 +53,7 @@
 
     - name: "AC.1.001 | Enable and require public key authentication"
       lineinfile:
-        path: /etc/ssh/sshd_config
+        path: "{{ ssh_config_file }}"
         regexp: '^#?PubkeyAuthentication'
         line: 'PubkeyAuthentication yes'
         state: present
@@ -62,7 +62,7 @@
 
     - name: "AC.1.001 | Configure SSH port (if non-standard)"
       lineinfile:
-        path: /etc/ssh/sshd_config
+        path: "{{ ssh_config_file }}"
         regexp: '^#?Port'
         line: "Port {{ cmmc_ac_ssh_port }}"
         state: present
@@ -73,7 +73,7 @@
 
     - name: "AC.1.001 | Restrict SSH access to authorized users"
       lineinfile:
-        path: /etc/ssh/sshd_config
+        path: "{{ ssh_config_file }}"
         regexp: '^#?AllowUsers'
         line: "AllowUsers {{ cmmc_ac_allowed_users | join(' ') }}"
         state: present
@@ -84,7 +84,7 @@
 
     - name: "AC.1.001 | Set authentication attempt limits"
       lineinfile:
-        path: /etc/ssh/sshd_config
+        path: "{{ ssh_config_file }}"
         regexp: '^#?MaxAuthTries'
         line: "MaxAuthTries {{ cmmc_ac_max_auth_tries }}"
         state: present
@@ -93,7 +93,7 @@
 
     - name: "AC.1.001 | Configure login grace time"
       lineinfile:
-        path: /etc/ssh/sshd_config
+        path: "{{ ssh_config_file }}"
         regexp: '^#?LoginGraceTime'
         line: "LoginGraceTime {{ cmmc_ac_login_grace_time }}"
         state: present
