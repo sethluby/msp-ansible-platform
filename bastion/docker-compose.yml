@@ -1,0 +1,193 @@
+version: '3.8'
+
+# Lightweight CMMC-Compliant Client Bastion
+# Designed for graceful disconnection and independent operation
+
+services:
+  # PostgreSQL Database for AWX
+  postgres:
+    image: postgres:13-alpine
+    container_name: cmmc-postgres
+    environment:
+      - POSTGRES_DB=awx
+      - POSTGRES_USER=awx
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./configs/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    networks:
+      - cmmc-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
+
+  # Redis for AWX Task Queue
+  redis:
+    image: redis:7-alpine
+    container_name: cmmc-redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-changeme}
+    volumes:
+      - redis_data:/data
+      - ./configs/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - cmmc-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # AWX Web/API Server
+  awx-web:
+    image: quay.io/ansible/awx:latest
+    container_name: cmmc-awx-web
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - SECRET_KEY=${AWX_SECRET_KEY:-changeme}
+      - DATABASE_HOST=postgres
+      - DATABASE_NAME=awx
+      - DATABASE_USER=awx
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-changeme}
+      - AWX_ADMIN_USER=${AWX_ADMIN_USER:-admin}
+      - AWX_ADMIN_PASSWORD=${AWX_ADMIN_PASSWORD:-changeme}
+    volumes:
+      - awx_projects:/var/lib/awx/projects:rw
+      - awx_inventory:/var/lib/awx/inventory:rw
+      - ./configs/awx/settings.py:/etc/tower/settings.py:ro
+      - ./ansible:/var/lib/awx/projects/ansible:ro
+    ports:
+      - "8080:8052"
+    networks:
+      - cmmc-internal
+      - cmmc-external
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  # AWX Task/Job Executor
+  awx-task:
+    image: quay.io/ansible/awx:latest
+    container_name: cmmc-awx-task
+    depends_on:
+      - postgres
+      - redis
+      - awx-web
+    environment:
+      - SECRET_KEY=${AWX_SECRET_KEY:-changeme}
+      - DATABASE_HOST=postgres
+      - DATABASE_NAME=awx
+      - DATABASE_USER=awx
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-changeme}
+      - SUPERVISOR_WEB_CONFIG_PATH=/etc/supervisord.conf
+    volumes:
+      - awx_projects:/var/lib/awx/projects:rw
+      - awx_inventory:/var/lib/awx/inventory:rw
+      - ./configs/awx/settings.py:/etc/tower/settings.py:ro
+      - ./ansible:/var/lib/awx/projects/ansible:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - cmmc-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    command: /usr/bin/launch_awx_task.sh
+
+  # HashiCorp Vault for Secrets Management
+  vault:
+    image: hashicorp/vault:latest
+    container_name: cmmc-vault
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_ROOT_TOKEN:-changeme}
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+      - VAULT_LOCAL_CONFIG=${VAULT_LOCAL_CONFIG:-'{"storage": {"file": {"path": "/vault/data"}}, "listener": {"tcp": {"address": "0.0.0.0:8200", "tls_disable": true}}, "default_lease_ttl": "168h", "max_lease_ttl": "720h", "ui": true}'}
+    volumes:
+      - vault_data:/vault/data:rw
+      - vault_logs:/vault/logs:rw
+      - ./configs/vault/vault.hcl:/vault/config/vault.hcl:ro
+    ports:
+      - "8200:8200"
+    networks:
+      - cmmc-internal
+      - cmmc-external
+    cap_add:
+      - IPC_LOCK
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    command: vault server -config=/vault/config/vault.hcl
+
+  # CMMC Compliance Validator (Custom Service)
+  compliance-validator:
+    build:
+      context: ./compliance
+      dockerfile: Dockerfile
+    container_name: cmmc-compliance
+    depends_on:
+      - vault
+    environment:
+      - VAULT_ADDR=http://vault:8200
+      - VAULT_TOKEN=${VAULT_ROOT_TOKEN:-changeme}
+      - CLIENT_ID=${CLIENT_ID:-default}
+      - COMPLIANCE_LEVEL=${COMPLIANCE_LEVEL:-level2}
+    volumes:
+      - ./compliance:/app/compliance:ro
+      - compliance_reports:/app/reports:rw
+      - /var/log:/host/logs:ro
+      - /etc:/host/etc:ro
+    networks:
+      - cmmc-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+networks:
+  cmmc-internal:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+  
+  cmmc-external:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  awx_projects:
+    driver: local
+  awx_inventory:
+    driver: local
+  vault_data:
+    driver: local
+  vault_logs:
+    driver: local
+  compliance_reports:
+    driver: local
+
+# Health Check Configuration
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 60s
