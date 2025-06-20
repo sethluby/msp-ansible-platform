@@ -8,7 +8,8 @@
 # =============================================================================
 
 # Primary CMMC configuration root directory
-cmmc_base_dir: "/etc/cmmc"
+# Standard enterprise path for cross-platform compatibility (RHEL/Ubuntu)
+cmmc_base_dir: "/opt/cmmc-automation"
 
 # CMMC subdirectories
 cmmc_config_dir: "{{ cmmc_base_dir }}/configs"          # Control-specific configurations

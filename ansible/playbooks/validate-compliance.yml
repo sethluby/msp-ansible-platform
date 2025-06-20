@@ -1,0 +1,118 @@
+---
+# CMMC Compliance Validation Playbook
+# Author: thndrchckn
+# Purpose: Validate CMMC compliance control implementation
+
+- name: "Validate CMMC Compliance Implementation"
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    playbook_name: "CMMC Compliance Validation"
+    playbook_version: "1.0.0"
+    validation_id: "{{ ansible_date_time.epoch }}"
+
+  pre_tasks:
+    - name: "Validation Start | Display validation information"
+      debug:
+        msg:
+          - "=== {{ playbook_name }} v{{ playbook_version }} ==="
+          - "Validation ID: {{ validation_id }}"
+          - "Target Host: {{ inventory_hostname }}"
+          - "CMMC Level: {{ cmmc_level | default('level2') }}"
+          - "Client ID: {{ cmmc_client_id | default('default_client') }}"
+          - "Timestamp: {{ ansible_date_time.iso8601 }}"
+      tags:
+        - always
+
+  tasks:
+    - name: "CMMC Validation | Run post-implementation validation"
+      include_role:
+        name: cmmc-compliance
+        tasks_from: validation
+      vars:
+        validation_mode: "post_implementation"
+        validation_execution_id: "{{ validation_id }}"
+      tags:
+        - cmmc_validation
+
+    - name: "CMMC Validation | Test SSH configuration"
+      block:
+        - name: "CMMC Validation | Verify SSH daemon configuration"
+          command: sshd -t
+          register: ssh_test
+          changed_when: false
+
+        - name: "CMMC Validation | Check SSH security settings"
+          shell: sshd -T | grep -E "(PasswordAuthentication|PubkeyAuthentication|PermitRootLogin)"
+          register: ssh_security
+          changed_when: false
+
+      when: cmmc_enable_access_control | default(true) | bool
+      tags:
+        - ssh_validation
+
+    - name: "CMMC Validation | Test audit system"
+      block:
+        - name: "CMMC Validation | Check auditd service status"
+          systemd:
+            name: auditd
+          register: auditd_status
+
+        - name: "CMMC Validation | Verify audit rules are loaded"
+          command: auditctl -l
+          register: audit_rules
+          changed_when: false
+
+      when: cmmc_enable_audit_accountability | default(true) | bool
+      tags:
+        - audit_validation
+
+    - name: "CMMC Validation | Run compliance validator tool"
+      command: "{{ local_bin_dir | default('/usr/local/bin') }}/cmmc_validator.py --config-dir {{ cmmc_base_dir | default('/etc/cmmc') }} --verbose"
+      register: validator_output
+      changed_when: false
+      failed_when: false
+      tags:
+        - validator_test
+
+  post_tasks:
+    - name: "Validation Complete | Generate validation report"
+      set_fact:
+        validation_report:
+          validation_id: "{{ validation_id }}"
+          timestamp: "{{ ansible_date_time.iso8601 }}"
+          hostname: "{{ inventory_hostname }}"
+          cmmc_level: "{{ cmmc_level }}"
+          client_id: "{{ cmmc_client_id }}"
+          ssh_validation:
+            config_test: "{{ 'PASS' if ssh_test.rc == 0 else 'FAIL' if ssh_test is defined else 'SKIPPED' }}"
+            security_settings: "{{ ssh_security.stdout_lines if ssh_security is defined else 'SKIPPED' }}"
+          audit_validation:
+            service_status: "{{ auditd_status.status.ActiveState if auditd_status is defined else 'SKIPPED' }}"
+            rules_loaded: "{{ 'YES' if (audit_rules.stdout_lines | length > 0) else 'NO' if audit_rules is defined else 'SKIPPED' }}"
+          validator_test:
+            exit_code: "{{ validator_output.rc if validator_output is defined else 'SKIPPED' }}"
+            status: "{{ 'PASS' if validator_output.rc == 0 else 'FAIL' if validator_output is defined else 'SKIPPED' }}"
+          overall_status: "{{ 'PASS' if (ssh_test.rc | default(1) == 0) and (auditd_status.status.ActiveState | default('inactive') == 'active') and (validator_output.rc | default(1) == 0) else 'FAIL' }}"
+
+    - name: "Validation Complete | Save validation report"
+      copy:
+        content: "{{ validation_report | to_nice_json }}"
+        dest: "{{ cmmc_reports_dir | default('/var/log/cmmc/reports') }}/validation_{{ validation_id }}.json"
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: "Validation Complete | Display results"
+      debug:
+        msg:
+          - "=== CMMC Validation Results ==="
+          - "Overall Status: {{ validation_report.overall_status }}"
+          - "SSH Configuration: {{ validation_report.ssh_validation.config_test }}"
+          - "Audit Service: {{ validation_report.audit_validation.service_status }}"
+          - "Compliance Validator: {{ validation_report.validator_test.status }}"
+          - "Report saved to: {{ cmmc_reports_dir | default('/var/log/cmmc/reports') }}/validation_{{ validation_id }}.json"
+      tags:
+        - always

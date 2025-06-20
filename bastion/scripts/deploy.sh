@@ -5,15 +5,17 @@
 
 set -euo pipefail
 
-# Configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BASTION_DIR="$(dirname "$SCRIPT_DIR")"
-PROJECT_DIR="$(dirname "$BASTION_DIR")"
-
-# Default values
-CLIENT_ID="${CLIENT_ID:-default}"
+# Configuration - MSP sets these during client deployment
+INSTALL_BASE="/opt/cmmc-automation"
+CLIENT_ID="${CLIENT_ID:-$(hostname -s)}"  # Default to hostname if not set
 COMPLIANCE_LEVEL="${COMPLIANCE_LEVEL:-level2}"
 ENVIRONMENT="${ENVIRONMENT:-production}"
+
+# Standard paths on client system
+BASTION_DIR="$INSTALL_BASE/bastion"
+ANSIBLE_DIR="$INSTALL_BASE/ansible" 
+CONFIG_DIR="$INSTALL_BASE/config"
+LOG_DIR="/var/log/cmmc"
 
 # Colors for output
 RED='\033[0;31m'

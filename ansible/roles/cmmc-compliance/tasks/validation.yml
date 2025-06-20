@@ -1,0 +1,87 @@
+---
+# CMMC System Validation Tasks
+# Author: thndrchckn
+# Purpose: Validate system requirements and CMMC control implementation status
+
+- name: "Validation | Determine validation mode"
+  set_fact:
+    current_validation_mode: "{{ validation_mode | default('pre_implementation') }}"
+  # Set validation mode to determine which checks to perform
+  # Modes: pre_implementation, post_implementation, ongoing
+  tags:
+    - always
+
+- name: "Validation | Display validation information"
+  debug:
+    msg:
+      - "Running CMMC validation in {{ current_validation_mode }} mode"
+      - "Target CMMC level: {{ cmmc_level }}"
+      - "System: {{ ansible_hostname }} ({{ ansible_os_family }} {{ ansible_distribution_version }})"
+  tags:
+    - always
+
+# Pre-Implementation System Requirements Validation
+- name: "Pre-Implementation | Validate system requirements"
+  block:
+    - name: "Pre-Implementation | Check OS compatibility"
+      assert:
+        that:
+          - ansible_os_family in cmmc_supported_os_families
+          - ansible_distribution_version is version(cmmc_min_os_versions[ansible_os_family], '>=')
+        fail_msg: "Unsupported OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+        success_msg: "OS compatibility confirmed: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+      # Verify operating system is supported for CMMC implementation
+
+    - name: "Pre-Implementation | Check available disk space"
+      assert:
+        that:
+          - ansible_mounts | selectattr('mount', 'equalto', '/') | map(attribute='size_available') | first > cmmc_min_disk_space
+        fail_msg: "Insufficient disk space. Required: {{ cmmc_min_disk_space }} bytes"
+        success_msg: "Sufficient disk space available"
+      # Ensure adequate disk space for CMMC artifacts and logging
+
+    - name: "Pre-Implementation | Check available memory"
+      assert:
+        that:
+          - ansible_memtotal_mb > cmmc_min_memory_mb
+        fail_msg: "Insufficient memory. Required: {{ cmmc_min_memory_mb }}MB, Available: {{ ansible_memtotal_mb }}MB"
+        success_msg: "Sufficient memory available: {{ ansible_memtotal_mb }}MB"
+      # Verify system has adequate memory for compliance tools
+
+  when: current_validation_mode == 'pre_implementation'
+  tags:
+    - cmmc_pre_validation
+
+# Post-Implementation Control Validation
+- name: "Post-Implementation | Validate CMMC control implementation"
+  block:
+    - name: "Post-Implementation | Run compliance validator"
+      command: "{{ local_bin_dir }}/cmmc_validator.py --config-dir {{ cmmc_base_dir }} --output json"
+      register: compliance_validation
+      changed_when: false
+      failed_when: compliance_validation.rc != 0
+      # Execute comprehensive compliance validation script
+
+    - name: "Post-Implementation | Verify SSH configuration"
+      command: sshd -t
+      changed_when: false
+      register: ssh_config_test
+      when: cmmc_enable_access_control | bool
+
+    - name: "Post-Implementation | Verify auditd service status"
+      systemd:
+        name: auditd
+      register: auditd_status
+      when: cmmc_enable_audit_accountability | bool
+
+  when: current_validation_mode == 'post_implementation'
+  tags:
+    - cmmc_post_validation
+
+- name: "Validation | Display validation results"
+  debug:
+    msg:
+      - "Validation completed for {{ current_validation_mode }} mode"
+      - "Validator location: {{ local_bin_dir }}/cmmc_validator.py"
+  tags:
+    - always
