@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(git init:*)",
+      "Bash(git checkout:*)",
+      "Bash(ls:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(SSH_AUTH_SOCK=\"\" ssh-agent bash -c 'ssh-add ~/.ssh/id_sethlubygit && git push -u origin main')",
+      "Bash(mkdir:*)",
+      "Bash(chmod:*)",
+      "Bash(SSH_AUTH_SOCK=\"\" ssh-agent bash -c 'ssh-add ~/.ssh/id_sethlubygit && git push')",
+      "Bash(git clone:*)",
+      "Bash(cp:*)",
+      "Bash(true)",
+      "Bash(git rm:*)",
+      "Bash(cat:*)",
+      "Bash(rm:*)",
+      "Bash(git push:*)"
+    ],
+    "deny": []
+  }
+}
