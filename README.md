@@ -43,7 +43,7 @@ services:
 ### Service Tiers
 - **Foundation**: $35-50/server/month (Basic monitoring, security hardening)
 - **Professional**: $65-89/server/month (Advanced compliance, custom automation)  
-- **Enterprise**: $95-125/server/month (Premium compliance frameworks, dedicated support)
+- **Enterprise**: $95-125/server/month (Premium compliance frameworks including CMMC, dedicated support)
 
 ### Value Proposition
 - **50-70% cost reduction** vs in-house compliance teams
@@ -71,7 +71,7 @@ msp-ansible-platform/
 │   ├── configs/            # Service configurations
 │   └── scripts/            # Deployment automation
 └── compliance/             # Compliance framework implementations
-    ├── frameworks/         # SOC2, HIPAA, PCI-DSS, CMMC, etc.
+    ├── frameworks/         # SOC2, HIPAA, PCI-DSS, CMMC, NIST, etc.
     ├── validation/         # Compliance checking scripts
     └── reporting/          # Dashboard and report generation
 ```
@@ -87,16 +87,16 @@ msp-ansible-platform/
 - **Documentation framework** - Comprehensive wiki and README structure
 - **Business model** - Complete pricing strategy and market analysis
 - **External resources** - Community role research and integration patterns
-- **Basic role templates** - Placeholder structure for CMMC roles
+- **Basic role templates** - Placeholder structure for compliance frameworks
 - **Directory flexibility** - Variable-based path configuration
 
 ### 🔄 Core Implementation Needed (70% Remaining)
-- **Functional Ansible tasks** - Implement actual CMMC control automation
-- **Working playbooks** - End-to-end deployment and management workflows
-- **Compliance validation** - Real CMMC control checking and reporting
+- **Functional Ansible tasks** - Implement comprehensive automation workflows
+- **Working playbooks** - End-to-end deployment and management orchestration
+- **Compliance validation** - Multi-framework compliance checking and reporting
 - **MSP infrastructure deployment** - Functional Docker-based core services
 - **Client onboarding** - Automated setup and configuration processes
-- **Security hardening** - Actual CIS benchmark implementations
+- **Security hardening** - CIS benchmarks and industry standard implementations
 - **Inventory management** - Dynamic multi-client environment handling
 - **Testing framework** - Validation and verification procedures
 
@@ -128,7 +128,7 @@ msp-ansible-platform/
 2. **Setup Environment**: Follow infrastructure requirements
 3. **Deploy MSP Infrastructure**: Use `msp-infrastructure/docker-compose.yml`
 4. **Configure Ansible**: Setup roles and playbooks
-5. **Validate Compliance**: Run CMMC control checks
+5. **Validate Compliance**: Run compliance framework checks
 
 ## External Resources
 

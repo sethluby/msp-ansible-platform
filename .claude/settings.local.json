@@ -27,7 +27,8 @@
       "Bash(GIT_SSH_COMMAND=\"ssh -i ~/.ssh/id_github_msp\" git remote add github git@github.com:sethluby/msp-ansible-platform.git)",
       "Bash(GIT_SSH_COMMAND=\"ssh -i ~/.ssh/id_github_msp\" git push -u github main)",
       "Bash(mv:*)",
-      "Bash(GIT_SSH_COMMAND=\"ssh -i ~/.ssh/id_github_msp\" git push github main)"
+      "Bash(GIT_SSH_COMMAND=\"ssh -i ~/.ssh/id_github_msp\" git push github main)",
+      "Bash(git submodule deinit:*)"
     ],
     "deny": []
   }
