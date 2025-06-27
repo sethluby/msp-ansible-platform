@@ -18,7 +18,15 @@
       "Bash(git rm:*)",
       "Bash(cat:*)",
       "Bash(rm:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(ssh-add:*)",
+      "Bash(ssh-agent:*)",
+      "Bash(ssh:*)",
+      "Bash(GIT_SSH_COMMAND=\"ssh -i ~/.ssh/id_msprevolution\" git push -u github main)",
+      "Bash(git remote:*)",
+      "Bash(GIT_SSH_COMMAND=\"ssh -i ~/.ssh/id_github_msp\" git remote add github git@github.com:sethluby/msp-ansible-platform.git)",
+      "Bash(GIT_SSH_COMMAND=\"ssh -i ~/.ssh/id_github_msp\" git push -u github main)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

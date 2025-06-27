@@ -1,6 +1,6 @@
-# MSP Ansible CMMC Compliance Management
+# MSP Ansible Infrastructure Management Platform
 
-A comprehensive Ansible-based infrastructure management solution for MSPs serving defense contractors requiring CMMC (Cybersecurity Maturity Model Certification) compliance.
+A comprehensive Ansible-based infrastructure management solution for Managed Service Providers. Provides centralized automation with secure client connectivity and flexible compliance framework support.
 
 ## Quick Start
 
@@ -26,7 +26,7 @@ git push -u origin main
 - **Maximum Modularity** - Docker-based services for easy deployment/removal
 - **Graceful Disconnection** - Clients can operate independently after MSP departure
 - **Minimal Infrastructure** - Lightweight bastion hosts (2 vCPU, 4GB RAM)
-- **CMMC Compliance** - Automated validation of AC, AU, CM, IA, SC, SI controls
+- **Compliance Ready** - Modular framework supporting multiple compliance standards
 
 ### Essential Services Stack
 ```yaml
@@ -40,10 +40,10 @@ services:
 
 ## Business Model
 
-### Pricing Tiers
-- **Foundation**: $95-125/server/month (10-50 systems, CMMC Level 2)
-- **Professional**: $65-89/server/month (25-150 systems, CMMC Level 2/3)  
-- **Enterprise**: $42-59/server/month (100-500+ systems, CMMC Level 3)
+### Service Tiers
+- **Foundation**: $35-50/server/month (Basic monitoring, security hardening)
+- **Professional**: $65-89/server/month (Advanced compliance, custom automation)  
+- **Enterprise**: $95-125/server/month (Premium compliance frameworks, dedicated support)
 
 ### Value Proposition
 - **50-70% cost reduction** vs in-house compliance teams
@@ -66,8 +66,8 @@ cmmc-ansible/
 │   ├── docker-compose.yml  # Core services definition
 │   ├── configs/            # Service configurations
 │   └── scripts/            # Deployment automation
-└── compliance/             # CMMC validation and reporting
-    ├── controls/           # Control-specific implementations
+└── compliance/             # Compliance framework implementations
+    ├── frameworks/         # SOC2, HIPAA, PCI-DSS, CMMC, etc.
     ├── validation/         # Compliance checking scripts
     └── reporting/          # Dashboard and report generation
 ```
@@ -105,17 +105,18 @@ cmmc-ansible/
 - Version control all changes
 
 ### Git Workflow
-- Repository: `ssh://git@git.lan.sethluby.com:222/thndrchckn/cmmc-ansible.git`
+- **Public Repository**: `https://github.com/sethluby/msp-ansible-platform`
+- **Private Development**: `ssh://git@git.lan.sethluby.com:222/thndrchckn/cmmc-ansible.git`
 - Automated backups via `~/Documents/Scripts/git-backup.sh`
 - Main branch for stable releases
 - Feature branches for development
 
 ## Market Opportunity
 
-- **$300+ billion** in annual DoD contracts requiring CMMC by 2026
-- **Severe shortage** of qualified CMMC professionals
-- **First-mover advantage** in automated compliance market
-- **High-margin services** with 30-50% premium pricing
+- **Growing MSP market** seeking automation and compliance solutions
+- **Linux infrastructure complexity** requiring specialized expertise
+- **Multiple compliance frameworks** across industries (healthcare, finance, government)
+- **Security-first architecture** addressing modern threat landscape
 
 ## Getting Started
 
@@ -138,6 +139,7 @@ See [wiki references](https://git.lan.sethluby.com:222/thndrchckn/cmmc-ansible.w
 
 ## Contact & Support
 
-- **Project Lead**: Development in progress
-- **Repository**: git.lan.sethluby.com:222/thndrchckn/cmmc-ansible
-- **Documentation**: See `docs/` directory for comprehensive guides
+- **Author**: thunderchicken
+- **Public Repository**: GitHub Issues and Discussions
+- **Development**: See CLAUDE.md for technical architecture
+- **Documentation**: Comprehensive guides in docs/ directory

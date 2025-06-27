@@ -1,100 +1,223 @@
-# MSP Ansible CMMC Compliance Management Project
+# MSP Ansible Infrastructure Management Platform
 
 ## Project Overview
-This project involves designing and implementing a comprehensive Ansible-based infrastructure management solution for MSPs serving defense contractors requiring CMMC (Cybersecurity Maturity Model Certification) compliance. The architecture provides automated compliance monitoring, security hardening, and centralized management across hundreds of client Linux environments.
+Comprehensive Ansible-based infrastructure management solution for Managed Service Providers (MSPs). Provides centralized automation orchestration with secure WireGuard connectivity to client Linux environments. CMMC compliance capabilities included as premium service tier.
 
-## Documentation Standards
-- **Always update CLAUDE.md** when making significant changes to the project
-- **Maintain changelog** with dates, changes, and reasoning
-- **Document all architectural decisions** and trade-offs
-- **Keep README.md current** with setup instructions and project status
-- **Version control everything** - this project is tracked in git at ssh://git@git.lan.sethluby.com:222/thndrchckn/cmmc-ansible.git
-- **Automated backups** via ~/Documents/Scripts/git-backup.sh systemd timer
+## Quick Commands
+```bash
+# Development setup
+ansible-playbook setup.yml                    # Initialize MSP infrastructure
+ansible-playbook client-onboard.yml -e client=newcorp  # Onboard new client
 
-## Key Components
+# Daily operations
+ansible-playbook security-hardening.yml       # Apply security baselines
+ansible-playbook patch-management.yml         # Staged security updates
+ansible-playbook compliance-audit.yml         # Run compliance validation
 
-### Core Architecture
-- **Hub-and-spoke design** with regional bastion hosts for secure access
-- **Ansible Tower/AWX** for centralized automation orchestration
-- **HashiCorp Vault** for secrets management and certificate authority
-- **Zero-trust network architecture** with VPN connectivity and network segmentation
-- **Multi-tenant isolation** ensuring complete client separation
+# Client management
+ansible-inventory --list                      # View multi-tenant inventory
+ansible all -m ping --limit client_newcorp   # Test client connectivity
+ansible-vault edit group_vars/client_newcorp/vault.yml  # Manage client secrets
+```
 
-### Security Framework
-- **Certificate-based authentication** with automated rotation
-- **Role-based access control (RBAC)** with client-specific permissions
-- **Multi-factor authentication** for all administrative access
-- **Comprehensive audit logging** meeting CMMC requirements
-- **Encryption in transit and at rest** using industry-standard protocols
+## Core Architecture
 
-### CMMC Compliance Integration
-- **Automated validation** of AC, AU, CM, IA, SC, and SI control families
-- **Continuous monitoring** with real-time compliance reporting
-- **Gap analysis and remediation** automation
-- **Compliance dashboards** for client reporting and certification support
+### MSP Infrastructure (Hub)
+- **Ansible Tower/AWX**: Centralized automation orchestration
+- **HashiCorp Vault**: Secrets management and PKI
+- **WireGuard Hub**: Secure client connectivity
+- **Multi-tenant isolation**: Complete client separation
 
-### Technical Implementation
-- **Ansible playbooks** for security hardening (CIS benchmarks, SELinux/AppArmor)
-- **Dynamic inventory** management with Vault integration
-- **Performance optimization** for large-scale deployments (1000+ systems)
-- **Disaster recovery** procedures with automated failover capabilities
+### Client Infrastructure (Spoke)
+- **WireGuard endpoint**: Secure tunnel to MSP infrastructure
+- **Local network preservation**: No disruption to existing networking
+- **Minimal footprint**: Agent-less Ansible management
+- **Self-contained**: Graceful MSP disconnection capability
 
-## Business Context
+## Service Tiers
 
-### Market Opportunity
-- **$300+ billion** in annual DoD contracts requiring CMMC certification by 2026
-- **Severe shortage** of qualified CMMC implementation professionals
-- **MSPs charging 30-50% premium** for CMMC-compliant services
-- **First-mover advantage** in automated CMMC compliance market
+### Foundation Tier ($35-50/server/month)
+- Basic system monitoring and alerting
+- Automated security patching
+- System hardening (CIS benchmarks)
+- Configuration management
 
-### Pricing Strategy
-- **Tiered service model**: Foundation ($95-125/server/month), Professional ($65-89/server/month), Enterprise ($42-59/server/month)
-- **High-value add-ons**: Certification assistance, custom development, incident response
-- **ROI proposition**: 50-70% cost reduction vs in-house compliance teams
+### Professional Tier ($65-89/server/month)
+- Everything in Foundation plus:
+- Advanced compliance frameworks (SOC2, HIPAA, PCI-DSS)
+- Incident response automation
+- Custom playbook development
+- 24/7 monitoring and alerting
 
-## Technical Specifications
+### Enterprise Tier ($95-125/server/month)
+- Everything in Professional plus:
+- CMMC Level 2/3 compliance automation
+- Advanced threat detection and response
+- Disaster recovery orchestration
+- Dedicated compliance reporting
 
-### Supported Environments
-- **Operating Systems**: RHEL/CentOS 7-9, Ubuntu 18.04-22.04, SLES 12-15
-- **Scale**: 10-500+ Linux systems per client
-- **Network**: IPSec/WireGuard VPN, network segmentation, firewall automation
-- **Monitoring**: Prometheus/Grafana stack with ELK logging infrastructure
+## Code Style & Standards
 
-### Key Automation Areas
-- **Security hardening**: SSH configuration, firewall rules, user management
-- **Patch management**: Automated security updates with staged rollouts
-- **Compliance validation**: Real-time CMMC control verification
-- **Incident response**: Automated containment and forensic data collection
+### Ansible Best Practices
+- Use fully qualified collection names (ansible.builtin.*)
+- Implement idempotency for all tasks
+- Use ansible-vault for all sensitive data
+- Follow YAML formatting with 2-space indentation
+- Tag all tasks for selective execution
 
-## Project Goals
-- **Scalable automation** platform serving 100+ defense contractor clients
-- **99.9% compliance** success rate for CMMC Level 2/3 certifications
-- **Reduced operational overhead** through comprehensive automation
-- **Competitive differentiation** in MSP market through specialized CMMC expertise
+### Directory Structure
+```
+roles/
+├── common/              # Base system configuration
+├── security/            # Security hardening roles
+├── compliance/          # Compliance frameworks (CMMC, SOC2, etc.)
+└── client-specific/     # Client customizations
 
-## Career Development Context
-This project represents a unique opportunity to build expertise at the intersection of:
-- **Linux systems administration** at enterprise scale
-- **Cybersecurity compliance** frameworks and automation
-- **Infrastructure as Code** and configuration management
-- **Defense industry** requirements and business processes
+playbooks/
+├── site.yml            # Master playbook
+├── client-onboard.yml  # Client onboarding automation
+└── compliance/         # Compliance-specific playbooks
 
-The role involves architecting solutions from the ground up, making it ideal for building a portfolio of innovative automation frameworks and establishing thought leadership in the CMMC automation space.
+inventory/
+├── production/         # Multi-client production inventory
+├── staging/           # Staging environment
+└── group_vars/        # Client-specific variables
+```
+
+### Testing Requirements
+```bash
+# Always run before commits
+ansible-lint playbooks/    # Lint all playbooks
+ansible-playbook --check   # Dry-run validation
+molecule test             # Role testing (where applicable)
+```
+
+## Supported Environments
+- **Operating Systems**: RHEL/CentOS/Rocky 7-9, Ubuntu 18.04-24.04, SLES 12-15
+- **Scale**: 5-500+ Linux systems per client
+- **Network**: WireGuard VPN, firewall automation, network segmentation
+- **Cloud Platforms**: AWS, Azure, GCP, on-premises
+
+## Client Onboarding Workflow
+
+### Prerequisites
+- Client Linux systems with SSH access
+- Network connectivity for WireGuard (UDP 51820)
+- Sudo/root access for initial setup
+
+### Automated Setup Process
+1. **WireGuard Deployment**: Secure tunnel establishment
+2. **Ansible Bootstrap**: Install Python and SSH keys
+3. **Inventory Integration**: Add to multi-tenant inventory
+4. **Security Baseline**: Apply CIS benchmarks and hardening
+5. **Monitoring Setup**: Deploy agents and configure alerting
+
+## Development Environment
+
+### Local Setup
+```bash
+# Install dependencies
+pip install ansible ansible-lint molecule
+ansible-galaxy install -r requirements.yml
+
+# Configure vault password
+echo "your-vault-password" > .vault_pass
+
+# Test connectivity
+ansible all -m ping
+```
+
+### Git Workflow
+- Feature branches for all development
+- Ansible-lint must pass before merge
+- All secrets encrypted with ansible-vault
+- Commit messages follow conventional commits
+
+## Security Considerations
+
+### Network Security
+- WireGuard with rotating PSKs
+- Client network isolation via VRF
+- Firewall automation with fail-safe defaults
+- Certificate-based authentication
+
+### Data Protection
+- Secrets stored in HashiCorp Vault
+- Encryption in transit and at rest
+- Audit logging for all operations
+- Client data isolation (multi-tenancy)
+
+## Compliance Frameworks
+
+### CMMC (Cybersecurity Maturity Model Certification)
+- Level 2 and Level 3 automation
+- 17 domain coverage (AC, AU, CM, IA, SC, SI, etc.)
+- Continuous monitoring and validation
+- Gap analysis and remediation
+
+### Other Supported Frameworks
+- SOC 2 Type II
+- HIPAA/HITECH
+- PCI-DSS
+- NIST 800-53
+- ISO 27001
+
+## Performance Optimization
+- Parallel execution with strategy: linear
+- Connection pooling and persistent connections
+- Inventory caching for large deployments
+- Selective task execution with tags
+
+## Troubleshooting
+
+### Common Issues
+- **WireGuard connectivity**: Check firewall rules and NAT
+- **Ansible timeouts**: Increase timeout values in ansible.cfg
+- **Vault decryption**: Verify .vault_pass file permissions
+- **SSH key authentication**: Use ansible-playbook -vvv for debugging
+
+### Debug Commands
+```bash
+# Connection testing
+ansible all -m ping -vvv
+
+# Inventory debugging
+ansible-inventory --list --yaml
+
+# Playbook debugging
+ansible-playbook site.yml --check --diff -vvv
+```
+
+## Migration to Public GitHub
+
+### Repository Preparation
+- Remove all sensitive data (IPs, passwords, certificates)
+- Sanitize commit history if needed
+- Update documentation for public consumption
+- Add comprehensive README.md
+
+### Public Repository Benefits
+- Community contributions and feedback
+- Portfolio showcase for MSP automation expertise
+- Open-source credibility for enterprise sales
+- Industry thought leadership positioning
 
 ## Changelog
 
-### 2025-06-19 - Major Implementation Progress
-- **✅ COMPLETED: Core CMMC compliance roles** - Implemented AC, AU, CM, IA, SC, SI control families with detailed validation
-- **✅ COMPLETED: Security hardening framework** - CIS benchmarks implementation with multiple security levels
-- **✅ COMPLETED: Directory structure flexibility** - All paths converted to variables for maximum configurability
-- **✅ COMPLETED: Compliance validation system** - Independent Python validator with configurable paths for graceful disconnection
-- **✅ COMPLETED: Comprehensive Gitea wiki** - 50+ documentation sections covering technical and business aspects
-- **✅ COMPLETED: Dynamic inventory management** - Multi-client support with Vault integration and client isolation
-- **✅ COMPLETED: External resource integration** - Added community Ansible role references and implementation patterns
+### 2025-06-27 - Strategic Pivot and Public Release Preparation
+- **✅ COMPLETED: Scope expansion** - Pivoted from CMMC-only to comprehensive MSP platform
+- **✅ COMPLETED: Architecture redesign** - WireGuard-based client connectivity model
+- **✅ COMPLETED: Service tier restructuring** - Foundation/Professional/Enterprise pricing model
+- **✅ COMPLETED: CLAUDE.md restructure** - Following Claude Code best practices for maintainability
+- **🚀 PLANNED: Public GitHub migration** - Prepare for open-source community engagement
 
-### Initial Setup (Earlier 2025-06-19)
-- **Initial project documentation** - Created comprehensive technical architecture and pricing documentation
-- **Modular design decision** - Chose Docker-based lightweight bastion architecture for maximum flexibility
-- **Graceful disconnection capability** - Designed self-contained client infrastructure for vendor independence
-- **Git repository setup** - Initialized project in homelab git server for version control and automated backups
-- **Streamlined monitoring** - Removed Prometheus/Grafana for simplified core services (AWX + Vault + minimal dependencies)
+### 2025-06-19 - Initial CMMC Implementation
+- **Core CMMC compliance roles** - AC, AU, CM, IA, SC, SI control families
+- **Security hardening framework** - CIS benchmarks with multiple security levels
+- **Compliance validation system** - Independent Python validator
+- **Multi-client infrastructure** - Dynamic inventory with Vault integration
+
+### Earlier 2025-06-19 - Project Foundation
+- **Initial architecture design** - Hub-and-spoke with bastion hosts
+- **Git repository setup** - Version control and automated backups
+- **Documentation framework** - Technical and business documentation structure
