@@ -1,10 +1,10 @@
-# MSP CMMC Compliance Automation Wiki
+# MSP Ansible Platform Wiki
 
 **Author**: thndrchckn  
-**Project**: MSP Ansible CMMC Compliance Management  
-**Repository**: `ssh://git@git.lan.sethluby.com:222/thndrchckn/cmmc-ansible.git`
+**Project**: MSP Ansible Infrastructure Management Platform  
+**Repository**: `https://github.com/sethluby/msp-ansible-platform`
 
-Welcome to the comprehensive documentation wiki for the MSP CMMC Compliance Automation framework. This wiki provides in-depth technical documentation, implementation examples, troubleshooting guides, and best practices for deploying and managing CMMC-compliant infrastructure at scale.
+Welcome to the comprehensive documentation wiki for the MSP Ansible Platform. This wiki provides in-depth technical documentation, implementation examples, troubleshooting guides, and best practices for deploying and managing compliant infrastructure at scale across multiple compliance frameworks.
 
 ## 🚀 Quick Start
 
@@ -198,7 +198,7 @@ This wiki follows standardized documentation practices:
 
 ## 🔗 Quick Links
 
-- **Main Repository**: [cmmc-ansible](ssh://git@git.lan.sethluby.com:222/thndrchckn/cmmc-ansible.git)
+- **Main Repository**: [msp-ansible-platform](https://github.com/sethluby/msp-ansible-platform)
 - **Issue Tracker**: Repository Issues Tab
 - **Latest Releases**: Repository Releases Tab
 - **CI/CD Pipeline**: Repository Actions Tab (if configured)

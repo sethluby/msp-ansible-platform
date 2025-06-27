@@ -1,7 +1,7 @@
 # Gitea Wiki Setup Guide
 
 **Author**: thndrchckn  
-**Purpose**: Instructions for setting up and managing the Gitea wiki for CMMC documentation
+**Purpose**: Instructions for setting up and managing documentation wiki
 
 ## Gitea Wiki Management
 
@@ -10,7 +10,7 @@ Gitea wikis are Git repositories that can be managed through both the web interf
 ## Setup Methods
 
 ### Method 1: Web Interface (Initial Setup)
-1. Navigate to your repository at `http://git.lan.sethluby.com:3000/thndrchckn/cmmc-ansible`
+1. Navigate to your repository on GitHub
 2. Click the "Wiki" tab
 3. Click "Create the first page" if wiki doesn't exist
 4. Create a page titled "Home" with initial content

@@ -1,10 +1,10 @@
-# Getting Started with MSP CMMC Compliance Automation
+# Getting Started with MSP Ansible Platform
 
 **Author**: thndrchckn  
 **Last Updated**: 2025-06-19  
 **Tags**: `#deployment` `#setup` `#quickstart`
 
-This guide provides step-by-step instructions for deploying the MSP CMMC Compliance Automation framework, from initial setup through first client onboarding.
+This guide provides step-by-step instructions for deploying the MSP Ansible Platform, from initial setup through first client onboarding.
 
 ## Prerequisites
 
@@ -58,8 +58,8 @@ kubernetes >= 1.24   # Container orchestration (alternative to Docker Compose)
 #### Clone the Repository
 ```bash
 # Clone the main repository
-git clone ssh://git@git.lan.sethluby.com:222/thndrchckn/cmmc-ansible.git
-cd cmmc-ansible
+git clone https://github.com/sethluby/msp-ansible-platform.git
+cd msp-ansible-platform
 
 # Verify repository structure
 ls -la
@@ -303,7 +303,7 @@ ansible client-001-bastion -m shell -a "docker ps"
 ```bash
 # Deploy CMMC compliance controls
 ansible-playbook -i ansible/inventory/hosts.yml \
-  ansible/playbooks/implement-cmmc-compliance.yml \
+  ansible/playbooks/implement-compliance-frameworks.yml \
   --limit client-001-bastion
 
 # Run compliance validation

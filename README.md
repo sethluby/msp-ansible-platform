@@ -7,17 +7,13 @@ A comprehensive Ansible-based infrastructure management solution for Managed Ser
 ### Repository Setup
 ```bash
 # Clone and setup
-git clone ssh://git@git.lan.sethluby.com:222/thndrchckn/cmmc-ansible.git
-cd cmmc-ansible
+git clone https://github.com/sethluby/msp-ansible-platform.git
+cd msp-ansible-platform
 
-# Initial commit setup (if new repo)
-touch README.md
-git init
-git checkout -b main
-git add README.md
-git commit -m "first commit"
-git remote add origin ssh://git@git.lan.sethluby.com:222/thndrchckn/cmmc-ansible.git
-git push -u origin main
+# Initial setup
+ansible-galaxy install -r requirements.yml
+cp .env.example .env
+# Edit .env with your configuration
 ```
 
 ## Architecture Overview
@@ -110,10 +106,9 @@ msp-ansible-platform/
 
 ### Git Workflow
 - **Public Repository**: `https://github.com/sethluby/msp-ansible-platform`
-- **Private Development**: `ssh://git@git.lan.sethluby.com:222/thndrchckn/cmmc-ansible.git`
-- Automated backups via `~/Documents/Scripts/git-backup.sh`
 - Main branch for stable releases
 - Feature branches for development
+- Pull requests for code review
 
 ## Market Opportunity
 
