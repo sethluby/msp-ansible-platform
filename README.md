@@ -135,7 +135,7 @@ The project leverages proven patterns from established community roles:
 - **User Management**: debops user management for access control implementation
 - **Monitoring**: cloudalchemy Prometheus stack for observability
 
-See [wiki references](https://git.lan.sethluby.com:222/thndrchckn/cmmc-ansible.wiki) for complete integration details.
+See project wiki for complete integration details and implementation guides.
 
 ## Contact & Support
 
