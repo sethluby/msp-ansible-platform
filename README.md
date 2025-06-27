@@ -138,7 +138,6 @@ See project wiki for complete integration details and implementation guides.
 
 ## Contact & Support
 
-- **Author**: thunderchicken
-- **Public Repository**: GitHub Issues and Discussions
-- **Development**: See CLAUDE.md for technical architecture
+- **Repository**: [GitHub Issues and Discussions](https://github.com/sethluby/msp-ansible-platform)
 - **Documentation**: Comprehensive guides in docs/ directory
+- **Contributing**: See CONTRIBUTING.md for development guidelines
