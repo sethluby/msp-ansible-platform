@@ -30,7 +30,7 @@ git push -u origin main
 
 ### Essential Services Stack
 ```yaml
-# Minimal bastion deployment
+# MSP infrastructure deployment
 services:
   ansible-awx:     # Automation orchestration
   vault:           # Secrets management  
@@ -54,15 +54,19 @@ services:
 ## Project Structure
 
 ```
-cmmc-ansible/
-├── docs/                    # Architecture and business documentation
-├── infrastructure/          # Required infrastructure specifications
+msp-ansible-platform/
+├── docs/                    # Architecture and deployment guides
+├── infrastructure/          # MSP infrastructure specifications
 ├── ansible/                 # Core automation playbooks and roles
 │   ├── roles/              # Reusable automation roles
 │   ├── playbooks/          # Orchestration playbooks
-│   ├── inventory/          # Dynamic inventory management
-│   └── group_vars/         # Configuration variables
-├── bastion/                # Lightweight bastion deployment
+│   ├── inventory/          # Multi-client inventory management
+│   └── group_vars/         # Client-specific variables
+├── client-templates/       # Service tier templates
+│   ├── foundation/         # Foundation tier configuration
+│   ├── professional/      # Professional tier configuration  
+│   └── enterprise/         # Enterprise tier configuration
+├── msp-infrastructure/     # MSP core services deployment
 │   ├── docker-compose.yml  # Core services definition
 │   ├── configs/            # Service configurations
 │   └── scripts/            # Deployment automation
@@ -90,7 +94,7 @@ cmmc-ansible/
 - **Functional Ansible tasks** - Implement actual CMMC control automation
 - **Working playbooks** - End-to-end deployment and management workflows
 - **Compliance validation** - Real CMMC control checking and reporting
-- **Bastion deployment** - Functional Docker-based infrastructure
+- **MSP infrastructure deployment** - Functional Docker-based core services
 - **Client onboarding** - Automated setup and configuration processes
 - **Security hardening** - Actual CIS benchmark implementations
 - **Inventory management** - Dynamic multi-client environment handling
@@ -122,7 +126,7 @@ cmmc-ansible/
 
 1. **Review Documentation**: Read `docs/` for detailed architecture
 2. **Setup Environment**: Follow infrastructure requirements
-3. **Deploy Bastion**: Use `bastion/docker-compose.yml`
+3. **Deploy MSP Infrastructure**: Use `msp-infrastructure/docker-compose.yml`
 4. **Configure Ansible**: Setup roles and playbooks
 5. **Validate Compliance**: Run CMMC control checks
 
