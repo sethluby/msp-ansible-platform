@@ -99,10 +99,10 @@ msp-ansible-platform/
 ## Development Workflow
 
 ### Documentation Standards
-- Always update `CLAUDE.md` changelog for significant changes
 - Keep README current with project status
 - Document architectural decisions and trade-offs
 - Version control all changes
+- Update changelog for significant changes
 
 ### Git Workflow
 - **Public Repository**: `https://github.com/sethluby/msp-ansible-platform`
