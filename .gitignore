@@ -2,6 +2,9 @@
 .claude/
 CLAUDE.md
 
+# Reference Documentation (Local Only)
+Reference/
+
 # Editor Files
 Session.vim
 .vscode/
