@@ -51,25 +51,29 @@ services:
 
 ```
 msp-ansible-platform/
-├── docs/                    # Architecture and deployment guides
-├── infrastructure/          # MSP infrastructure specifications
-├── ansible/                 # Core automation playbooks and roles
-│   ├── roles/              # Reusable automation roles
-│   ├── playbooks/          # Orchestration playbooks
-│   ├── inventory/          # Multi-client inventory management
-│   └── group_vars/         # Client-specific variables
-├── client-templates/       # Service tier templates
-│   ├── foundation/         # Foundation tier configuration
-│   ├── professional/      # Professional tier configuration  
-│   └── enterprise/         # Enterprise tier configuration
-├── msp-infrastructure/     # MSP core services deployment
-│   ├── docker-compose.yml  # Core services definition
-│   ├── configs/            # Service configurations
-│   └── scripts/            # Deployment automation
-└── compliance/             # Compliance framework implementations
-    ├── frameworks/         # SOC2, HIPAA, PCI-DSS, CMMC, NIST, etc.
-    ├── validation/         # Compliance checking scripts
-    └── reporting/          # Dashboard and report generation
+├── docs/                       # Architecture and deployment guides
+├── bootstrap/                  # Client bootstrap scripts for all architectures
+│   ├── bootstrap-pull-based.sh       # Pull-based architecture setup
+│   ├── bootstrap-bastion-host.sh     # WireGuard bastion deployment
+│   └── bootstrap-reverse-tunnel.sh   # SSH reverse tunnel setup
+├── ansible/                    # Core automation playbooks and roles
+│   ├── roles/                 # Reusable automation roles
+│   │   ├── msp-infrastructure/        # MSP platform deployment
+│   │   ├── client-pull-infrastructure/ # Pull-based client setup
+│   │   ├── bastion-infrastructure/    # WireGuard bastion configuration
+│   │   └── reverse-tunnel-infrastructure/ # SSH tunnel setup
+│   ├── playbooks/             # Enterprise automation playbooks (10 complete)
+│   │   ├── deploy-msp-infrastructure.yml    # MSP platform deployment
+│   │   ├── deploy-client-infrastructure.yml # Multi-architecture client deployment
+│   │   ├── system-update.yml             # Multi-OS patch management
+│   │   ├── disa-stig-compliance.yml      # DISA STIG automation
+│   │   ├── cmmc-compliance.yml           # CMMC Level 2/3 implementation
+│   │   └── [5 additional enterprise playbooks]
+│   ├── inventory/             # Multi-client inventory management
+│   └── group_vars/            # Client-specific variables
+├── client-templates/          # Service tier templates
+├── msp-infrastructure/        # MSP core services deployment
+└── compliance/                # Compliance framework implementations
 ```
 
 ## Current Status
@@ -97,12 +101,33 @@ msp-ansible-platform/
 - **Production hardening** - Maintenance windows, verification, audit trails
 - **Comprehensive documentation** - 50+ page playbook reference, operational guides
 
-### 🚀 **Next Phase - Client Deployment Models**
-- **Pull-based architecture** - Client-initiated automation every 15 minutes
-- **Bastion host deployment** - Lightweight WireGuard-based secure connectivity
-- **Reverse tunnel architecture** - MSP-initiated secure connections through client bastions
-- **AWX/Tower integration** - Centralized orchestration with web UI and API
-- **Client onboarding automation** - Streamlined deployment across all architectures
+### ✅ **Infrastructure Deployment Complete**
+- **deploy-msp-infrastructure.yml** - Complete MSP platform deployment with monitoring stack
+- **deploy-client-infrastructure.yml** - Multi-architecture client deployment automation
+- **Bootstrap scripts** - Production-ready setup for all three deployment architectures
+- **Infrastructure roles** - Reusable components for MSP and client infrastructure
+- **Three deployment architectures** - Client choice between pull-based, bastion host, or reverse tunnel
+
+### 🚀 **Three Optional Client Deployment Architectures**
+1. **Pull-Based Architecture** - Client systems autonomously pull automation every 15 minutes
+   - Maximum client control and autonomy
+   - Minimal network requirements (HTTPS only)
+   - Air-gap compatible with periodic sync
+   - Bootstrap: `bootstrap/bootstrap-pull-based.sh`
+
+2. **Bastion Host Architecture** - Lightweight WireGuard VPN connectivity
+   - Real-time monitoring and immediate response
+   - Alpine Linux bastion hosts (512MB RAM)
+   - Secure VPN tunnels with network segmentation
+   - Bootstrap: `bootstrap/bootstrap-bastion-host.sh`
+
+3. **Reverse Tunnel Architecture** - Maximum security SSH reverse tunnels
+   - Zero inbound connections to client networks
+   - Certificate-based authentication and audit trails
+   - Highest security for regulated environments
+   - Bootstrap: `bootstrap/bootstrap-reverse-tunnel.sh`
+
+**Key Innovation**: Clients can choose ANY combination of these architectures based on their specific security, network, and operational requirements.
 
 ## Development Workflow
 
