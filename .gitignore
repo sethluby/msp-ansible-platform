@@ -44,4 +44,4 @@ venv/
 .vault_pass
 
 # Docker
-docker-compose.override.yml
+docker-compose.override.ymlwiki-repo/
