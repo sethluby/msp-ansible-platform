@@ -1,0 +1,312 @@
+---
+# MSP Inventory Collection and Asset Management Playbook
+# Comprehensive system inventory with client-specific asset tracking
+# Collects hardware, software, network, and security configuration data
+
+- name: MSP Inventory Collection and Asset Management
+  hosts: "{{ target_hosts | default('all') }}"
+  become: true
+  gather_facts: true
+  vars:
+    # Client-specific variables
+    client_name: "{{ client_name | mandatory }}"
+    inventory_scope: "{{ inventory_scope | default('full') }}"  # full, basic, security, compliance
+    collection_format: "{{ collection_format | default('json') }}"  # json, yaml, csv
+    
+    # MSP configuration
+    msp_asset_database: "{{ msp_asset_database | default('') }}"
+    msp_syslog_server: "{{ msp_syslog_server | default('') }}"
+    
+    # Runtime variables
+    inventory_session_id: "{{ ansible_date_time.epoch }}-{{ client_name }}-inventory"
+    collected_data: {}
+
+  pre_tasks:
+    - name: Validate inventory collection context
+      ansible.builtin.assert:
+        that:
+          - client_name is defined
+          - inventory_scope in ['full', 'basic', 'security', 'compliance']
+          - collection_format in ['json', 'yaml', 'csv']
+        fail_msg: "Invalid inventory collection parameters"
+      tags: [validation]
+
+    - name: Create client inventory directory
+      ansible.builtin.file:
+        path: "/var/log/msp/{{ client_name }}/inventory"
+        state: directory
+        mode: '0750'
+        owner: root
+        group: root
+      tags: [setup]
+
+    - name: Log inventory collection initiation
+      ansible.builtin.shell: |
+        logger -n {{ msp_syslog_server }} -t "MSP-INVENTORY" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ inventory_session_id }} | Scope: {{ inventory_scope }} | Status: STARTED"
+      when: msp_syslog_server != ""
+      ignore_errors: true
+      tags: [logging]
+
+  tasks:
+    # Basic System Information
+    - name: Collect basic system information
+      block:
+        - name: Gather comprehensive system facts
+          ansible.builtin.setup:
+            gather_subset:
+              - all
+          register: system_facts
+
+        - name: Collect additional hardware details
+          ansible.builtin.shell: |
+            {
+              echo "=== CPU Info ==="
+              lscpu 2>/dev/null || echo "lscpu not available"
+              echo "=== Memory Info ==="
+              free -h 2>/dev/null || echo "free not available"
+              echo "=== Disk Info ==="
+              lsblk -f 2>/dev/null || echo "lsblk not available"
+              echo "=== PCI Devices ==="
+              lspci 2>/dev/null || echo "lspci not available"
+              echo "=== USB Devices ==="
+              lsusb 2>/dev/null || echo "lsusb not available"
+            }
+          register: hardware_details
+          changed_when: false
+
+        - name: Collect network configuration
+          ansible.builtin.shell: |
+            {
+              echo "=== Network Interfaces ==="
+              ip addr show 2>/dev/null || ifconfig 2>/dev/null || echo "Network tools not available"
+              echo "=== Routing Table ==="
+              ip route show 2>/dev/null || route -n 2>/dev/null || echo "Routing tools not available"
+              echo "=== DNS Configuration ==="
+              cat /etc/resolv.conf 2>/dev/null || echo "DNS config not available"
+            }
+          register: network_details
+          changed_when: false
+
+        - name: Set basic inventory data
+          ansible.builtin.set_fact:
+            collected_data: "{{ collected_data | combine({
+              'basic_info': {
+                'hostname': ansible_hostname,
+                'fqdn': ansible_fqdn,
+                'os_family': ansible_os_family,
+                'distribution': ansible_distribution,
+                'distribution_version': ansible_distribution_version,
+                'kernel': ansible_kernel,
+                'architecture': ansible_architecture,
+                'virtualization_type': ansible_virtualization_type,
+                'virtualization_role': ansible_virtualization_role,
+                'uptime_seconds': ansible_uptime_seconds,
+                'last_boot': ansible_date_time.iso8601,
+                'client': client_name,
+                'collection_timestamp': ansible_date_time.iso8601
+              }
+            }) }}"
+      when: inventory_scope in ['basic', 'full', 'security', 'compliance']
+      tags: [basic, inventory]
+
+    # Software Inventory
+    - name: Collect software inventory
+      block:
+        - name: Get installed packages (RPM-based)
+          ansible.builtin.package_facts:
+            manager: rpm
+          when: ansible_pkg_mgr in ['yum', 'dnf']
+          register: rpm_packages
+
+        - name: Get installed packages (DEB-based)
+          ansible.builtin.package_facts:
+            manager: apt
+          when: ansible_pkg_mgr == 'apt'
+          register: deb_packages
+
+        - name: Collect running services
+          ansible.builtin.service_facts:
+          register: system_services
+
+        - name: Get process list
+          ansible.builtin.shell: |
+            ps aux --no-headers | head -50
+          register: process_list
+          changed_when: false
+
+        - name: Set software inventory data
+          ansible.builtin.set_fact:
+            collected_data: "{{ collected_data | combine({
+              'software_info': {
+                'package_manager': ansible_pkg_mgr,
+                'installed_packages': ansible_facts.packages | length,
+                'running_services': ansible_facts.services | selectattr('state', 'equalto', 'running') | list | length,
+                'total_services': ansible_facts.services | length,
+                'active_processes': process_list.stdout_lines | length
+              }
+            }) }}"
+      when: inventory_scope in ['full', 'security', 'compliance']
+      tags: [software, inventory]
+
+    # Security Configuration
+    - name: Collect security configuration
+      block:
+        - name: Check firewall status
+          ansible.builtin.shell: |
+            if command -v firewall-cmd >/dev/null 2>&1; then
+              firewall-cmd --state 2>/dev/null || echo "inactive"
+            elif command -v ufw >/dev/null 2>&1; then
+              ufw status 2>/dev/null | head -1 || echo "inactive"
+            else
+              echo "no_firewall"
+            fi
+          register: firewall_status
+          changed_when: false
+
+        - name: Check SELinux status
+          ansible.builtin.shell: |
+            if command -v getenforce >/dev/null 2>&1; then
+              getenforce 2>/dev/null || echo "not_available"
+            else
+              echo "not_available"
+            fi
+          register: selinux_status
+          changed_when: false
+
+        - name: Check sudo configuration
+          ansible.builtin.shell: |
+            find /etc/sudoers.d/ -type f 2>/dev/null | wc -l || echo "0"
+          register: sudo_files_count
+          changed_when: false
+
+        - name: Check SSH configuration
+          ansible.builtin.shell: |
+            {
+              echo "=== SSH Config ==="
+              grep -E "^(Port|PermitRootLogin|PasswordAuthentication|PubkeyAuthentication)" /etc/ssh/sshd_config 2>/dev/null || echo "SSH config not accessible"
+            }
+          register: ssh_config
+          changed_when: false
+
+        - name: Check failed login attempts
+          ansible.builtin.shell: |
+            journalctl -u sshd --since "24 hours ago" | grep -i "failed\|invalid" | wc -l || echo "0"
+          register: failed_logins
+          changed_when: false
+
+        - name: Set security inventory data
+          ansible.builtin.set_fact:
+            collected_data: "{{ collected_data | combine({
+              'security_info': {
+                'firewall_status': firewall_status.stdout.strip(),
+                'selinux_status': selinux_status.stdout.strip(),
+                'sudo_files_count': sudo_files_count.stdout | int,
+                'failed_logins_24h': failed_logins.stdout | int,
+                'ssh_root_login': ssh_config.stdout | regex_search('PermitRootLogin\\s+(\\w+)', '\\1') | default(['unknown']) | first,
+                'ssh_password_auth': ssh_config.stdout | regex_search('PasswordAuthentication\\s+(\\w+)', '\\1') | default(['unknown']) | first
+              }
+            }) }}"
+      when: inventory_scope in ['security', 'full', 'compliance']
+      tags: [security, inventory]
+
+    # Compliance-specific data
+    - name: Collect compliance-specific information
+      block:
+        - name: Check audit daemon status
+          ansible.builtin.service_facts:
+          register: audit_service_check
+
+        - name: Get audit rules count
+          ansible.builtin.shell: |
+            auditctl -l 2>/dev/null | wc -l || echo "0"
+          register: audit_rules_count
+          changed_when: false
+
+        - name: Check password policy
+          ansible.builtin.shell: |
+            {
+              echo "=== Password Policy ==="
+              grep -E "^(minlen|minclass|maxrepeat)" /etc/security/pwquality.conf 2>/dev/null || echo "Password policy not configured"
+            }
+          register: password_policy
+          changed_when: false
+
+        - name: Check system banners
+          ansible.builtin.shell: |
+            {
+              echo "=== System Banners ==="
+              echo "Issue banner:"
+              cat /etc/issue 2>/dev/null | head -5 || echo "No issue banner"
+              echo "MOTD banner:"
+              cat /etc/motd 2>/dev/null | head -5 || echo "No MOTD banner"
+            }
+          register: system_banners
+          changed_when: false
+
+        - name: Set compliance inventory data
+          ansible.builtin.set_fact:
+            collected_data: "{{ collected_data | combine({
+              'compliance_info': {
+                'audit_service_running': (ansible_facts.services['auditd.service'].state | default('stopped')) == 'running',
+                'audit_rules_count': audit_rules_count.stdout | int,
+                'password_policy_configured': 'minlen' in password_policy.stdout,
+                'login_banner_configured': '/etc/issue' | file_exists,
+                'motd_banner_configured': '/etc/motd' | file_exists
+              }
+            }) }}"
+      when: inventory_scope in ['compliance', 'full']
+      tags: [compliance, inventory]
+
+  post_tasks:
+    - name: Generate inventory report (JSON)
+      ansible.builtin.copy:
+        content: "{{ collected_data | to_nice_json }}"
+        dest: "/var/log/msp/{{ client_name }}/inventory/inventory-{{ inventory_session_id }}.json"
+        mode: '0640'
+      when: collection_format == 'json'
+      tags: [reporting]
+
+    - name: Generate inventory report (YAML)
+      ansible.builtin.copy:
+        content: "{{ collected_data | to_nice_yaml }}"
+        dest: "/var/log/msp/{{ client_name }}/inventory/inventory-{{ inventory_session_id }}.yml"
+        mode: '0640'
+      when: collection_format == 'yaml'
+      tags: [reporting]
+
+    - name: Send inventory to MSP asset database
+      ansible.builtin.uri:
+        url: "{{ msp_asset_database }}/api/v1/inventory"
+        method: POST
+        body_format: json
+        body:
+          client: "{{ client_name }}"
+          hostname: "{{ inventory_hostname }}"
+          session_id: "{{ inventory_session_id }}"
+          data: "{{ collected_data }}"
+        headers:
+          Content-Type: "application/json"
+          Authorization: "Bearer {{ msp_api_token }}"
+      when: 
+        - msp_asset_database != ""
+        - msp_api_token is defined
+      ignore_errors: true
+      tags: [database]
+
+    - name: Log inventory collection completion
+      ansible.builtin.shell: |
+        logger -n {{ msp_syslog_server }} -t "MSP-INVENTORY" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ inventory_session_id }} | Status: COMPLETED | Data_Points: {{ collected_data.keys() | length }}"
+      when: msp_syslog_server != ""
+      ignore_errors: true
+      tags: [logging]
+
+    - name: Create inventory summary
+      ansible.builtin.debug:
+        msg: |
+          Inventory Collection Summary for {{ client_name }}:
+          - Hostname: {{ inventory_hostname }}
+          - OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          - Uptime: {{ ansible_uptime_seconds // 3600 }} hours
+          - Data collected: {{ collected_data.keys() | join(', ') }}
+          - Report saved: /var/log/msp/{{ client_name }}/inventory/inventory-{{ inventory_session_id }}.{{ collection_format }}
+      tags: [summary]
