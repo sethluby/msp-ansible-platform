@@ -1,0 +1,46 @@
+---
+# Bastion Infrastructure Role - Main Tasks
+# Configures Alpine Linux bastion hosts for WireGuard VPN connectivity
+
+- name: Validate bastion deployment parameters
+  ansible.builtin.assert:
+    that:
+      - client_name is defined
+      - msp_hub_endpoint is defined
+      - client_subnet is defined
+    fail_msg: "Required variables missing for bastion host deployment"
+  tags: [validation]
+
+- name: Verify Alpine Linux system
+  ansible.builtin.fail:
+    msg: "This role requires Alpine Linux"
+  when: ansible_os_family != "Alpine"
+  tags: [validation]
+
+- name: Include bastion packages installation
+  ansible.builtin.include_tasks: install_bastion_packages.yml
+  tags: [installation, packages]
+
+- name: Include WireGuard configuration
+  ansible.builtin.include_tasks: configure_wireguard.yml
+  tags: [wireguard, vpn]
+
+- name: Include SSH server configuration
+  ansible.builtin.include_tasks: configure_ssh.yml
+  tags: [ssh, security]
+
+- name: Include firewall configuration
+  ansible.builtin.include_tasks: configure_firewall.yml
+  tags: [firewall, security]
+
+- name: Include monitoring setup
+  ansible.builtin.include_tasks: setup_monitoring.yml
+  tags: [monitoring, health-checks]
+
+- name: Include service configuration
+  ansible.builtin.include_tasks: configure_services.yml
+  tags: [services, startup]
+
+- name: Include bastion verification
+  ansible.builtin.include_tasks: verify_bastion.yml
+  tags: [verification]

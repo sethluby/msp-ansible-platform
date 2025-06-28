@@ -1,0 +1,35 @@
+---
+# MSP Infrastructure Role - Main Tasks
+# Deploys core MSP platform components including AWX/Tower, monitoring, and client management
+
+- name: Include validation tasks
+  ansible.builtin.include_tasks: validate.yml
+  tags: [validation]
+
+- name: Include MSP platform installation
+  ansible.builtin.include_tasks: install_platform.yml
+  tags: [platform, installation]
+
+- name: Include AWX/Tower configuration
+  ansible.builtin.include_tasks: configure_awx.yml
+  tags: [awx, tower, orchestration]
+
+- name: Include monitoring stack setup
+  ansible.builtin.include_tasks: setup_monitoring.yml
+  tags: [monitoring, prometheus, grafana]
+
+- name: Include client management setup
+  ansible.builtin.include_tasks: setup_client_management.yml
+  tags: [client-mgmt, git, vpn]
+
+- name: Include security hardening
+  ansible.builtin.include_tasks: security_hardening.yml
+  tags: [security, hardening]
+
+- name: Include service configuration
+  ansible.builtin.include_tasks: configure_services.yml
+  tags: [services, systemd]
+
+- name: Include MSP platform verification
+  ansible.builtin.include_tasks: verify.yml
+  tags: [verification]

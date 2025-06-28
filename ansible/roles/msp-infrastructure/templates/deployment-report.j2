@@ -1,0 +1,62 @@
+{
+  "msp_deployment_report": {
+    "timestamp": "{{ ansible_date_time.iso8601 }}",
+    "platform_version": "{{ msp_platform_version | default('1.0.0-beta') }}",
+    "deployment_type": "{{ infrastructure_type | default('msp_core') }}",
+    "server_details": {
+      "hostname": "{{ ansible_hostname }}",
+      "fqdn": "{{ ansible_fqdn }}",
+      "ip_address": "{{ ansible_default_ipv4.address }}",
+      "operating_system": "{{ ansible_distribution }} {{ ansible_distribution_version }}",
+      "kernel": "{{ ansible_kernel }}",
+      "architecture": "{{ ansible_architecture }}",
+      "memory_mb": {{ ansible_memtotal_mb }},
+      "cpu_cores": {{ ansible_processor_vcpus }}
+    },
+    "installed_components": {
+      "awx_tower": "{{ 'installed' if awx_installed | default(false) else 'not_installed' }}",
+      "prometheus": "{{ 'installed' if prometheus_installed | default(false) else 'not_installed' }}",
+      "grafana": "{{ 'installed' if grafana_installed | default(false) else 'not_installed' }}",
+      "postgresql": "{{ 'installed' if postgresql_installed | default(false) else 'not_installed' }}",
+      "redis": "{{ 'installed' if redis_installed | default(false) else 'not_installed' }}",
+      "nginx": "{{ 'installed' if nginx_installed | default(false) else 'not_installed' }}",
+      "wireguard": "{{ 'installed' if wireguard_installed | default(false) else 'not_installed' }}"
+    },
+    "service_status": {
+{% for service in ['docker', 'nginx', 'postgresql', 'redis'] %}
+      "{{ service }}": "{{ ansible_facts.services[service + '.service'].state | default('unknown') }}"{% if not loop.last %},{% endif %}
+{% endfor %}
+    },
+    "network_configuration": {
+      "interfaces": [
+{% for interface in ansible_interfaces %}
+{% if interface != 'lo' and ansible_facts[interface]['active'] %}
+        {
+          "name": "{{ interface }}",
+          "ip_address": "{{ ansible_facts[interface].get('ipv4', {}).get('address', 'none') }}",
+          "status": "{{ 'up' if ansible_facts[interface]['active'] else 'down' }}"
+        }{% if not loop.last %},{% endif %}
+{% endif %}
+{% endfor %}
+      ]
+    },
+    "client_management": {
+      "git_repositories_path": "/opt/msp/clients/repositories",
+      "wireguard_hub_configured": "{{ wireguard_hub_configured | default(false) }}",
+      "ssh_jumphost_configured": "{{ ssh_jumphost_configured | default(false) }}"
+    },
+    "security": {
+      "ssl_enabled": {{ msp_ssl_enabled | default(true) | lower }},
+      "firewall_status": "{{ ansible_facts.services.get('firewalld.service', {}).get('state', 'unknown') }}",
+      "selinux_status": "{{ ansible_selinux.status | default('unknown') }}"
+    },
+    "deployment_status": "{{ deployment_status | default('completed') }}",
+    "next_steps": [
+      "Configure SSL certificates for web services",
+      "Set up client-specific Git repositories", 
+      "Configure monitoring dashboards",
+      "Test AWX/Tower job templates",
+      "Onboard first client using deployment playbooks"
+    ]
+  }
+}

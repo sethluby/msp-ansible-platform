@@ -1,0 +1,109 @@
+---
+# MSP Platform Installation Tasks
+
+- name: Create MSP base directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  loop:
+    - /opt/msp
+    - /opt/msp/config
+    - /opt/msp/clients
+    - /opt/msp/logs
+    - /opt/msp/scripts
+    - /var/log/msp
+    - /var/backups/msp
+  tags: [directories]
+
+- name: Install MSP platform packages (RHEL/CentOS)
+  ansible.builtin.package:
+    name:
+      - ansible
+      - git
+      - docker
+      - docker-compose
+      - python3
+      - python3-pip
+      - nginx
+      - postgresql
+      - redis
+      - wireguard-tools
+    state: present
+  when: ansible_os_family == "RedHat"
+  tags: [packages]
+
+- name: Install MSP platform packages (Ubuntu/Debian)
+  ansible.builtin.package:
+    name:
+      - ansible
+      - git
+      - docker.io
+      - docker-compose
+      - python3
+      - python3-pip
+      - nginx
+      - postgresql
+      - redis-server
+      - wireguard
+    state: present
+  when: ansible_os_family == "Debian"
+  tags: [packages]
+
+- name: Install Python packages for MSP platform
+  ansible.builtin.pip:
+    name:
+      - docker
+      - docker-compose
+      - psycopg2-binary
+      - redis
+      - kubernetes
+      - openshift
+    state: present
+  tags: [python-packages]
+
+- name: Create MSP platform user
+  ansible.builtin.user:
+    name: msp-platform
+    system: true
+    shell: /bin/bash
+    home: /opt/msp
+    createhome: false
+  tags: [users]
+
+- name: Set MSP directory permissions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: "/opt/msp/config", owner: "msp-platform", group: "msp-platform", mode: "0750" }
+    - { path: "/opt/msp/logs", owner: "msp-platform", group: "msp-platform", mode: "0755" }
+    - { path: "/opt/msp/scripts", owner: "root", group: "msp-platform", mode: "0755" }
+  tags: [permissions]
+
+- name: Enable and start Docker service
+  ansible.builtin.systemd:
+    name: docker
+    enabled: true
+    state: started
+  tags: [docker]
+
+- name: Add msp-platform user to docker group
+  ansible.builtin.user:
+    name: msp-platform
+    groups: docker
+    append: true
+  tags: [docker]
+
+- name: Create MSP configuration file
+  ansible.builtin.template:
+    src: msp-config.yml.j2
+    dest: /opt/msp/config/msp-platform.yml
+    owner: msp-platform
+    group: msp-platform
+    mode: '0640'
+  tags: [configuration]

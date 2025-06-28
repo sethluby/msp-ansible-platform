@@ -1,0 +1,88 @@
+---
+# MSP Infrastructure Role - Default Variables
+
+# Platform configuration
+msp_platform_version: "1.0.0-beta"
+infrastructure_type: "msp_core"
+
+# Database configuration
+msp_db_host: "localhost"
+msp_db_port: 5432
+msp_db_name: "msp_platform"
+msp_db_user: "msp_user"
+# msp_db_password: should be defined in vault
+
+# Redis configuration
+msp_redis_host: "localhost"
+msp_redis_port: 6379
+
+# AWX/Tower configuration
+awx_admin_user: "admin"
+# awx_admin_password: should be defined in vault
+# awx_secret_key: should be defined in vault
+awx_web_port: 8080
+
+# Monitoring ports
+prometheus_port: 9090
+grafana_port: 3000
+alertmanager_port: 9093
+
+# Client management
+msp_git_repo_base: "/opt/msp/clients/repositories"
+msp_wireguard_port: 51820
+msp_ssh_jumphost_port: 2222
+
+# Security
+msp_ssl_enabled: true
+msp_cert_path: "/etc/ssl/certs/msp.crt"
+msp_key_path: "/etc/ssl/private/msp.key"
+
+# Logging
+msp_log_level: "INFO"
+msp_syslog_server: "localhost"
+msp_log_retention: 30
+
+# Client defaults
+msp_default_update_policy: "security"
+msp_default_maintenance_window: "02:00-04:00"
+msp_default_firewall_policy: "restrictive"
+
+# Package lists by OS family
+msp_packages_redhat:
+  - ansible
+  - git
+  - docker
+  - docker-compose
+  - python3
+  - python3-pip
+  - nginx
+  - postgresql
+  - redis
+  - wireguard-tools
+
+msp_packages_debian:
+  - ansible
+  - git
+  - docker.io
+  - docker-compose
+  - python3
+  - python3-pip
+  - nginx
+  - postgresql
+  - redis-server
+  - wireguard
+
+msp_python_packages:
+  - docker
+  - docker-compose
+  - psycopg2-binary
+  - redis
+  - kubernetes
+  - openshift
+
+# Service configuration
+msp_services:
+  - docker
+  - nginx
+  - postgresql
+  - redis
