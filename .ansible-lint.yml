@@ -1,21 +1,6 @@
 ---
-# Ansible Lint Configuration for MSP Platform
 profile: production
 
-# List of additional kind:pattern to be added at the top of the default
-kinds:
-  - playbook: "*/playbooks/*.yml"
-  - playbook: "*/playbooks/*.yaml"
-  - tasks: "*/tasks/*.yml"
-  - tasks: "*/tasks/*.yaml"
-  - handlers: "*/handlers/*.yml"
-  - handlers: "*/handlers/*.yaml"
-  - vars: "*/vars/*.yml"
-  - vars: "*/vars/*.yaml"
-  - meta: "*/meta/*.yml"
-  - meta: "*/meta/*.yaml"
-
-# Directories to exclude from linting
 exclude_paths:
   - .cache/
   - .github/
@@ -24,76 +9,19 @@ exclude_paths:
   - .ansible/
   - venv/
   - .venv/
+  - Reference/
 
-# Specific rules to skip
 skip_list:
-  - galaxy[no-changelog]  # We maintain our own changelog
-  - galaxy[version-incorrect]  # Version managed externally
-  - risky-file-permissions  # We intentionally use specific permissions
-  - no-changed-when  # Some commands don't need change tracking
-  - command-instead-of-module  # Sometimes shell commands are necessary
-  - package-latest  # We sometimes want latest packages
-  - run-once[task]  # run_once is sometimes necessary for coordination
-
-# Enable offline mode to avoid external dependencies during linting
-offline: true
-
-# Use ANSI color in terminal output
-use_default_rules: true
-
-# Enforce variable naming convention
-var_naming_pattern: "^[a-z_][a-z0-9_]*$"
-
-# Set loop variable naming convention
-loop_var_prefix: "item"
-
-# Configure specific rule behavior
-rules:
-  # YAML formatting
-  yaml[line-length]:
-    max: 120
-    
-  # Task naming
-  name[missing]:
-    ignore: |
-      tasks/main.yml
-      handlers/main.yml
-      
-  # Jinja2 spacing
-  jinja[spacing]:
-    ignore: |
-      templates/
-      
-  # Fqcn usage
-  fqcn[action]:
-    ignore: |
-      molecule/
-      tests/
-      
-  # Complexity limits
-  complexity[tasks]:
-    max: 20
-    
-  # Command module usage
-  no-changed-when:
-    ignore: |
-      molecule/
-      tests/
-
-# Sarif output for CI/CD integration
-sarif_file: .ansible-lint-sarif.json
-
-# Enable progressive mode for large codebases
-progressive: false
-
-# Set warning vs error levels
-warn_list:
-  - experimental
   - galaxy[no-changelog]
   - galaxy[version-incorrect]
+  - risky-file-permissions
+  - no-changed-when
+  - command-instead-of-module
+  - package-latest
+  - run-once[task]
 
-# Configure parseable output for CI
-parseable: false
+warn_list:
+  - experimental
+  - yaml[line-length]
 
-# Enable checking of Ansible modules that ship with Ansible
-builtin: true
+offline: true

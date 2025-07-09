@@ -1,0 +1,81 @@
+---
+# Molecule configuration following ansible-lockdown patterns
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
+
+driver:
+  name: docker
+
+platforms:
+  - name: rhel9-common
+    image: registry.redhat.io/ubi9/ubi-init:latest
+    dockerfile: ../resources/Dockerfile.j2
+    privileged: true
+    pre_build_image: false
+    groups:
+      - rhel
+      - rhel9
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    command: "/usr/sbin/init"
+
+  - name: ubuntu22-common
+    image: ubuntu:22.04
+    dockerfile: ../resources/Dockerfile.j2
+    privileged: true
+    pre_build_image: false
+    groups:
+      - debian
+      - ubuntu
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: host
+    command: "/sbin/init"
+
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      interpreter_python: auto_silent
+      callback_whitelist: profile_tasks, timer, yaml
+      stdout_callback: yaml
+      bin_ansible_callbacks: true
+    ssh_connection:
+      pipelining: false
+  playbooks:
+    converge: converge.yml
+    verify: verify.yml
+  inventory:
+    host_vars:
+      rhel9-common:
+        ansible_python_interpreter: /usr/bin/python3
+      ubuntu22-common:
+        ansible_python_interpreter: /usr/bin/python3
+
+verifier:
+  name: ansible
+
+lint: |
+  set -e
+  yamllint .
+  ansible-lint
+  flake8
+
+scenario:
+  test_sequence:
+    - dependency
+    - lint
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - side_effect
+    - verify
+    - cleanup
+    - destroy

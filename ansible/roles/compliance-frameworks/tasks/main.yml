@@ -1,33 +1,40 @@
 ---
-# CMMC Compliance Main Tasks
-# Author: thndrchckn
-# Purpose: Orchestrate implementation of all CMMC control families for defense contractor compliance
+# MSP Compliance Frameworks Main Tasks
+# Integrated ansible-lockdown patterns for multi-framework compliance
+# Purpose: Orchestrate implementation of compliance controls across multiple frameworks
 
-- name: "CMMC Compliance | Display compliance information"
-  debug:
+- name: "Compliance | Display framework and client information"
+  ansible.builtin.debug:
     msg:
-      - "Starting CMMC {{ cmmc_level }} compliance implementation"
-      - "Client ID: {{ cmmc_client_id }}"
-      - "Environment: {{ cmmc_environment }}"
-      - "Control families enabled: {{ enabled_families }}"
+      - "Starting {{ compliance_framework | upper }} {{ compliance_level }} compliance for {{ client_name }}"
+      - "Client Tier: {{ client_tier }}"
+      - "Environment: {{ client_environment }}"
+      - "Profile: {{ compliance_profile }}"
+      - "Control categories enabled: {{ enabled_categories }}"
+      - "High disruption allowed: {{ disruption_high }}"
   vars:
-    # Create dynamic list of enabled control families for transparency
-    enabled_families: >-
+    # ansible-lockdown inspired enabled categories tracking
+    enabled_categories: >-
       {{
-        (cmmc_enable_access_control | bool | ternary(['Access Control (AC)'], [])) +
-        (cmmc_enable_audit_accountability | bool | ternary(['Audit and Accountability (AU)'], [])) +
-        (cmmc_enable_config_management | bool | ternary(['Configuration Management (CM)'], [])) +
-        (cmmc_enable_identification_auth | bool | ternary(['Identification and Authentication (IA)'], [])) +
-        (cmmc_enable_system_protection | bool | ternary(['System and Communications Protection (SC)'], [])) +
-        (cmmc_enable_system_integrity | bool | ternary(['System and Information Integrity (SI)'], []))
+        (enable_access_control | bool | ternary(['Access Control'], [])) +
+        (enable_audit_accountability | bool | ternary(['Audit & Accountability'], [])) +
+        (enable_config_management | bool | ternary(['Configuration Management'], [])) +
+        (enable_identification_auth | bool | ternary(['Identity & Authentication'], [])) +
+        (enable_system_protection | bool | ternary(['System Protection'], [])) +
+        (enable_system_integrity | bool | ternary(['System Integrity'], []))
       }}
   tags:
     - always
-    - cmmc_info
+    - compliance_info
+    - "{{ compliance_framework }}_info"
 
-- name: "CMMC Compliance | Validate system compatibility"
-  include_tasks: validation.yml
-  # Verify system meets minimum requirements for CMMC implementation
+- name: "Compliance | Validate system compatibility"
+  ansible.builtin.include_tasks: validation.yml
+  # Verify system meets minimum requirements for compliance implementation
+  tags:
+    - always
+    - validation
+    - "{{ compliance_framework }}_validation"
   # Checks OS version, available packages, and system resources
   tags:
     - cmmc_validation

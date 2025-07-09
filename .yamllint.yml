@@ -51,3 +51,4 @@ ignore: |
   .ansible/
   *.enc
   vault.yml
+  Reference/

@@ -1,18 +1,35 @@
 ---
-# CMMC Compliance Role Defaults
+# MSP Compliance Frameworks Role Defaults
+# Integrated ansible-lockdown patterns for multi-framework support
 
-# Compliance Level Configuration
-cmmc_level: "level2"  # level1, level2, level3
-cmmc_client_id: "{{ client_id | default('default') }}"
-cmmc_environment: "{{ environment | default('production') }}"
+# Framework Selection (ansible-lockdown integration pattern)
+compliance_framework: "{{ compliance_framework | default('cmmc') }}"  # cmmc, cis, stig, soc2, hipaa
+compliance_level: "{{ compliance_level | default('level2') }}"
+compliance_profile: "{{ compliance_profile | default('server') }}"  # server, workstation
 
-# Control Family Enablement
-cmmc_enable_access_control: true        # AC - Access Control
-cmmc_enable_audit_accountability: true  # AU - Audit and Accountability  
-cmmc_enable_config_management: true     # CM - Configuration Management
-cmmc_enable_identification_auth: true   # IA - Identification and Authentication
-cmmc_enable_system_protection: true     # SC - System and Communications Protection
-cmmc_enable_system_integrity: true      # SI - System and Information Integrity
+# MSP Client Configuration
+client_name: "{{ client_name | mandatory }}"
+client_tier: "{{ client_tier | default('professional') }}"  # foundation, professional, enterprise
+client_environment: "{{ client_environment | default('production') }}"
+
+# ansible-lockdown inspired control variables
+disruption_high: "{{ disruption_high | default(false) }}"
+run_audit: "{{ run_audit | default(false) }}"
+skip_reboot: "{{ skip_reboot | default(true) }}"
+
+# Framework Control Categories (unified across frameworks)
+# Following ansible-lockdown variable naming patterns
+compliance_cat1_patch: "{{ compliance_cat1_patch | default(true) }}"    # High severity
+compliance_cat2_patch: "{{ compliance_cat2_patch | default(true) }}"    # Medium severity  
+compliance_cat3_patch: "{{ compliance_cat3_patch | default(false) }}"   # Low severity
+
+# Control Family Enablement (framework-agnostic)
+enable_access_control: "{{ enable_access_control | default(true) }}"
+enable_audit_accountability: "{{ enable_audit_accountability | default(true) }}"
+enable_config_management: "{{ enable_config_management | default(true) }}"
+enable_identification_auth: "{{ enable_identification_auth | default(true) }}"
+enable_system_protection: "{{ enable_system_protection | default(true) }}"
+enable_system_integrity: "{{ enable_system_integrity | default(true) }}"
 
 # Access Control (AC) Configuration
 cmmc_ac_allowed_users:
@@ -55,24 +72,36 @@ cmmc_si_enable_antivirus: false  # Most Linux environments use other methods
 cmmc_si_enable_host_intrusion_detection: true
 cmmc_si_enable_file_integrity_monitoring: true
 
-# Reporting Configuration
-cmmc_reporting_enabled: true
-cmmc_reporting_format: "json"  # json, yaml, html
-cmmc_reporting_destination: "/var/log/cmmc"
-cmmc_send_reports_to_msp: true
-cmmc_msp_reporting_endpoint: "{{ msp_reporting_url | default('') }}"
+# MSP Reporting Configuration (enhanced)
+compliance_reporting_enabled: true
+compliance_reporting_format: "json"  # json, yaml, html, sarif
+compliance_reporting_destination: "/var/log/msp/{{ client_name }}/compliance"
+compliance_send_reports_to_msp: true
+compliance_msp_reporting_endpoint: "{{ msp_reporting_url | default('') }}"
+compliance_audit_timestamp: "{{ ansible_date_time.iso8601 }}"
+
+# ansible-lockdown inspired audit configuration
+compliance_audit_content: []  # Populated during execution
+compliance_audit_only: "{{ compliance_audit_only | default(false) }}"
 
 # Emergency Response Configuration
 cmmc_emergency_contact: "{{ emergency_contact | default('') }}"
 cmmc_incident_response_enabled: true
 cmmc_auto_isolation_enabled: false
 
-# Validation Configuration
-cmmc_validation_enabled: true
-cmmc_validation_frequency: "daily"
-cmmc_validation_on_change: true
+# Validation and Testing (ansible-lockdown patterns)
+compliance_validation_enabled: true
+compliance_validation_frequency: "daily"
+compliance_validation_on_change: true
+compliance_test_mode: "{{ compliance_test_mode | default(false) }}"  # Dry-run mode
 
-# Backup Configuration
-cmmc_config_backup_enabled: true
-cmmc_config_backup_frequency: "daily"
-cmmc_config_backup_retention: 30  # days
+# Configuration Management
+compliance_config_backup_enabled: true
+compliance_config_backup_frequency: "daily"
+compliance_config_backup_retention: 30  # days
+compliance_preserve_original: true  # Keep original configs
+
+# MSP Service Integration
+msp_monitoring_integration: "{{ msp_monitoring_integration | default(true) }}"
+msp_backup_integration: "{{ msp_backup_integration | default(true) }}"
+msp_user_management_integration: "{{ msp_user_management_integration | default(true) }}"

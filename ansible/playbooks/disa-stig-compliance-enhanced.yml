@@ -1,28 +1,27 @@
 ---
-# Enhanced MSP DISA STIG Compliance Playbook  
-# Comprehensive implementation of 80+ DISA STIG controls
-# Based on Veeam hardened repository script converted to Ansible
-# Multi-tenant support with client-specific compliance requirements
+# DISA STIG Compliance Playbook
+# Enhanced implementation following ansible-lockdown patterns
+# Multi-distribution support: RHEL, Rocky, AlmaLinux, Ubuntu
+# Granular control selection via tags and variables
 
-- name: Enhanced MSP DISA STIG Compliance Implementation
+- name: DISA STIG Compliance Implementation
   hosts: "{{ target_hosts | default('all') }}"
   become: true
   gather_facts: true
   vars:
-    # Client-specific variables
-    client_name: "{{ client_name | mandatory }}"
-    client_stig_profile: "{{ client_stig_profile | default('ubuntu_stig') }}"
-    client_compliance_level: "{{ client_compliance_level | default('CAT_II') }}"
-    client_stig_exceptions: "{{ client_stig_exceptions | default([]) }}"
+    # STIG configuration variables (ansible-lockdown pattern)
+    stig_disruption_high: "{{ stig_disruption_high | default(false) }}"
+    stig_cat1_patch: "{{ stig_cat1_patch | default(true) }}"
+    stig_cat2_patch: "{{ stig_cat2_patch | default(true) }}"
+    stig_cat3_patch: "{{ stig_cat3_patch | default(false) }}"
     
-    # MSP configuration
-    msp_syslog_server: "{{ msp_syslog_server | default('') }}"
-    msp_compliance_mode: "{{ msp_compliance_mode | default('standard') }}"  # standard, strict, custom
+    # System configuration
+    stig_skip_reboot: "{{ stig_skip_reboot | default(true) }}"
+    stig_run_audit: "{{ stig_run_audit | default(false) }}"
     
-    # STIG session tracking
-    stig_session_id: "{{ ansible_date_time.epoch }}-{{ client_name }}-stig-enhanced"
-    stig_findings: []
-    stig_failed_controls: []
+    # Audit and reporting
+    stig_audit_results: []
+    stig_session_timestamp: "{{ ansible_date_time.iso8601 }}"
     
     # DoD Warning Banner
     dod_warning_banner: |
@@ -35,17 +34,17 @@
       -Notwithstanding the above, using this IS does not constitute consent to PM, LE or CI investigative searching or monitoring of the content of privileged communications, or work product, related to personal representation or services by attorneys, psychotherapists, or clergy, and their assistants. Such communications and work product are private and confidential. See User Agreement for details.
 
   pre_tasks:
-    - name: Validate enhanced STIG compliance prerequisites
+    - name: Validate STIG compliance prerequisites
       ansible.builtin.assert:
         that:
-          - client_name is defined
           - ansible_os_family in ['Debian', 'RedHat']
-        fail_msg: "Missing client_name or unsupported OS family: {{ ansible_os_family }}"
+          - ansible_distribution_major_version is version('7', '>=')
+        fail_msg: "Unsupported OS family or version: {{ ansible_os_family }} {{ ansible_distribution_major_version }}"
       tags: [validation]
 
-    - name: Create comprehensive STIG logging structure
+    - name: Create STIG audit directory structure
       ansible.builtin.file:
-        path: "/var/log/msp/{{ client_name }}/stig-enhanced/{{ item }}"
+        path: "/var/log/stig-audit/{{ item }}"
         state: directory
         mode: '0750'
         owner: root
@@ -57,9 +56,9 @@
         - reports
       tags: [logging]
 
-    - name: Initialize STIG audit rules file
+    - name: Create STIG audit rules file
       ansible.builtin.file:
-        path: /etc/audit/rules.d/99-msp-stig-enhanced.rules
+        path: /etc/audit/rules.d/99-stig-audit.rules
         state: touch
         mode: '0640'
         owner: root
@@ -94,19 +93,20 @@
       tags: [stig, integrity, V-238371]
 
     # V-238298: Audit logging
-    - name: V-238298 - Install and enable audit daemon
-      block:
-        - name: Install auditd
-          ansible.builtin.package:
-            name: auditd
-            state: present
-        - name: Enable auditd service
-          ansible.builtin.systemd:
-            name: auditd
-            enabled: true
-            state: started
-            daemon_reload: true
-      register: stig_v238298
+    - name: V-238298 - Install auditd package
+      ansible.builtin.package:
+        name: auditd
+        state: present
+      register: stig_v238298_install
+      tags: [stig, audit, V-238298]
+
+    - name: V-238298 - Enable auditd service
+      ansible.builtin.systemd:
+        name: auditd
+        enabled: true
+        state: started
+        daemon_reload: true
+      register: stig_v238298_service
       tags: [stig, audit, V-238298]
 
     # V-238326: Remove telnet
@@ -419,7 +419,7 @@
     # V-238238 through V-238242: File monitoring
     - name: V-238238-V-238242 - Configure file monitoring audit rules
       ansible.builtin.blockinfile:
-        path: /etc/audit/rules.d/99-msp-stig-enhanced.rules
+        path: /etc/audit/rules.d/99-stig-audit.rules
         block: |
           # File monitoring (V-238238 through V-238242)
           -w /etc/passwd -p wa -k usergroup_modification
@@ -476,7 +476,7 @@
     # Comprehensive audit rules for commands and syscalls
     - name: Configure comprehensive audit rules for privileged commands
       ansible.builtin.blockinfile:
-        path: /etc/audit/rules.d/99-msp-stig-enhanced.rules
+        path: /etc/audit/rules.d/99-stig-audit.rules
         block: |
           # Privileged command monitoring
           -a always,exit -F path=/bin/su -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged-priv_change
@@ -878,7 +878,7 @@
       loop:
         - { rule: "V-238200", status: "{{ 'FIXED' if stig_v238200.changed else 'COMPLIANT' }}", description: "Session lock capability installed" }
         - { rule: "V-238371", status: "{{ 'FIXED' if stig_v238371.changed else 'COMPLIANT' }}", description: "AIDE file integrity tool installed" }
-        - { rule: "V-238298", status: "{{ 'FIXED' if stig_v238298.changed else 'COMPLIANT' }}", description: "Audit daemon installed and enabled" }
+        - { rule: "V-238298", status: "{{ 'FIXED' if (stig_v238298_install.changed or stig_v238298_service.changed) else 'COMPLIANT' }}", description: "Audit daemon installed and enabled" }
         - { rule: "V-238202", status: "{{ 'FIXED' if stig_v238202.changed else 'COMPLIANT' }}", description: "Minimum password lifetime configured" }
         - { rule: "V-238203", status: "{{ 'FIXED' if stig_v238203.changed else 'COMPLIANT' }}", description: "Maximum password lifetime configured" }
         - { rule: "V-238214", status: "{{ 'FIXED' if stig_v238214.changed else 'COMPLIANT' }}", description: "DoD warning banner configured" }

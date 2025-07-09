@@ -30,7 +30,8 @@ collections:
     version: ">=1.1.0"
 
 roles:
-  # Security hardening roles
+  # ansible-lockdown security hardening roles - integrated into MSP platform
+  # CIS Benchmarks for comprehensive system hardening
   - name: ansible-lockdown.RHEL8-CIS
     src: https://github.com/ansible-lockdown/RHEL8-CIS
     version: main
@@ -47,6 +48,7 @@ roles:
     src: https://github.com/ansible-lockdown/UBUNTU22-CIS
     version: main
 
+  # DISA STIG compliance for defense contractors and federal agencies
   - name: ansible-lockdown.RHEL8-STIG
     src: https://github.com/ansible-lockdown/RHEL8-STIG
     version: main
@@ -67,15 +69,15 @@ roles:
   - name: cloudalchemy.prometheus
     src: https://github.com/cloudalchemy/ansible-prometheus
     version: main
-    
+
   - name: cloudalchemy.alertmanager
     src: https://github.com/cloudalchemy/ansible-alertmanager
     version: main
-    
+
   - name: cloudalchemy.grafana
     src: https://github.com/cloudalchemy/ansible-grafana
     version: main
-    
+
   - name: cloudalchemy.node_exporter
     src: https://github.com/cloudalchemy/ansible-node-exporter
     version: main
@@ -84,7 +86,7 @@ roles:
   - name: willshersystems.sshd
     src: https://github.com/willshersystems/ansible-sshd
     version: main
-    
+
   - name: willshersystems.auditd
     src: https://github.com/willshersystems/ansible-auditd
     version: main
@@ -98,7 +100,7 @@ roles:
   - name: geerlingguy.repo-epel
     src: https://github.com/geerlingguy/ansible-role-repo-epel
     version: main
-    
+
   - name: geerlingguy.repo-remi
     src: https://github.com/geerlingguy/ansible-role-repo-remi
     version: main
@@ -107,7 +109,7 @@ roles:
   - name: geerlingguy.docker
     src: https://github.com/geerlingguy/ansible-role-docker
     version: main
-    
+
   - name: geerlingguy.pip
     src: https://github.com/geerlingguy/ansible-role-pip
     version: main
@@ -121,7 +123,7 @@ roles:
   - name: geerlingguy.mysql
     src: https://github.com/geerlingguy/ansible-role-mysql
     version: main
-    
+
   - name: geerlingguy.postgresql
     src: https://github.com/geerlingguy/ansible-role-postgresql
     version: main
@@ -130,12 +132,12 @@ roles:
   - name: geerlingguy.git
     src: https://github.com/geerlingguy/ansible-role-git
     version: main
-    
+
   - name: geerlingguy.ansible
     src: https://github.com/geerlingguy/ansible-role-ansible
     version: main
 
-# Additional testing dependencies
-- src: https://github.com/ansible/molecule
-  name: molecule
-  version: main
+  # Additional testing dependencies
+  - src: https://github.com/ansible/molecule
+    name: molecule
+    version: main
