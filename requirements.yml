@@ -137,7 +137,4 @@ roles:
     src: https://github.com/geerlingguy/ansible-role-ansible
     version: main
 
-  # Additional testing dependencies
-  - src: https://github.com/ansible/molecule
-    name: molecule
-    version: main
+  # Note: molecule is installed via pip in CI/CD pipeline
