@@ -1,0 +1,46 @@
+---
+- name: Configure firewall
+  ansible.builtin.include_tasks: configure_firewall.yml
+  when: enable_firewall | bool
+  tags: [firewall, security]
+
+- name: Harden SSH configuration
+  ansible.builtin.include_tasks: configure_ssh_security.yml
+  tags: [ssh, security]
+
+- name: Install and configure fail2ban
+  ansible.builtin.include_tasks: configure_fail2ban.yml
+  when: configure_fail2ban | bool
+  tags: [fail2ban, security]
+
+- name: Apply network hardening
+  ansible.builtin.include_tasks: apply_network_hardening.yml
+  tags: [network, hardening]
+
+- name: Configure DNS security
+  ansible.builtin.include_tasks: configure_dns_security.yml
+  when: secure_dns | bool
+  tags: [dns, security]
+
+- name: Setup SSL/TLS security
+  ansible.builtin.include_tasks: configure_ssl_security.yml
+  tags: [ssl, tls, security]
+
+- name: Configure intrusion detection
+  ansible.builtin.include_tasks: configure_intrusion_detection.yml
+  when: setup_intrusion_detection | bool
+  tags: [ids, security]
+
+- name: Setup network monitoring
+  ansible.builtin.include_tasks: configure_network_monitoring.yml
+  when: enable_network_monitoring | bool
+  tags: [monitoring, network]
+
+- name: Configure VPN security
+  ansible.builtin.include_tasks: configure_vpn_security.yml
+  when: vpn_security_enabled | bool
+  tags: [vpn, security]
+
+- name: Validate network security configuration
+  ansible.builtin.include_tasks: validate_network_security.yml
+  tags: [validation, security]

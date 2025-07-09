@@ -1,0 +1,54 @@
+---
+- name: Configure password policy
+  ansible.builtin.include_tasks: configure_password_policy.yml
+  when: enforce_password_policy | bool
+  tags: [users, password-policy]
+
+- name: Create system groups
+  ansible.builtin.include_tasks: create_system_groups.yml
+  when: manage_groups | bool
+  tags: [users, groups]
+
+- name: Create administrative users
+  ansible.builtin.include_tasks: create_admin_users.yml
+  when: admin_users | length > 0
+  tags: [users, admin]
+
+- name: Create service accounts
+  ansible.builtin.include_tasks: create_service_accounts.yml
+  when: service_accounts | length > 0
+  tags: [users, service-accounts]
+
+- name: Manage client users
+  ansible.builtin.include_tasks: manage_client_users.yml
+  when: client_users | length > 0 and manage_users | bool
+  tags: [users, client]
+
+- name: Configure SSH key management
+  ansible.builtin.include_tasks: configure_ssh_keys.yml
+  when: manage_ssh_keys | bool
+  tags: [users, ssh-keys]
+
+- name: Setup sudo access
+  ansible.builtin.include_tasks: configure_sudo.yml
+  when: setup_sudo_access | bool
+  tags: [users, sudo]
+
+- name: Configure PAM settings
+  ansible.builtin.include_tasks: configure_pam.yml
+  when: configure_pam | bool
+  tags: [users, pam]
+
+- name: Audit and cleanup user accounts
+  ansible.builtin.include_tasks: audit_user_accounts.yml
+  when: audit_user_access | bool or disable_unused_accounts | bool
+  tags: [users, audit]
+
+- name: Setup user monitoring
+  ansible.builtin.include_tasks: setup_user_monitoring.yml
+  when: audit_user_access | bool
+  tags: [users, monitoring]
+
+- name: Validate user configuration
+  ansible.builtin.include_tasks: validate_user_setup.yml
+  tags: [users, validation]

@@ -1,0 +1,37 @@
+[defaults]
+# Client-specific Ansible configuration for {{ client_name }}
+inventory = {{ client_inventory_dir }}/inventory.yml
+remote_user = root
+host_key_checking = False
+retry_files_enabled = False
+vault_password_file = {{ client_config_dir }}/.vault_pass
+private_key_file = {{ client_config_dir }}/keys/{{ client_name }}_id_{{ ssh_key_type }}
+roles_path = /opt/msp-platform/ansible/roles:{{ client_playbooks_dir }}/custom/roles
+collections_paths = /opt/msp-platform/ansible/collections
+log_path = {{ client_config_dir }}/logs/ansible.log
+gathering = smart
+fact_caching = jsonfile
+fact_caching_connection = {{ client_config_dir }}/facts
+fact_caching_timeout = 86400
+
+[privilege_escalation]
+become = True
+become_method = sudo
+become_user = root
+become_ask_pass = False
+
+[paramiko_connection]
+record_host_keys = False
+
+[ssh_connection]
+ssh_args = -o ControlMaster=auto -o ControlPersist=60s -o ForwardAgent=yes
+pipelining = True
+control_path = /tmp/ansible-ssh-%%h-%%p-%%r
+
+[inventory]
+enable_plugins = host_list, script, auto, yaml, ini
+
+[tags]
+run = always,{{ client_tier }}{% if client_tier == 'enterprise' %},cmmc{% endif %}
+
+skip = never

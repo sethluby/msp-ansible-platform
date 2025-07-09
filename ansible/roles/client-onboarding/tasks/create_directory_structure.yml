@@ -1,0 +1,78 @@
+---
+- name: Create base client directory
+  ansible.builtin.file:
+    path: "{{ client_config_dir }}"
+    state: directory
+    mode: '0750'
+    owner: root
+    group: root
+  tags: [directory]
+
+- name: Create client subdirectories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0750'
+    owner: root
+    group: root
+  loop:
+    - "{{ client_inventory_dir }}"
+    - "{{ client_inventory_dir }}/group_vars"
+    - "{{ client_inventory_dir }}/host_vars"
+    - "{{ client_playbooks_dir }}"
+    - "{{ client_playbooks_dir }}/custom"
+    - "{{ client_docs_dir }}"
+    - "{{ client_config_dir }}/keys"
+    - "{{ client_config_dir }}/certificates"
+    - "{{ client_config_dir }}/logs"
+    - "{{ client_config_dir }}/backup"
+    - "{{ client_config_dir }}/compliance"
+    - "{{ client_config_dir }}/monitoring"
+  tags: [directory]
+
+- name: Create client-specific Ansible configuration
+  ansible.builtin.template:
+    src: ansible.cfg.j2
+    dest: "{{ client_config_dir }}/ansible.cfg"
+    mode: '0644'
+  tags: [directory, config]
+
+- name: Create client vault password file
+  ansible.builtin.copy:
+    content: "{{ client_vault_password | default(lookup('ansible.builtin.password', '/dev/null chars=ascii_letters,digits length=32')) }}"
+    dest: "{{ client_config_dir }}/.vault_pass"
+    mode: '0600'
+    owner: root
+    group: root
+  no_log: true
+  tags: [directory, security]
+
+- name: Create client environment file
+  ansible.builtin.template:
+    src: client.env.j2
+    dest: "{{ client_config_dir }}/client.env"
+    mode: '0644'
+  tags: [directory, config]
+
+- name: Create client README
+  ansible.builtin.template:
+    src: README.md.j2
+    dest: "{{ client_config_dir }}/README.md"
+    mode: '0644'
+  tags: [directory, documentation]
+
+- name: Set directory ownership and permissions
+  ansible.builtin.file:
+    path: "{{ client_config_dir }}"
+    owner: root
+    group: root
+    mode: '0750'
+    recurse: true
+  tags: [directory, security]
+
+- name: Create client-specific gitignore
+  ansible.builtin.template:
+    src: gitignore.j2
+    dest: "{{ client_config_dir }}/.gitignore"
+    mode: '0644'
+  tags: [directory, version-control]

@@ -1,0 +1,83 @@
+---
+# User management configuration
+manage_users: true
+manage_groups: true
+enforce_password_policy: true
+setup_sudo_access: true
+
+# Password policy
+password_min_length: 12
+password_max_age: 90
+password_min_age: 1
+password_warn_age: 7
+password_history: 5
+require_complex_passwords: true
+
+# User configuration
+default_shell: "/bin/bash"
+create_home_directories: true
+set_user_quotas: false
+manage_ssh_keys: true
+
+# Administrative users
+admin_users:
+  - name: "msp-admin"
+    comment: "MSP Platform Administrator"
+    groups: ["wheel", "docker"]
+    sudo_access: true
+    ssh_key: ""
+    state: present
+
+# Service accounts
+service_accounts:
+  - name: "backup-service"
+    comment: "Backup Service Account"
+    shell: "/bin/bash"
+    home: "/opt/backup"
+    system: true
+    state: present
+  - name: "monitoring-service"
+    comment: "Monitoring Service Account"
+    shell: "/bin/bash"
+    home: "/opt/monitoring"
+    system: true
+    state: present
+
+# Client users (populated dynamically)
+client_users: []
+
+# Group management
+system_groups:
+  - name: "msp-admins"
+    gid: 3000
+    state: present
+  - name: "msp-users"
+    gid: 3001
+    state: present
+  - name: "backup-operators"
+    gid: 3002
+    state: present
+
+# SSH key management
+ssh_key_type: "ed25519"
+ssh_key_bits: 4096
+distribute_ssh_keys: true
+centralized_ssh_keys: true
+
+# Account security
+disable_unused_accounts: true
+lock_inactive_accounts: true
+inactive_account_days: 30
+audit_user_access: true
+
+# Sudo configuration
+sudo_log_commands: true
+sudo_require_password: true
+sudo_timeout: 15
+custom_sudo_rules: []
+
+# PAM configuration
+configure_pam: true
+enable_account_lockout: true
+lockout_attempts: 5
+lockout_duration: 900  # 15 minutes

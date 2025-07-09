@@ -1,0 +1,49 @@
+---
+- name: Install Prometheus monitoring stack
+  ansible.builtin.include_tasks: install_prometheus.yml
+  when: monitoring_stack == 'prometheus' and enable_metrics_collection | bool
+  tags: [prometheus, metrics]
+
+- name: Install Node Exporter
+  ansible.builtin.include_tasks: install_node_exporter.yml
+  when: monitor_system_metrics | bool
+  tags: [node-exporter, metrics]
+
+- name: Configure Alertmanager
+  ansible.builtin.include_tasks: configure_alertmanager.yml
+  when: enable_alerting | bool
+  tags: [alertmanager, alerts]
+
+- name: Install and configure Grafana
+  ansible.builtin.include_tasks: install_grafana.yml
+  when: monitoring_stack == 'prometheus'
+  tags: [grafana, dashboards]
+
+- name: Setup log aggregation
+  ansible.builtin.include_tasks: configure_logging.yml
+  when: enable_log_aggregation | bool
+  tags: [logging, aggregation]
+
+- name: Deploy monitoring dashboards
+  ansible.builtin.include_tasks: deploy_dashboards.yml
+  when: client_dashboards | bool
+  tags: [dashboards, visualization]
+
+- name: Configure alert rules
+  ansible.builtin.include_tasks: configure_alerts.yml
+  when: enable_alerting | bool
+  tags: [alerts, rules]
+
+- name: Setup notification channels
+  ansible.builtin.include_tasks: configure_notifications.yml
+  when: enable_alerting | bool
+  tags: [notifications, channels]
+
+- name: Install custom monitoring scripts
+  ansible.builtin.include_tasks: install_custom_monitoring.yml
+  when: custom_metrics | length > 0
+  tags: [custom, scripts]
+
+- name: Validate monitoring setup
+  ansible.builtin.include_tasks: validate_monitoring.yml
+  tags: [validation, health-check]

@@ -1,0 +1,44 @@
+---
+- name: Validate client onboarding prerequisites
+  ansible.builtin.include_tasks: validate_prerequisites.yml
+  tags: [validation, prerequisites]
+
+- name: Create client directory structure
+  ansible.builtin.include_tasks: create_directory_structure.yml
+  tags: [directory, setup]
+
+- name: Generate client authentication keys
+  ansible.builtin.include_tasks: generate_authentication.yml
+  when: generate_ssh_keys | bool
+  tags: [authentication, ssh]
+
+- name: Configure WireGuard VPN
+  ansible.builtin.include_tasks: configure_vpn.yml
+  when: vpn_enabled | bool
+  tags: [vpn, network]
+
+- name: Deploy client-specific configurations
+  ansible.builtin.include_tasks: deploy_configurations.yml
+  tags: [configuration, deployment]
+
+- name: Initialize client inventory
+  ansible.builtin.include_tasks: initialize_inventory.yml
+  tags: [inventory, setup]
+
+- name: Deploy client monitoring
+  ansible.builtin.include_tasks: deploy_monitoring.yml
+  when: monitoring_enabled | default(true)
+  tags: [monitoring, observability]
+
+- name: Generate client documentation
+  ansible.builtin.include_tasks: generate_documentation.yml
+  tags: [documentation, handover]
+
+- name: Validate client setup
+  ansible.builtin.include_tasks: validate_setup.yml
+  tags: [validation, testing]
+
+- name: Send onboarding notifications
+  ansible.builtin.include_tasks: send_notifications.yml
+  when: notification_enabled | default(true)
+  tags: [notification, communication]

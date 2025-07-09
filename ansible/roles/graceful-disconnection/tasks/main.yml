@@ -1,0 +1,52 @@
+---
+- name: Validate disconnection prerequisites
+  ansible.builtin.include_tasks: validate_disconnection.yml
+  tags: [validation, prerequisites]
+
+- name: Create local backup of configurations
+  ansible.builtin.include_tasks: create_local_backups.yml
+  when: create_local_backups | bool
+  tags: [backup, preservation]
+
+- name: Generate independence documentation
+  ansible.builtin.include_tasks: generate_independence_docs.yml
+  when: generate_handover_docs | bool
+  tags: [documentation, handover]
+
+- name: Remove MSP-specific endpoints
+  ansible.builtin.include_tasks: remove_msp_endpoints.yml
+  when: remove_msp_endpoints | bool
+  tags: [cleanup, endpoints]
+
+- name: Configure local-only operation
+  ansible.builtin.include_tasks: configure_local_operation.yml
+  tags: [configuration, independence]
+
+- name: Deploy independent validation tools
+  ansible.builtin.include_tasks: deploy_validation_tools.yml
+  when: enable_local_validation | bool
+  tags: [validation, tools]
+
+- name: Update emergency contact procedures
+  ansible.builtin.include_tasks: update_emergency_contacts.yml
+  when: update_contact_info | bool
+  tags: [contacts, procedures]
+
+- name: Clean up MSP-specific configurations
+  ansible.builtin.include_tasks: cleanup_msp_configs.yml
+  tags: [cleanup, security]
+
+- name: Validate independent operation
+  ansible.builtin.include_tasks: validate_independence.yml
+  when: validate_independence | bool
+  tags: [validation, independence]
+
+- name: Generate final disconnection report
+  ansible.builtin.include_tasks: generate_final_report.yml
+  when: generate_final_report | bool
+  tags: [documentation, final]
+
+- name: Archive MSP management configurations
+  ansible.builtin.include_tasks: archive_msp_configs.yml
+  when: archive_msp_configs | bool
+  tags: [archive, cleanup]

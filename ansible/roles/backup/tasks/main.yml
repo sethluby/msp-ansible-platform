@@ -1,0 +1,60 @@
+---
+- name: Create backup directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+  loop:
+    - "{{ backup_local_path }}"
+    - "{{ backup_local_path }}/daily"
+    - "{{ backup_local_path }}/weekly"
+    - "{{ backup_local_path }}/monthly"
+    - "{{ backup_local_path }}/logs"
+  tags: [backup, setup]
+
+- name: Install backup tools
+  ansible.builtin.include_tasks: install_backup_tools.yml
+  tags: [backup, installation]
+
+- name: Configure backup strategy
+  ansible.builtin.include_tasks: "configure_{{ backup_strategy }}.yml"
+  tags: [backup, configuration]
+
+- name: Setup database backups
+  ansible.builtin.include_tasks: configure_database_backups.yml
+  when: backup_databases | bool and (backup_mysql | bool or backup_postgresql | bool)
+  tags: [backup, databases]
+
+- name: Create backup scripts
+  ansible.builtin.include_tasks: create_backup_scripts.yml
+  tags: [backup, scripts]
+
+- name: Configure backup scheduling
+  ansible.builtin.include_tasks: configure_backup_cron.yml
+  tags: [backup, scheduling]
+
+- name: Setup backup validation
+  ansible.builtin.include_tasks: configure_backup_validation.yml
+  when: verify_backups | bool
+  tags: [backup, validation]
+
+- name: Configure backup notifications
+  ansible.builtin.include_tasks: configure_backup_notifications.yml
+  when: backup_notifications | bool
+  tags: [backup, notifications]
+
+- name: Setup backup cleanup
+  ansible.builtin.include_tasks: configure_backup_cleanup.yml
+  when: cleanup_old_backups | bool
+  tags: [backup, cleanup]
+
+- name: Configure remote backup sync
+  ansible.builtin.include_tasks: configure_remote_backup.yml
+  when: backup_remote_enabled | bool
+  tags: [backup, remote]
+
+- name: Validate backup configuration
+  ansible.builtin.include_tasks: validate_backup_setup.yml
+  tags: [backup, validation]

@@ -1,0 +1,97 @@
+---
+- name: Create client-specific group variables
+  ansible.builtin.template:
+    src: group_vars_all.yml.j2
+    dest: "{{ client_inventory_dir }}/group_vars/all.yml"
+    mode: '0644'
+  tags: [configuration, inventory]
+
+- name: Create client-specific host variables template
+  ansible.builtin.template:
+    src: host_vars_template.yml.j2
+    dest: "{{ client_inventory_dir }}/host_vars/template.yml"
+    mode: '0644'
+  tags: [configuration, inventory]
+
+- name: Deploy tier-specific configurations
+  ansible.builtin.template:
+    src: "tier_{{ client_tier }}.yml.j2"
+    dest: "{{ client_config_dir }}/tier_configuration.yml"
+    mode: '0644'
+  tags: [configuration, tier]
+
+- name: Create compliance configuration
+  ansible.builtin.template:
+    src: compliance_config.yml.j2
+    dest: "{{ client_config_dir }}/compliance/configuration.yml"
+    mode: '0644'
+  tags: [configuration, compliance]
+
+- name: Deploy monitoring configuration
+  ansible.builtin.template:
+    src: monitoring_config.yml.j2
+    dest: "{{ client_config_dir }}/monitoring/configuration.yml"
+    mode: '0644'
+  tags: [configuration, monitoring]
+
+- name: Create backup configuration
+  ansible.builtin.template:
+    src: backup_config.yml.j2
+    dest: "{{ client_config_dir }}/backup/configuration.yml"
+    mode: '0644'
+  tags: [configuration, backup]
+
+- name: Deploy client-specific playbooks
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "{{ client_playbooks_dir }}/{{ item }}"
+    mode: '0644'
+  loop:
+    - client_hardening.yml
+    - client_monitoring.yml
+    - client_backup.yml
+    - client_compliance.yml
+  tags: [configuration, playbooks]
+
+- name: Create custom playbooks directory structure
+  ansible.builtin.file:
+    path: "{{ client_playbooks_dir }}/custom/{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - roles
+    - tasks
+    - templates
+    - files
+  when: client_tier in ['professional', 'enterprise']
+  tags: [configuration, custom]
+
+- name: Deploy logging configuration
+  ansible.builtin.template:
+    src: logging_config.yml.j2
+    dest: "{{ client_config_dir }}/logs/configuration.yml"
+    mode: '0644'
+  tags: [configuration, logging]
+
+- name: Create client environment variables
+  ansible.builtin.template:
+    src: client_environment.yml.j2
+    dest: "{{ client_config_dir }}/client_environment.yml"
+    mode: '0644'
+  tags: [configuration, environment]
+
+- name: Generate client secrets (encrypted)
+  ansible.builtin.template:
+    src: client_secrets.yml.j2
+    dest: "{{ client_config_dir }}/client_secrets.yml"
+    mode: '0600'
+  vars:
+    ansible_vault_password_file: "{{ client_config_dir }}/.vault_pass"
+  tags: [configuration, secrets]
+
+- name: Create client-specific ansible.cfg
+  ansible.builtin.template:
+    src: client_ansible.cfg.j2
+    dest: "{{ client_config_dir }}/ansible.cfg"
+    mode: '0644'
+  tags: [configuration, ansible]

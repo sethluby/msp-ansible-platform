@@ -1,0 +1,47 @@
+---
+# Common role defaults for MSP platform
+timezone: "UTC"
+ntp_servers:
+  - "0.pool.ntp.org"
+  - "1.pool.ntp.org"
+  - "2.pool.ntp.org"
+  - "3.pool.ntp.org"
+
+# Package management
+update_packages: true
+install_essential_packages: true
+essential_packages:
+  - curl
+  - wget
+  - git
+  - vim
+  - htop
+  - rsync
+  - unzip
+  - net-tools
+  - tcpdump
+  - lsof
+  - python3
+  - python3-pip
+
+# System optimization
+optimize_sysctl: true
+enable_firewall: true
+configure_logging: true
+setup_users: true
+
+# Security hardening
+disable_unused_services: true
+configure_ssh_hardening: true
+setup_fail2ban: true
+enable_audit_logging: true
+
+# Performance tuning
+tune_kernel_parameters: true
+optimize_network_settings: true
+configure_swap: true
+
+# Backup and monitoring
+install_monitoring_agent: true
+configure_log_rotation: true
+setup_system_backups: false

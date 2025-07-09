@@ -1,0 +1,19 @@
+# WireGuard Server Configuration for {{ client_name }}
+# Generated: {{ ansible_date_time.iso8601 }}
+
+[Interface]
+PrivateKey = {{ wg_server_private_key.stdout }}
+Address = 10.200.{{ client_id | default(1) }}.1/24
+ListenPort = {{ vpn_port }}
+SaveConfig = false
+
+# Enable IP forwarding and NAT
+PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o {{ ansible_default_ipv4.interface }} -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o {{ ansible_default_ipv4.interface }} -j MASQUERADE
+
+[Peer]
+# {{ client_name }} Client
+PublicKey = {{ wg_client_public_key.stdout }}
+PresharedKey = {{ wg_preshared_key.stdout }}
+AllowedIPs = 10.200.{{ client_id | default(1) }}.2/32
+PersistentKeepalive = 25

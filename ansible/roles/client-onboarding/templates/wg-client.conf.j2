@@ -1,0 +1,27 @@
+# WireGuard Client Configuration for {{ client_name }}
+# Generated: {{ ansible_date_time.iso8601 }}
+# MSP Platform VPN Connection
+
+[Interface]
+PrivateKey = {{ wg_client_private_key.stdout }}
+Address = 10.200.{{ client_id | default(1) }}.2/24
+DNS = 8.8.8.8, 8.8.4.4
+
+[Peer]
+# MSP Platform Server
+PublicKey = {{ wg_server_public_key.stdout }}
+PresharedKey = {{ wg_preshared_key.stdout }}
+Endpoint = {{ vpn_server_ip }}:{{ vpn_port }}
+AllowedIPs = 10.200.{{ client_id | default(1) }}.1/32, {{ ansible_default_ipv4.address }}/32
+PersistentKeepalive = 25
+
+# Installation Instructions:
+# 1. Install WireGuard: sudo apt install wireguard (Ubuntu/Debian) or sudo yum install wireguard-tools (RHEL/CentOS)
+# 2. Copy this file to: /etc/wireguard/{{ client_name }}.conf
+# 3. Start VPN: sudo wg-quick up {{ client_name }}
+# 4. Enable on boot: sudo systemctl enable wg-quick@{{ client_name }}
+# 5. Check status: sudo wg show
+
+# Connection Test:
+# ping 10.200.{{ client_id | default(1) }}.1  # Test MSP connection
+# ping {{ ansible_default_ipv4.address }}     # Test MSP server

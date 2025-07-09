@@ -1,0 +1,151 @@
+# {{ client_name | title }} - MSP Platform Configuration
+
+**Client**: {{ client_name | title }}  
+**Domain**: {{ client_domain }}  
+**Tier**: {{ client_tier | title }}  
+**Generated**: {{ ansible_date_time.iso8601 }}  
+**Administrator**: {{ client_admin_email }}
+
+## Overview
+
+This directory contains the complete MSP platform configuration for {{ client_name }}. All infrastructure management, compliance enforcement, and monitoring is automated through Ansible playbooks and roles.
+
+## Directory Structure
+
+```
+{{ client_config_dir }}/
+├── README.md                    # This file
+├── ansible.cfg                  # Client-specific Ansible configuration
+├── client.env                   # Environment variables
+├── .vault_pass                  # Ansible Vault password (secure)
+├── authentication_summary.yml   # Authentication configuration summary
+├── validation_report.md         # Setup validation results
+├── inventory/                   # Ansible inventory management
+│   ├── inventory.yml           # Main inventory file
+│   ├── inventory.ini           # INI format inventory
+│   ├── group_vars/             # Group-specific variables
+│   └── host_vars/              # Host-specific variables
+├── playbooks/                  # Client-specific playbooks
+│   ├── client_hardening.yml    # Security hardening
+│   ├── client_monitoring.yml   # Monitoring setup
+│   ├── client_backup.yml       # Backup configuration
+│   ├── client_compliance.yml   # Compliance validation
+│   └── custom/                 # Custom playbooks (Pro/Enterprise)
+├── keys/                       # SSH keys and authentication
+│   ├── {{ client_name }}_id_{{ ssh_key_type }}     # Private SSH key
+│   ├── {{ client_name }}_id_{{ ssh_key_type }}.pub # Public SSH key
+│   ├── vault_key               # Ansible Vault key
+│   └── authorized_keys         # Client authorized keys template
+├── certificates/               # SSL/TLS certificates and VPN
+│   ├── {{ client_name }}.csr   # Certificate signing request
+│   ├── {{ client_name }}.key   # Private key for certificates
+│   └── {{ client_name }}-vpn.conf # WireGuard VPN configuration
+├── logs/                       # Ansible execution logs
+├── backup/                     # Backup configurations
+├── compliance/                 # Compliance configurations and reports
+├── monitoring/                 # Monitoring configurations
+└── documentation/              # Generated documentation
+```
+
+## Service Tier: {{ client_tier | title }}
+
+{% if client_tier == 'foundation' %}
+### Foundation Tier Features
+- Basic system monitoring ({{ foundation_settings.monitoring_interval }}s intervals)
+- Automated security patching
+- CIS benchmark compliance
+- {{ foundation_settings.backup_frequency | title }} backups
+- {{ foundation_settings.compliance_scan_frequency | title }} compliance scans
+{% elif client_tier == 'professional' %}
+### Professional Tier Features
+- Advanced monitoring ({{ professional_settings.monitoring_interval }}s intervals)
+- All Foundation tier features
+- Custom playbook development
+- {{ professional_settings.backup_frequency | title }} backups
+- {{ professional_settings.compliance_scan_frequency | title }} compliance scans
+- SOC2, HIPAA, PCI-DSS compliance frameworks
+{% elif client_tier == 'enterprise' %}
+### Enterprise Tier Features
+- Real-time monitoring ({{ enterprise_settings.monitoring_interval }}s intervals)
+- All Professional tier features
+- CMMC Level {{ enterprise_settings.cmmc_level }} compliance
+- {{ enterprise_settings.backup_frequency | title }} backups
+- {{ enterprise_settings.compliance_scan_frequency | title }} compliance monitoring
+- Dedicated support and custom development
+- Advanced threat detection and response
+{% endif %}
+
+## Quick Start
+
+### 1. VPN Connection Setup
+```bash
+# Install WireGuard VPN configuration
+sudo cp certificates/{{ client_name }}-vpn.conf /etc/wireguard/
+sudo wg-quick up {{ client_name }}
+sudo systemctl enable wg-quick@{{ client_name }}
+```
+
+### 2. Test Connectivity
+```bash
+# Test VPN connection
+ping 10.200.{{ client_id | default(1) }}.1
+
+# Test Ansible connectivity
+ansible all -m ping
+```
+
+### 3. Run Initial Setup
+```bash
+# Apply security hardening
+ansible-playbook playbooks/client_hardening.yml
+
+# Setup monitoring
+ansible-playbook playbooks/client_monitoring.yml
+
+# Configure compliance
+ansible-playbook playbooks/client_compliance.yml
+```
+
+## Compliance Frameworks
+
+{% for framework in compliance_frameworks %}
+- **{{ framework.name }}**: {{ 'Enabled' if framework.enabled else 'Disabled' }}
+{% endfor %}
+
+## Authentication
+
+- **SSH Key**: `keys/{{ client_name }}_id_{{ ssh_key_type }}`
+- **Ansible Vault**: Encrypted with client-specific key
+- **VPN**: WireGuard with pre-shared keys
+{% if client_tier in ['professional', 'enterprise'] %}
+- **API Access**: Token-based authentication available
+{% endif %}
+
+## Support
+
+{% if client_tier == 'enterprise' %}
+### Enterprise Support
+- **Dedicated Support**: {{ client_admin_email }}
+- **Emergency Contact**: Available 24/7
+- **Custom Development**: Included
+{% else %}
+### Standard Support
+- **Administrator**: {{ client_admin_email }}
+- **MSP Platform**: {{ msp_ansible_tower_url }}
+{% endif %}
+
+## Security Notes
+
+⚠️ **Important Security Information**:
+- Keep SSH private keys secure and never share
+- Vault password file (`.vault_pass`) contains sensitive data
+- VPN configuration includes pre-shared keys
+- Regular key rotation is recommended (90 days)
+
+## Graceful Disconnection
+
+This MSP platform is designed for graceful disconnection. All configurations can operate independently of MSP infrastructure when needed. See `documentation/Graceful_Disconnection.md` for procedures.
+
+---
+
+*Generated by MSP Ansible Platform v{{ ansible_date_time.date }}*

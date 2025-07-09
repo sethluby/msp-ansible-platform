@@ -1,0 +1,40 @@
+---
+- name: Install essential packages (RHEL/CentOS/Rocky)
+  ansible.builtin.yum:
+    name: "{{ essential_packages }}"
+    state: present
+  when: ansible_os_family == 'RedHat'
+  tags: [packages]
+
+- name: Install essential packages (Ubuntu/Debian)
+  ansible.builtin.apt:
+    name: "{{ essential_packages }}"
+    state: present
+    update_cache: true
+  when: ansible_os_family == 'Debian'
+  tags: [packages]
+
+- name: Install essential packages (SLES)
+  ansible.builtin.zypper:
+    name: "{{ essential_packages }}"
+    state: present
+  when: ansible_os_family == 'Suse'
+  tags: [packages]
+
+- name: Install Python packages
+  ansible.builtin.pip:
+    name:
+      - setuptools
+      - psutil
+      - requests
+    state: present
+  tags: [packages, python]
+
+- name: Create symbolic links for Python
+  ansible.builtin.file:
+    src: /usr/bin/python3
+    dest: /usr/bin/python
+    state: link
+  when: ansible_python.executable is not defined or '/usr/bin/python' not in ansible_python.executable
+  ignore_errors: true
+  tags: [packages, python]

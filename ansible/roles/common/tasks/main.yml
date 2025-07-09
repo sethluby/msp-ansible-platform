@@ -1,0 +1,68 @@
+---
+- name: Update system packages
+  ansible.builtin.include_tasks: update_packages.yml
+  when: update_packages | bool
+  tags: [packages, updates]
+
+- name: Install essential packages
+  ansible.builtin.include_tasks: install_essentials.yml
+  when: install_essential_packages | bool
+  tags: [packages, essentials]
+
+- name: Configure system timezone
+  ansible.builtin.include_tasks: configure_timezone.yml
+  tags: [system, timezone]
+
+- name: Setup NTP synchronization
+  ansible.builtin.include_tasks: configure_ntp.yml
+  tags: [system, time]
+
+- name: Configure system logging
+  ansible.builtin.include_tasks: configure_logging.yml
+  when: configure_logging | bool
+  tags: [logging, system]
+
+- name: Apply kernel optimizations
+  ansible.builtin.include_tasks: optimize_kernel.yml
+  when: optimize_sysctl | bool
+  tags: [performance, kernel]
+
+- name: Configure firewall
+  ansible.builtin.include_tasks: configure_firewall.yml
+  when: enable_firewall | bool
+  tags: [security, firewall]
+
+- name: Setup system users
+  ansible.builtin.include_tasks: setup_users.yml
+  when: setup_users | bool
+  tags: [users, security]
+
+- name: Harden SSH configuration
+  ansible.builtin.include_tasks: harden_ssh.yml
+  when: configure_ssh_hardening | bool
+  tags: [security, ssh]
+
+- name: Install and configure fail2ban
+  ansible.builtin.include_tasks: setup_fail2ban.yml
+  when: setup_fail2ban | bool
+  tags: [security, fail2ban]
+
+- name: Enable audit logging
+  ansible.builtin.include_tasks: configure_audit.yml
+  when: enable_audit_logging | bool
+  tags: [security, audit]
+
+- name: Disable unused services
+  ansible.builtin.include_tasks: disable_services.yml
+  when: disable_unused_services | bool
+  tags: [security, services]
+
+- name: Configure log rotation
+  ansible.builtin.include_tasks: configure_logrotate.yml
+  when: configure_log_rotation | bool
+  tags: [logging, maintenance]
+
+- name: Install monitoring agent
+  ansible.builtin.include_tasks: install_monitoring.yml
+  when: install_monitoring_agent | bool
+  tags: [monitoring, agent]

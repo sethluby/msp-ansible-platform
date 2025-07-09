@@ -1,0 +1,125 @@
+---
+- name: Prepare test environment
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Update package cache (Ubuntu/Debian)
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 600
+      when: ansible_os_family == "Debian"
+
+    - name: Update package cache (RHEL/CentOS)
+      ansible.builtin.yum:
+        update_cache: true
+      when: ansible_os_family == "RedHat"
+
+    - name: Install Python dependencies
+      ansible.builtin.package:
+        name:
+          - python3
+          - python3-pip
+        state: present
+
+    - name: Install required Python packages
+      ansible.builtin.pip:
+        name:
+          - setuptools
+          - wheel
+          - cryptography
+          - paramiko
+        state: present
+
+    - name: Create MSP platform directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+      loop:
+        - /opt/msp-platform
+        - /opt/msp-platform/clients
+        - /opt/msp-platform/ansible
+        - /var/log/msp-platform
+        - /var/log/msp-platform/reports
+        - /var/log/msp-platform/audit
+
+    - name: Create test client configuration directory
+      ansible.builtin.file:
+        path: /opt/msp-platform/clients/test-client
+        state: directory
+        mode: '0750'
+        owner: root
+        group: root
+
+    - name: Install essential packages for testing
+      ansible.builtin.package:
+        name:
+          - curl
+          - wget
+          - git
+          - rsync
+          - net-tools
+        state: present
+
+    - name: Configure test environment variables
+      ansible.builtin.copy:
+        content: |
+          export MSP_TEST_MODE=true
+          export MSP_PLATFORM_ROOT=/opt/msp-platform
+          export ANSIBLE_ROLES_PATH=/opt/msp-platform/ansible/roles
+        dest: /etc/environment
+        mode: '0644'
+
+    - name: Create test inventory for molecule
+      ansible.builtin.copy:
+        content: |
+          [msp_infrastructure]
+          msp-controller ansible_host={{ ansible_default_ipv4.address }}
+
+          [test_targets]
+          {% for host in groups['test_targets'] | default([]) %}
+          {{ host }} ansible_host={{ hostvars[host]['ansible_default_ipv4']['address'] }}
+          {% endfor %}
+
+          [all:vars]
+          ansible_user=root
+          ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+          msp_test_environment=true
+        dest: /opt/msp-platform/test_inventory.ini
+        mode: '0644'
+      when: inventory_hostname == 'msp-controller'
+
+    - name: Install WireGuard for VPN testing
+      ansible.builtin.package:
+        name: wireguard
+        state: present
+      ignore_errors: true  # Some test environments may not support WireGuard
+
+    - name: Setup SSH keys for testing
+      ansible.builtin.shell: |
+        if [ ! -f /root/.ssh/id_rsa ]; then
+          ssh-keygen -t rsa -b 4096 -f /root/.ssh/id_rsa -N ""
+        fi
+      args:
+        creates: /root/.ssh/id_rsa
+
+    - name: Configure SSH for testing
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        line: "{{ item }}"
+        regexp: "^#?{{ item.split()[0] }}"
+      loop:
+        - "PermitRootLogin yes"
+        - "PubkeyAuthentication yes"
+        - "PasswordAuthentication yes"
+      notify: restart sshd
+
+  handlers:
+    - name: restart sshd
+      ansible.builtin.systemd:
+        name: sshd
+        state: restarted
+        enabled: true

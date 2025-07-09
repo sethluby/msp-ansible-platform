@@ -1,0 +1,141 @@
+---
+# Ansible Galaxy Dependencies for MSP Platform
+# Community roles for enhanced functionality and testing
+
+collections:
+  # Core Ansible collections
+  - name: ansible.posix
+    version: ">=1.4.0"
+  - name: community.general
+    version: ">=6.0.0"
+  - name: community.crypto
+    version: ">=2.10.0"
+  - name: community.docker
+    version: ">=3.0.0"
+  - name: containers.podman
+    version: ">=1.9.0"
+
+  # Security and compliance collections
+  - name: community.hashi_vault
+    version: ">=4.0.0"
+  - name: ansible.netcommon
+    version: ">=4.1.0"
+
+  # Cloud provider collections (optional)
+  - name: amazon.aws
+    version: ">=5.0.0"
+  - name: azure.azcollection
+    version: ">=1.14.0"
+  - name: google.cloud
+    version: ">=1.1.0"
+
+roles:
+  # Security hardening roles
+  - name: ansible-lockdown.RHEL8-CIS
+    src: https://github.com/ansible-lockdown/RHEL8-CIS
+    version: main
+    
+  - name: ansible-lockdown.RHEL9-CIS
+    src: https://github.com/ansible-lockdown/RHEL9-CIS
+    version: main
+    
+  - name: ansible-lockdown.UBUNTU20-CIS
+    src: https://github.com/ansible-lockdown/UBUNTU20-CIS
+    version: main
+    
+  - name: ansible-lockdown.UBUNTU22-CIS
+    src: https://github.com/ansible-lockdown/UBUNTU22-CIS
+    version: main
+
+  - name: ansible-lockdown.RHEL8-STIG
+    src: https://github.com/ansible-lockdown/RHEL8-STIG
+    version: main
+    
+  - name: ansible-lockdown.RHEL9-STIG
+    src: https://github.com/ansible-lockdown/RHEL9-STIG
+    version: main
+
+  - name: dev-sec.ssh-hardening
+    src: https://github.com/dev-sec/ansible-ssh-hardening
+    version: main
+
+  - name: dev-sec.os-hardening
+    src: https://github.com/dev-sec/ansible-os-hardening
+    version: main
+
+  # Monitoring and observability
+  - name: cloudalchemy.prometheus
+    src: https://github.com/cloudalchemy/ansible-prometheus
+    version: main
+    
+  - name: cloudalchemy.alertmanager
+    src: https://github.com/cloudalchemy/ansible-alertmanager
+    version: main
+    
+  - name: cloudalchemy.grafana
+    src: https://github.com/cloudalchemy/ansible-grafana
+    version: main
+    
+  - name: cloudalchemy.node_exporter
+    src: https://github.com/cloudalchemy/ansible-node-exporter
+    version: main
+
+  # Audit and logging
+  - name: willshersystems.sshd
+    src: https://github.com/willshersystems/ansible-sshd
+    version: main
+    
+  - name: willshersystems.auditd
+    src: https://github.com/willshersystems/ansible-auditd
+    version: main
+
+  # User management
+  - name: debops.users
+    src: https://github.com/debops/ansible-users
+    version: main
+
+  # Backup solutions
+  - name: geerlingguy.repo-epel
+    src: https://github.com/geerlingguy/ansible-role-repo-epel
+    version: main
+    
+  - name: geerlingguy.repo-remi
+    src: https://github.com/geerlingguy/ansible-role-repo-remi
+    version: main
+
+  # Container and orchestration
+  - name: geerlingguy.docker
+    src: https://github.com/geerlingguy/ansible-role-docker
+    version: main
+    
+  - name: geerlingguy.pip
+    src: https://github.com/geerlingguy/ansible-role-pip
+    version: main
+
+  # Network and VPN
+  - name: githubixx.wireguard
+    src: https://github.com/githubixx/ansible-role-wireguard
+    version: main
+
+  # Database roles (for backup testing)
+  - name: geerlingguy.mysql
+    src: https://github.com/geerlingguy/ansible-role-mysql
+    version: main
+    
+  - name: geerlingguy.postgresql
+    src: https://github.com/geerlingguy/ansible-role-postgresql
+    version: main
+
+  # Testing and development
+  - name: geerlingguy.git
+    src: https://github.com/geerlingguy/ansible-role-git
+    version: main
+    
+  - name: geerlingguy.ansible
+    src: https://github.com/geerlingguy/ansible-role-ansible
+    version: main
+
+# Additional testing dependencies
+- src: https://github.com/ansible/molecule
+  name: molecule
+  version: main

@@ -1,0 +1,86 @@
+# MSP Platform Inventory for {{ client_name }}
+# Generated: {{ ansible_date_time.iso8601 }}
+# Tier: {{ client_tier }}
+
+all:
+  children:
+    msp_infrastructure:
+      hosts:
+        msp-controller:
+          ansible_host: {{ ansible_default_ipv4.address }}
+          ansible_user: root
+          role: msp_controller
+          vpn_endpoint: "{{ vpn_server_ip }}:{{ vpn_port }}"
+    
+    client_infrastructure:
+      children:
+        web_servers:
+          hosts: {}
+          vars:
+            server_type: web
+            monitoring_enabled: true
+            backup_enabled: {{ backup_enabled }}
+        
+        database_servers:
+          hosts: {}
+          vars:
+            server_type: database
+            monitoring_enabled: true
+            backup_enabled: {{ backup_enabled }}
+            backup_frequency: {{ 'hourly' if client_tier == 'enterprise' else 'daily' }}
+        
+        application_servers:
+          hosts: {}
+          vars:
+            server_type: application
+            monitoring_enabled: true
+            backup_enabled: {{ backup_enabled }}
+        
+        monitoring_servers:
+          hosts: {}
+          vars:
+            server_type: monitoring
+            monitoring_enabled: false  # Self-monitoring
+            backup_enabled: {{ backup_enabled }}
+    
+    ungrouped:
+      hosts: {}
+
+  vars:
+    # Client-specific variables
+    client_name: "{{ client_name }}"
+    client_domain: "{{ client_domain }}"
+    client_tier: "{{ client_tier }}"
+    client_admin_email: "{{ client_admin_email }}"
+    
+    # MSP Platform variables
+    msp_platform_version: "{{ ansible_date_time.date }}"
+    msp_config_dir: "{{ client_config_dir }}"
+    
+    # VPN Configuration
+    vpn_enabled: {{ vpn_enabled }}
+    vpn_network: "{{ vpn_client_ip.split('/')[0] }}/{{ vpn_client_ip.split('/')[1] }}"
+    
+    # Compliance settings
+    compliance_frameworks: {{ compliance_frameworks | to_nice_yaml | indent(6) }}
+    
+    # Monitoring settings
+    monitoring_interval: {{ vars[client_tier + '_settings']['monitoring_interval'] }}
+    
+    # Backup settings
+    backup_enabled: {{ backup_enabled }}
+    backup_retention_days: {{ backup_retention_days }}
+    backup_frequency: "{{ vars[client_tier + '_settings']['backup_frequency'] }}"
+    
+    # Security settings
+    ssh_key_file: "{{ client_config_dir }}/keys/{{ client_name }}_id_{{ ssh_key_type }}"
+    ansible_ssh_private_key_file: "{{ client_config_dir }}/keys/{{ client_name }}_id_{{ ssh_key_type }}"
+    
+    # Tier-specific settings
+{% if client_tier == 'professional' or client_tier == 'enterprise' %}
+    custom_playbooks_enabled: true
+{% endif %}
+{% if client_tier == 'enterprise' %}
+    cmmc_level: {{ vars[client_tier + '_settings']['cmmc_level'] }}
+    dedicated_support: true
+{% endif %}

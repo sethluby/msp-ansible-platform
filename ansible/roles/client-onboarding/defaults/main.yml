@@ -1,0 +1,71 @@
+---
+# Client onboarding defaults
+client_name: ""
+client_domain: ""
+client_admin_email: ""
+client_tier: "foundation"  # foundation, professional, enterprise
+
+# Network configuration
+client_network_cidr: "10.100.0.0/24"
+vpn_port: 51820
+ssh_port: 22
+
+# Directory structure
+client_base_dir: "/opt/msp-platform/clients"
+client_config_dir: "{{ client_base_dir }}/{{ client_name }}"
+client_inventory_dir: "{{ client_config_dir }}/inventory"
+client_playbooks_dir: "{{ client_config_dir }}/playbooks"
+client_docs_dir: "{{ client_config_dir }}/documentation"
+
+# Authentication
+generate_ssh_keys: true
+ssh_key_type: "ed25519"
+ssh_key_bits: 4096
+
+# WireGuard VPN
+vpn_enabled: true
+vpn_server_ip: "{{ ansible_default_ipv4.address }}"
+vpn_client_ip: "10.200.{{ client_id | default(1) }}.1/24"
+
+# Compliance settings
+compliance_frameworks:
+  - name: "CIS Benchmarks"
+    enabled: true
+  - name: "CMMC Level 2"
+    enabled: "{{ client_tier in ['professional', 'enterprise'] }}"
+  - name: "DISA STIG"
+    enabled: "{{ client_tier == 'enterprise' }}"
+
+# MSP infrastructure
+msp_ansible_tower_url: "https://tower.msp.example.com"
+msp_vault_url: "https://vault.msp.example.com"
+msp_monitoring_url: "https://monitoring.msp.example.com"
+
+# Notification settings
+notification_slack_webhook: ""
+notification_email_smtp: ""
+
+# Backup settings
+backup_enabled: true
+backup_retention_days: 30
+backup_schedule: "0 2 * * *"  # Daily at 2 AM
+
+# Client specific settings by tier
+foundation_settings:
+  monitoring_interval: 300  # 5 minutes
+  backup_frequency: "daily"
+  compliance_scan_frequency: "weekly"
+
+professional_settings:
+  monitoring_interval: 60   # 1 minute
+  backup_frequency: "daily"
+  compliance_scan_frequency: "daily"
+  custom_playbooks_enabled: true
+
+enterprise_settings:
+  monitoring_interval: 30   # 30 seconds
+  backup_frequency: "hourly"
+  compliance_scan_frequency: "continuous"
+  custom_playbooks_enabled: true
+  dedicated_support: true
+  cmmc_level: 2

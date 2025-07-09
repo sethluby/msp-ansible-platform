@@ -1,0 +1,161 @@
+---
+- name: Test MSP Platform Client Onboarding
+  hosts: msp-controller
+  connection: local
+  gather_facts: true
+  become: true
+  vars:
+    # Test client configuration
+    client_name: "molecule-test-client"
+    client_domain: "test.molecule.local"
+    client_admin_email: "admin@test.molecule.local"
+    client_tier: "foundation"
+    vpn_enabled: false  # Disable VPN for testing
+    generate_ssh_keys: true
+    backup_enabled: true
+    monitoring_enabled: true
+    notification_enabled: false
+    
+    # Test-specific overrides
+    msp_test_mode: true
+    skip_external_dependencies: true
+    
+  tasks:
+    - name: Test client onboarding role
+      ansible.builtin.include_role:
+        name: client-onboarding
+      vars:
+        # Override defaults for testing
+        msp_ansible_tower_url: "http://localhost:8043"
+        msp_vault_url: "http://localhost:8200"
+        msp_monitoring_url: "http://localhost:3000"
+      tags: [onboarding, test]
+
+- name: Test Common Role on Target Systems
+  hosts: test_targets
+  gather_facts: true
+  become: true
+  vars:
+    # Test configuration
+    update_packages: false  # Skip package updates in testing
+    install_essential_packages: true
+    configure_logging: true
+    optimize_sysctl: false  # Skip system optimization in containers
+    enable_firewall: false  # Skip firewall in containers
+    setup_users: false      # Skip user setup in testing
+    configure_ssh_hardening: false  # Skip SSH hardening in containers
+    setup_fail2ban: false   # Skip fail2ban in containers
+    enable_audit_logging: false     # Skip audit in containers
+    disable_unused_services: false  # Skip service management in containers
+    configure_log_rotation: true
+    install_monitoring_agent: false # Skip monitoring agent in testing
+    
+  tasks:
+    - name: Test common role
+      ansible.builtin.include_role:
+        name: common
+      tags: [common, test]
+
+- name: Test User Management Role
+  hosts: test_targets
+  gather_facts: true
+  become: true
+  vars:
+    # Test user management configuration
+    manage_users: true
+    manage_groups: true
+    enforce_password_policy: false  # Skip password policy in testing
+    setup_sudo_access: true
+    
+    # Test users
+    admin_users:
+      - name: "test-msp-admin"
+        comment: "Test MSP Administrator"
+        groups: ["wheel"]
+        sudo_access: true
+        state: present
+    
+    service_accounts:
+      - name: "test-backup-service"
+        comment: "Test Backup Service Account"
+        shell: "/bin/bash"
+        home: "/opt/test-backup"
+        system: true
+        state: present
+    
+    system_groups:
+      - name: "test-msp-admins"
+        gid: 4000
+        state: present
+    
+    # Skip security features in testing
+    disable_unused_accounts: false
+    lock_inactive_accounts: false
+    audit_user_access: false
+    configure_pam: false
+    
+  tasks:
+    - name: Test user management role
+      ansible.builtin.include_role:
+        name: user-management
+      tags: [users, test]
+
+- name: Test Network Security Role (Limited)
+  hosts: test_targets
+  gather_facts: true
+  become: true
+  vars:
+    # Limited network security testing for containers
+    enable_firewall: false
+    configure_fail2ban: false
+    setup_intrusion_detection: false
+    enable_network_monitoring: false
+    vpn_security_enabled: false
+    
+    # Basic network hardening only
+    disable_ipv6: false
+    enable_syn_cookies: false
+    disable_icmp_redirects: false
+    disable_source_routing: false
+    enable_rp_filter: false
+    ignore_icmp_ping: false
+    
+    # SSH security (limited for testing)
+    ssh_port: 22
+    ssh_protocol: 2
+    ssh_permit_root_login: "yes"  # Required for testing
+    ssh_password_authentication: "yes"  # Required for testing
+    
+    secure_dns: false  # Skip DNS configuration in testing
+    
+  tasks:
+    - name: Test network security role (limited)
+      ansible.builtin.include_role:
+        name: network-security
+      tags: [network-security, test]
+
+- name: Test Graceful Disconnection
+  hosts: msp-controller
+  connection: local
+  gather_facts: true
+  become: true
+  vars:
+    client_name: "molecule-test-client"
+    disconnection_mode: "standard"
+    preserve_monitoring: false
+    emergency_contact_email: "test@molecule.local"
+    
+    # Test-specific settings
+    preserve_configurations: true
+    create_local_backups: true
+    generate_handover_docs: true
+    enable_local_validation: true
+    remove_msp_endpoints: true
+    validate_independence: true
+    generate_final_report: true
+    
+  tasks:
+    - name: Test graceful disconnection role
+      ansible.builtin.include_role:
+        name: graceful-disconnection
+      tags: [disconnection, test]

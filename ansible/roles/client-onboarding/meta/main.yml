@@ -1,0 +1,35 @@
+---
+galaxy_info:
+  author: MSP Ansible Platform Team
+  description: Automated client onboarding for MSP infrastructure management
+  company: MSP Platform Solutions
+  license: MIT
+  min_ansible_version: 2.10
+  platforms:
+    - name: EL
+      versions:
+        - 7
+        - 8
+        - 9
+    - name: Ubuntu
+      versions:
+        - 18.04
+        - 20.04
+        - 22.04
+        - 24.04
+    - name: SLES
+      versions:
+        - 12
+        - 15
+  galaxy_tags:
+    - msp
+    - onboarding
+    - automation
+    - compliance
+    - security
+
+dependencies:
+  - role: security-hardening
+    when: apply_security_hardening | default(true)
+  - role: compliance-frameworks
+    when: compliance_frameworks is defined and compliance_frameworks | length > 0

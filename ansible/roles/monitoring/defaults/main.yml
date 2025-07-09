@@ -1,0 +1,55 @@
+---
+# Monitoring configuration defaults
+monitoring_stack: "prometheus"  # prometheus, zabbix, nagios
+enable_metrics_collection: true
+enable_log_aggregation: true
+enable_alerting: true
+
+# Prometheus configuration
+prometheus_version: "2.40.0"
+prometheus_port: 9090
+prometheus_retention: "30d"
+prometheus_storage_path: "/var/lib/prometheus"
+
+# Node Exporter configuration
+node_exporter_version: "1.5.0"
+node_exporter_port: 9100
+
+# Alertmanager configuration
+alertmanager_version: "0.25.0"
+alertmanager_port: 9093
+
+# Grafana configuration
+grafana_version: "9.3.0"
+grafana_port: 3000
+grafana_admin_password: "{{ vault_grafana_password | default('admin') }}"
+
+# Monitoring targets
+monitor_system_metrics: true
+monitor_application_metrics: true
+monitor_network_metrics: true
+monitor_security_events: true
+
+# Alert thresholds
+cpu_alert_threshold: 80
+memory_alert_threshold: 85
+disk_alert_threshold: 90
+load_alert_threshold: 5.0
+
+# Notification channels
+slack_webhook_url: ""
+email_smtp_host: ""
+email_smtp_port: 587
+email_from: "msp-platform@example.com"
+email_to: "admin@example.com"
+
+# Log aggregation
+enable_rsyslog: true
+enable_logrotate: true
+log_retention_days: 30
+centralized_logging: false
+
+# Client-specific monitoring
+client_dashboards: true
+custom_metrics: []
+monitoring_interval: 60  # seconds

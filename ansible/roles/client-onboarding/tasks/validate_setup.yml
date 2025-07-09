@@ -1,0 +1,124 @@
+---
+- name: Validate client directory structure
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: directory_check
+  failed_when: not directory_check.stat.exists
+  loop:
+    - "{{ client_config_dir }}"
+    - "{{ client_inventory_dir }}"
+    - "{{ client_playbooks_dir }}"
+    - "{{ client_docs_dir }}"
+    - "{{ client_config_dir }}/keys"
+    - "{{ client_config_dir }}/certificates"
+  tags: [validation, structure]
+
+- name: Validate SSH key generation
+  ansible.builtin.stat:
+    path: "{{ client_config_dir }}/keys/{{ client_name }}_id_{{ ssh_key_type }}"
+  register: ssh_key_check
+  failed_when: not ssh_key_check.stat.exists
+  when: generate_ssh_keys | bool
+  tags: [validation, ssh]
+
+- name: Validate WireGuard configuration
+  ansible.builtin.stat:
+    path: "/etc/wireguard/{{ client_name }}.conf"
+  register: wireguard_check
+  failed_when: not wireguard_check.stat.exists
+  when: vpn_enabled | bool
+  tags: [validation, vpn]
+
+- name: Test WireGuard interface status
+  ansible.builtin.command: wg show {{ client_name }}
+  register: wg_status
+  changed_when: false
+  failed_when: wg_status.rc != 0
+  when: vpn_enabled | bool
+  tags: [validation, vpn]
+
+- name: Validate inventory files
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: inventory_check
+  failed_when: not inventory_check.stat.exists
+  loop:
+    - "{{ client_inventory_dir }}/inventory.ini"
+    - "{{ client_inventory_dir }}/inventory.yml"
+  tags: [validation, inventory]
+
+- name: Test inventory syntax
+  ansible.builtin.command: ansible-inventory -i {{ client_inventory_dir }}/inventory.yml --list
+  register: inventory_syntax_check
+  changed_when: false
+  failed_when: inventory_syntax_check.rc != 0
+  tags: [validation, inventory]
+
+- name: Validate Ansible configuration
+  ansible.builtin.command: ansible-config dump --only-changed
+  environment:
+    ANSIBLE_CONFIG: "{{ client_config_dir }}/ansible.cfg"
+  register: ansible_config_check
+  changed_when: false
+  failed_when: ansible_config_check.rc != 0
+  tags: [validation, ansible]
+
+- name: Test client-specific playbook syntax
+  ansible.builtin.command: ansible-playbook --syntax-check {{ item }}
+  environment:
+    ANSIBLE_CONFIG: "{{ client_config_dir }}/ansible.cfg"
+  register: playbook_syntax_check
+  changed_when: false
+  failed_when: playbook_syntax_check.rc != 0
+  loop:
+    - "{{ client_playbooks_dir }}/client_hardening.yml"
+    - "{{ client_playbooks_dir }}/client_monitoring.yml"
+    - "{{ client_playbooks_dir }}/client_backup.yml"
+    - "{{ client_playbooks_dir }}/client_compliance.yml"
+  tags: [validation, playbooks]
+
+- name: Validate compliance configuration
+  ansible.builtin.command: python3 -c "import yaml; yaml.safe_load(open('{{ client_config_dir }}/compliance/configuration.yml'))"
+  register: compliance_config_check
+  changed_when: false
+  failed_when: compliance_config_check.rc != 0
+  tags: [validation, compliance]
+
+- name: Test network connectivity
+  ansible.builtin.wait_for:
+    host: "{{ vpn_server_ip }}"
+    port: "{{ vpn_port }}"
+    timeout: 5
+  when: vpn_enabled | bool
+  tags: [validation, network]
+
+- name: Validate file permissions
+  ansible.builtin.stat:
+    path: "{{ item.path }}"
+  register: permission_check
+  failed_when: permission_check.stat.mode != item.mode
+  loop:
+    - { path: "{{ client_config_dir }}/keys", mode: "0750" }
+    - { path: "{{ client_config_dir }}/.vault_pass", mode: "0600" }
+    - { path: "{{ client_config_dir }}/keys/vault_key", mode: "0600" }
+  tags: [validation, permissions]
+
+- name: Create validation report
+  ansible.builtin.template:
+    src: validation_report.md.j2
+    dest: "{{ client_config_dir }}/validation_report.md"
+    mode: '0644'
+  vars:
+    validation_timestamp: "{{ ansible_date_time.iso8601 }}"
+    validation_status: "PASSED"
+  tags: [validation, documentation]
+
+- name: Display validation summary
+  ansible.builtin.debug:
+    msg: |
+      ✅ Client {{ client_name }} onboarding validation completed successfully
+      📁 Configuration: {{ client_config_dir }}
+      🔐 SSH Key: {{ client_config_dir }}/keys/{{ client_name }}_id_{{ ssh_key_type }}
+      🌐 VPN Config: {{ client_config_dir }}/certificates/{{ client_name }}-vpn.conf
+      📊 Validation Report: {{ client_config_dir }}/validation_report.md
+  tags: [validation, summary]

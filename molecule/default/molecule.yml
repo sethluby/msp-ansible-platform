@@ -1,0 +1,161 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
+
+driver:
+  name: docker
+
+platforms:
+  - name: msp-rhel9
+    image: quay.io/ansible/creator-ee:latest
+    pre_build_image: true
+    privileged: true
+    command: /sbin/init
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    capabilities:
+      - SYS_ADMIN
+    published_ports:
+      - "2222:22"
+    networks:
+      - name: msp_test_network
+        aliases:
+          - rhel9-test
+    groups:
+      - rhel_family
+      - test_targets
+    
+  - name: msp-ubuntu22
+    image: ubuntu:22.04
+    pre_build_image: false
+    dockerfile: ../resources/Dockerfile.ubuntu
+    privileged: true
+    command: /sbin/init
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    capabilities:
+      - SYS_ADMIN
+    published_ports:
+      - "2223:22"
+    networks:
+      - name: msp_test_network
+        aliases:
+          - ubuntu22-test
+    groups:
+      - debian_family
+      - test_targets
+
+  - name: msp-controller
+    image: quay.io/ansible/creator-ee:latest
+    pre_build_image: true
+    privileged: true
+    command: /sbin/init
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      - ${PWD}:/opt/msp-platform/ansible:ro
+    capabilities:
+      - SYS_ADMIN
+    published_ports:
+      - "2221:22"
+    networks:
+      - name: msp_test_network
+        aliases:
+          - controller-test
+    groups:
+      - msp_infrastructure
+      - controllers
+
+provisioner:
+  name: ansible
+  config_options:
+    defaults:
+      interpreter_python: auto_silent
+      callback_whitelist: profile_tasks, timer, yaml
+      stdout_callback: yaml
+      bin_ansible_callbacks: true
+    ssh_connection:
+      pipelining: true
+  env:
+    ANSIBLE_ROLES_PATH: "${PWD}/ansible/roles"
+    ANSIBLE_COLLECTIONS_PATH: "${PWD}/collections"
+  inventory:
+    host_vars:
+      msp-controller:
+        ansible_user: root
+        msp_role: controller
+        client_onboarding_enabled: true
+      msp-rhel9:
+        ansible_user: root
+        target_os: rhel9
+        compliance_tier: enterprise
+      msp-ubuntu22:
+        ansible_user: root
+        target_os: ubuntu22
+        compliance_tier: professional
+    group_vars:
+      all:
+        msp_test_mode: true
+        skip_external_dependencies: true
+        ansible_python_interpreter: /usr/bin/python3
+      test_targets:
+        managed_by_msp: true
+        test_client_name: molecule-test-client
+        test_environment: true
+      msp_infrastructure:
+        msp_platform_root: /opt/msp-platform
+        test_mode_enabled: true
+
+verifier:
+  name: ansible
+
+scenario:
+  test_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - syntax
+    - create
+    - prepare
+    - converge
+    - idempotence
+    - side_effect
+    - verify
+    - cleanup
+    - destroy
+
+  create_sequence:
+    - dependency
+    - create
+    - prepare
+
+  converge_sequence:
+    - dependency
+    - create
+    - prepare
+    - converge
+
+  destroy_sequence:
+    - dependency
+    - cleanup
+    - destroy
+
+  check_sequence:
+    - dependency
+    - cleanup
+    - destroy
+    - create
+    - prepare
+    - converge
+    - check
+    - destroy

@@ -1,0 +1,70 @@
+---
+# Backup configuration defaults
+backup_strategy: "rsync"  # rsync, borgbackup, restic, tar
+backup_enabled: true
+backup_compression: true
+backup_encryption: true
+
+# Backup scheduling
+backup_frequency: "daily"  # hourly, daily, weekly
+backup_time: "02:00"
+backup_retention_days: 30
+backup_retention_weeks: 4
+backup_retention_months: 12
+
+# Backup destinations
+backup_local_path: "/opt/backups"
+backup_remote_enabled: false
+backup_remote_host: ""
+backup_remote_path: ""
+backup_remote_user: "backup"
+
+# What to backup
+backup_system_configs: true
+backup_application_data: true
+backup_user_data: true
+backup_databases: true
+backup_logs: false
+
+# Backup paths
+backup_include_paths:
+  - "/etc"
+  - "/home"
+  - "/opt"
+  - "/var/lib"
+  - "/usr/local"
+
+backup_exclude_paths:
+  - "/tmp"
+  - "/var/cache"
+  - "/var/tmp"
+  - "/proc"
+  - "/sys"
+  - "/dev"
+  - "/run"
+
+# Database backup configuration
+backup_mysql: false
+backup_postgresql: false
+mysql_databases: []
+postgresql_databases: []
+
+# Backup validation
+verify_backups: true
+backup_integrity_check: true
+backup_test_restore: false
+
+# Notifications
+backup_notifications: true
+notify_on_success: false
+notify_on_failure: true
+notification_email: "admin@example.com"
+
+# Storage management
+cleanup_old_backups: true
+compress_old_backups: true
+archive_monthly_backups: true
+
+# Security
+backup_encryption_key: "{{ vault_backup_encryption_key | default('') }}"
+backup_ssh_key: "/root/.ssh/backup_key"

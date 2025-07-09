@@ -1,0 +1,309 @@
+---
+name: MSP Platform CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run tests weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+
+env:
+  ANSIBLE_FORCE_COLOR: '1'
+  ANSIBLE_HOST_KEY_CHECKING: 'false'
+  ANSIBLE_STDOUT_CALLBACK: 'yaml'
+
+jobs:
+  lint:
+    name: Ansible Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible ansible-lint yamllint molecule molecule-docker
+
+      - name: Install Ansible collections
+        run: |
+          ansible-galaxy install -r requirements.yml --force
+
+      - name: Run yamllint
+        run: |
+          yamllint .
+
+      - name: Run ansible-lint
+        run: |
+          ansible-lint ansible/playbooks/
+          ansible-lint ansible/roles/
+
+  syntax-check:
+    name: Syntax Check
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      matrix:
+        playbook:
+          - ansible/playbooks/site.yml
+          - ansible/playbooks/onboard-client.yml
+          - ansible/playbooks/prepare-disconnection.yml
+          - ansible/playbooks/system-update.yml
+          - ansible/playbooks/security-hardening.yml
+          - ansible/playbooks/disa-stig-compliance.yml
+          - ansible/playbooks/cmmc-compliance.yml
+          - ansible/playbooks/user-management.yml
+          - ansible/playbooks/firewall-management.yml
+          - ansible/playbooks/monitoring-alerting.yml
+          - ansible/playbooks/backup-recovery.yml
+          - ansible/playbooks/service-management.yml
+          - ansible/playbooks/inventory-collection.yml
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible
+
+      - name: Install dependencies
+        run: |
+          ansible-galaxy install -r requirements.yml --force
+
+      - name: Syntax check - ${{ matrix.playbook }}
+        run: |
+          ansible-playbook --syntax-check ${{ matrix.playbook }}
+
+  molecule-test:
+    name: Molecule Test
+    runs-on: ubuntu-latest
+    needs: [lint, syntax-check]
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu22
+          - centos8
+          - rockylinux9
+        role:
+          - client-onboarding
+          - graceful-disconnection
+          - common
+          - user-management
+          - network-security
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible molecule molecule-docker docker testinfra
+
+      - name: Install Ansible collections
+        run: |
+          ansible-galaxy install -r requirements.yml --force
+
+      - name: Test role with Molecule - ${{ matrix.role }} on ${{ matrix.os }}
+        run: |
+          cd ansible/roles/${{ matrix.role }}
+          molecule test
+        env:
+          MOLECULE_DISTRO: ${{ matrix.os }}
+
+  integration-test:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    needs: molecule-test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible molecule molecule-docker docker
+
+      - name: Install Ansible collections
+        run: |
+          ansible-galaxy install -r requirements.yml --force
+
+      - name: Run full platform integration test
+        run: |
+          molecule test
+        env:
+          MOLECULE_SCENARIO: integration
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Check for secrets
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+
+  documentation:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install documentation tools
+        run: |
+          pip install mkdocs mkdocs-material ansible-autodoc
+
+      - name: Check documentation completeness
+        run: |
+          # Check that all roles have README files
+          for role in ansible/roles/*/; do
+            if [ ! -f "${role}README.md" ]; then
+              echo "Missing README.md in $role"
+              exit 1
+            fi
+          done
+
+      - name: Generate role documentation
+        run: |
+          ansible-autodoc --output-dir docs/roles ansible/roles/
+
+      - name: Build documentation
+        run: |
+          if [ -f mkdocs.yml ]; then
+            mkdocs build --strict
+          fi
+
+  deployment-test:
+    name: Deployment Test
+    runs-on: ubuntu-latest
+    needs: [integration-test, security-scan]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible docker-compose
+
+      - name: Test MSP infrastructure deployment
+        run: |
+          cd msp-infrastructure
+          docker-compose config
+          docker-compose up -d --dry-run
+
+      - name: Test bootstrap scripts
+        run: |
+          chmod +x bootstrap/*.sh
+          bash -n bootstrap/bootstrap-pull-based.sh
+          bash -n bootstrap/bootstrap-bastion-host.sh
+          bash -n bootstrap/bootstrap-reverse-tunnel.sh
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [deployment-test]
+    if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Extract version from commit message or use date
+          VERSION=$(date +"%Y.%m.%d")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Generate changelog from recent commits
+          git log --pretty=format:"- %s" --since="1 week ago" > CHANGELOG.txt
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.changelog.outputs.version }}
+          release_name: MSP Platform v${{ steps.changelog.outputs.version }}
+          body_path: CHANGELOG.txt
+          draft: false
+          prerelease: false
+
+  notify:
+    name: Notify Results
+    runs-on: ubuntu-latest
+    needs: [molecule-test, integration-test, security-scan]
+    if: always()
+    steps:
+      - name: Notify on success
+        if: ${{ needs.molecule-test.result == 'success' && needs.integration-test.result == 'success' && needs.security-scan.result == 'success' }}
+        run: |
+          echo "✅ MSP Platform CI/CD Pipeline completed successfully!"
+          echo "All tests passed and security scans completed without issues."
+
+      - name: Notify on failure
+        if: ${{ needs.molecule-test.result == 'failure' || needs.integration-test.result == 'failure' || needs.security-scan.result == 'failure' }}
+        run: |
+          echo "❌ MSP Platform CI/CD Pipeline failed!"
+          echo "Check the failed jobs for detailed error information."
+          exit 1

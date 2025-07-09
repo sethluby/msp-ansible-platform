@@ -1,0 +1,101 @@
+---
+# Network security configuration
+firewall_backend: "firewalld"  # firewalld, iptables, ufw
+enable_firewall: true
+configure_fail2ban: true
+setup_intrusion_detection: true
+
+# Firewall configuration
+default_zone: "public"
+firewall_logging: true
+log_denied_packets: true
+
+# Allowed services
+allowed_services:
+  - ssh
+  - http
+  - https
+
+# Allowed ports
+allowed_tcp_ports:
+  - 22    # SSH
+  - 80    # HTTP
+  - 443   # HTTPS
+
+allowed_udp_ports:
+  - 53    # DNS
+
+# Custom firewall rules
+custom_firewall_rules: []
+
+# SSH security
+ssh_port: 22
+ssh_protocol: 2
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"
+ssh_max_auth_tries: 3
+ssh_client_alive_interval: 300
+ssh_client_alive_count_max: 2
+ssh_allowed_users: []
+ssh_allowed_groups: ["ssh-users"]
+
+# Fail2ban configuration
+fail2ban_enabled: true
+fail2ban_bantime: 3600
+fail2ban_findtime: 600
+fail2ban_maxretry: 5
+fail2ban_backend: "systemd"
+
+fail2ban_jails:
+  - name: "sshd"
+    enabled: true
+    port: "ssh"
+    filter: "sshd"
+    logpath: "/var/log/auth.log"
+    maxretry: 3
+  - name: "apache-auth"
+    enabled: false
+    port: "http,https"
+    filter: "apache-auth"
+    logpath: "/var/log/apache*/*error.log"
+    maxretry: 6
+
+# Network monitoring
+enable_network_monitoring: true
+monitor_connections: true
+log_network_events: true
+detect_port_scans: true
+
+# VPN security
+vpn_security_enabled: true
+vpn_cipher: "AES-256-GCM"
+vpn_auth: "SHA512"
+vpn_dh_key_size: 4096
+
+# Network hardening
+disable_ipv6: false
+enable_syn_cookies: true
+disable_icmp_redirects: true
+disable_source_routing: true
+enable_rp_filter: true
+ignore_icmp_ping: false
+
+# DNS security
+secure_dns: true
+dns_servers:
+  - "8.8.8.8"
+  - "8.8.4.4"
+  - "1.1.1.1"
+  - "1.0.0.1"
+
+# TLS/SSL configuration
+ssl_protocols: ["TLSv1.2", "TLSv1.3"]
+ssl_ciphers: "ECDHE+AESGCM:ECDHE+AES256:ECDHE+AES128:!aNULL:!MD5:!DSS"
+ssl_prefer_server_ciphers: true
+ssl_session_cache: "shared:SSL:10m"
+ssl_session_timeout: "10m"
+
+# Intrusion detection
+ids_system: "aide"  # aide, tripwire, ossec
+aide_database_path: "/var/lib/aide/aide.db"
+aide_check_schedule: "daily"

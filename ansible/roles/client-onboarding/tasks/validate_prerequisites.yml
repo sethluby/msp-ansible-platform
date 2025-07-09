@@ -1,0 +1,88 @@
+---
+- name: Validate required variables are defined
+  ansible.builtin.assert:
+    that:
+      - client_name is defined and client_name != ""
+      - client_domain is defined and client_domain != ""
+      - client_admin_email is defined and client_admin_email != ""
+      - client_tier in ['foundation', 'professional', 'enterprise']
+    fail_msg: "Required client variables not properly defined"
+    success_msg: "Client variables validation passed"
+  tags: [validation]
+
+- name: Check client name format
+  ansible.builtin.assert:
+    that:
+      - client_name is match('^[a-z0-9][a-z0-9-]*[a-z0-9]$')
+      - client_name | length >= 3
+      - client_name | length <= 63
+    fail_msg: "Client name must be 3-63 characters, lowercase alphanumeric with hyphens"
+    success_msg: "Client name format validation passed"
+  tags: [validation]
+
+- name: Validate email format
+  ansible.builtin.assert:
+    that:
+      - client_admin_email is match('^[^@]+@[^@]+\.[^@]+$')
+    fail_msg: "Client admin email format is invalid"
+    success_msg: "Email format validation passed"
+  tags: [validation]
+
+- name: Check if client already exists
+  ansible.builtin.stat:
+    path: "{{ client_config_dir }}"
+  register: client_dir_check
+  tags: [validation]
+
+- name: Fail if client already exists
+  ansible.builtin.fail:
+    msg: "Client {{ client_name }} already exists at {{ client_config_dir }}"
+  when: client_dir_check.stat.exists
+  tags: [validation]
+
+- name: Verify MSP infrastructure connectivity
+  ansible.builtin.uri:
+    url: "{{ msp_ansible_tower_url }}/api/v2/ping/"
+    method: GET
+    status_code: 200
+    timeout: 10
+  register: tower_connectivity
+  ignore_errors: true
+  tags: [validation, connectivity]
+
+- name: Log connectivity status
+  ansible.builtin.debug:
+    msg: "MSP infrastructure connectivity: {{ 'OK' if tower_connectivity.status == 200 else 'Failed' }}"
+  tags: [validation]
+
+- name: Check available disk space
+  ansible.builtin.shell: df {{ client_base_dir | dirname }} --output=avail | tail -1
+  register: available_space
+  changed_when: false
+  tags: [validation, resources]
+
+- name: Ensure sufficient disk space
+  ansible.builtin.assert:
+    that:
+      - available_space.stdout | int > 1048576  # 1GB in KB
+    fail_msg: "Insufficient disk space. Need at least 1GB available"
+    success_msg: "Disk space validation passed"
+  tags: [validation]
+
+- name: Check network port availability
+  ansible.builtin.wait_for:
+    port: "{{ vpn_port }}"
+    host: "{{ ansible_default_ipv4.address }}"
+    timeout: 1
+    state: stopped
+  when: vpn_enabled | bool
+  tags: [validation, network]
+
+- name: Validate compliance framework requirements
+  ansible.builtin.assert:
+    that:
+      - compliance_frameworks is defined
+      - compliance_frameworks | length > 0
+    fail_msg: "At least one compliance framework must be enabled"
+    success_msg: "Compliance framework validation passed"
+  tags: [validation, compliance]
