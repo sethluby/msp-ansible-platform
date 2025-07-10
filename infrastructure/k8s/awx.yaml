@@ -1,0 +1,392 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: awx-secrets
+  namespace: msp-platform
+type: Opaque
+data:
+  awx-secret-key: # Base64 encoded secret key
+  awx-admin-password: # Base64 encoded admin password
+  redis-password: # Base64 encoded Redis password
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: awx-config
+  namespace: msp-platform
+data:
+  settings.py: |
+    # AWX Django settings for MSP platform
+    import os
+    
+    # Database configuration
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'awx',
+            'USER': 'awx',
+            'PASSWORD': os.environ.get('DATABASE_PASSWORD'),
+            'HOST': os.environ.get('DATABASE_HOST', 'postgres-primary'),
+            'PORT': '5432',
+            'OPTIONS': {
+                'sslmode': 'require',
+                'connect_timeout': 10,
+            },
+        }
+    }
+    
+    # Redis configuration
+    REDIS_CONNECTION_POOL_KWARGS = {
+        'password': os.environ.get('REDIS_PASSWORD'),
+        'connection_pool_kwargs': {
+            'retry_on_timeout': True,
+            'socket_keepalive': True,
+            'socket_keepalive_options': {
+                'TCP_KEEPINTVL': 1,
+                'TCP_KEEPCNT': 3,
+                'TCP_KEEPIDLE': 1,
+            },
+        },
+    }
+    
+    # Security settings
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    ALLOWED_HOSTS = ['*']
+    USE_TZ = True
+    
+    # MSP-specific settings
+    MSP_MODE = True
+    MSP_CLIENT_ISOLATION = True
+    MSP_VAULT_INTEGRATION = True
+    MSP_COMPLIANCE_LOGGING = True
+    
+    # Logging configuration
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'verbose': {
+                'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+                'style': '{',
+            },
+        },
+        'handlers': {
+            'file': {
+                'level': 'INFO',
+                'class': 'logging.FileHandler',
+                'filename': '/var/log/awx/awx.log',
+                'formatter': 'verbose',
+            },
+            'console': {
+                'level': 'INFO',
+                'class': 'logging.StreamHandler',
+                'formatter': 'verbose',
+            },
+        },
+        'loggers': {
+            'awx': {
+                'handlers': ['file', 'console'],
+                'level': 'INFO',
+                'propagate': True,
+            },
+            'django': {
+                'handlers': ['file', 'console'],
+                'level': 'INFO',
+                'propagate': True,
+            },
+        },
+    }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: awx-projects-pvc
+  namespace: msp-platform
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Gi
+  storageClassName: nfs-client
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: awx-inventory-pvc
+  namespace: msp-platform
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: nfs-client
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: awx-web
+  namespace: msp-platform
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: awx-web
+  template:
+    metadata:
+      labels:
+        app: awx-web
+    spec:
+      serviceAccountName: awx
+      containers:
+      - name: awx-web
+        image: quay.io/ansible/awx:latest
+        env:
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: awx-secrets
+              key: awx-secret-key
+        - name: DATABASE_HOST
+          value: "postgres-primary"
+        - name: DATABASE_NAME
+          value: "awx"
+        - name: DATABASE_USER
+          value: "awx"
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: postgres-password
+        - name: REDIS_HOST
+          value: "redis-cluster"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: awx-secrets
+              key: redis-password
+        - name: AWX_ADMIN_USER
+          value: "admin"
+        - name: AWX_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: awx-secrets
+              key: awx-admin-password
+        - name: AWX_LOGGING_MODE
+          value: "stdout"
+        - name: DJANGO_SETTINGS_MODULE
+          value: "awx.settings.production"
+        ports:
+        - containerPort: 8052
+          name: awx-web
+        volumeMounts:
+        - name: awx-projects
+          mountPath: /var/lib/awx/projects
+        - name: awx-inventory
+          mountPath: /var/lib/awx/inventory
+        - name: awx-config
+          mountPath: /etc/tower/settings.py
+          subPath: settings.py
+          readOnly: true
+        - name: awx-logs
+          mountPath: /var/log/awx
+        livenessProbe:
+          httpGet:
+            path: /api/v2/ping/
+            port: 8052
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/v2/ping/
+            port: 8052
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
+      volumes:
+      - name: awx-projects
+        persistentVolumeClaim:
+          claimName: awx-projects-pvc
+      - name: awx-inventory
+        persistentVolumeClaim:
+          claimName: awx-inventory-pvc
+      - name: awx-config
+        configMap:
+          name: awx-config
+      - name: awx-logs
+        emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: awx-task
+  namespace: msp-platform
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: awx-task
+  template:
+    metadata:
+      labels:
+        app: awx-task
+    spec:
+      serviceAccountName: awx
+      containers:
+      - name: awx-task
+        image: quay.io/ansible/awx:latest
+        command: ["/usr/bin/launch_awx_task.sh"]
+        env:
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: awx-secrets
+              key: awx-secret-key
+        - name: DATABASE_HOST
+          value: "postgres-primary"
+        - name: DATABASE_NAME
+          value: "awx"
+        - name: DATABASE_USER
+          value: "awx"
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secrets
+              key: postgres-password
+        - name: REDIS_HOST
+          value: "redis-cluster"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: awx-secrets
+              key: redis-password
+        - name: AWX_LOGGING_MODE
+          value: "stdout"
+        - name: DJANGO_SETTINGS_MODULE
+          value: "awx.settings.production"
+        - name: SUPERVISOR_WEB_CONFIG_PATH
+          value: "/etc/supervisord.conf"
+        volumeMounts:
+        - name: awx-projects
+          mountPath: /var/lib/awx/projects
+        - name: awx-inventory
+          mountPath: /var/lib/awx/inventory
+        - name: awx-config
+          mountPath: /etc/tower/settings.py
+          subPath: settings.py
+          readOnly: true
+        - name: awx-logs
+          mountPath: /var/log/awx
+        - name: docker-socket
+          mountPath: /var/run/docker.sock
+          readOnly: true
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "supervisorctl status | grep -E 'awx-dispatcher|awx-receiver|awx-callback' | grep -v RUNNING && exit 1 || exit 0"
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "supervisorctl status | grep -E 'awx-dispatcher|awx-receiver|awx-callback' | grep -v RUNNING && exit 1 || exit 0"
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false
+          runAsNonRoot: true
+          runAsUser: 1000
+      volumes:
+      - name: awx-projects
+        persistentVolumeClaim:
+          claimName: awx-projects-pvc
+      - name: awx-inventory
+        persistentVolumeClaim:
+          claimName: awx-inventory-pvc
+      - name: awx-config
+        configMap:
+          name: awx-config
+      - name: awx-logs
+        emptyDir: {}
+      - name: docker-socket
+        hostPath:
+          path: /var/run/docker.sock
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: awx-web
+  namespace: msp-platform
+spec:
+  selector:
+    app: awx-web
+  ports:
+    - port: 8052
+      targetPort: 8052
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: awx
+  namespace: msp-platform
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: awx
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["secrets", "configmaps"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: awx
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: awx
+subjects:
+- kind: ServiceAccount
+  name: awx
+  namespace: msp-platform

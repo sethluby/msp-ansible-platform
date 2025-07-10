@@ -1,0 +1,407 @@
+version: '3.8'
+
+# Client-Side MSP Infrastructure
+# Lightweight, secure, and designed for independent operation
+
+services:
+  # Lightweight AWX for client-side operations
+  awx-client:
+    image: quay.io/ansible/awx:latest
+    container_name: client-awx
+    environment:
+      - SECRET_KEY=${AWX_SECRET_KEY}
+      - DATABASE_HOST=postgres-client
+      - DATABASE_NAME=awx
+      - DATABASE_USER=awx
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis-client
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - AWX_ADMIN_USER=${AWX_ADMIN_USER:-admin}
+      - AWX_ADMIN_PASSWORD=${AWX_ADMIN_PASSWORD}
+      - AWX_CLIENT_MODE=true
+      - MSP_HUB_URL=${MSP_HUB_URL:-https://msp.example.com}
+      - CLIENT_ID=${CLIENT_ID}
+      - CLIENT_SECRET=${CLIENT_SECRET}
+    volumes:
+      - awx_client_projects:/var/lib/awx/projects:rw
+      - awx_client_inventory:/var/lib/awx/inventory:rw
+      - ./configs/awx/client-settings.py:/etc/tower/settings.py:ro
+      - ./client-playbooks:/var/lib/awx/projects/client:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "8080:8052"
+    networks:
+      - client-internal
+      - client-external
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - postgres-client
+      - redis-client
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8052/api/v2/ping/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PostgreSQL for client AWX
+  postgres-client:
+    image: postgres:13-alpine
+    container_name: client-postgres
+    environment:
+      - POSTGRES_DB=awx
+      - POSTGRES_USER=awx
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_HOST_AUTH_METHOD=md5
+    volumes:
+      - postgres_client_data:/var/lib/postgresql/data
+      - ./configs/postgres/client-postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    networks:
+      - client-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U awx -d awx"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for client AWX
+  redis-client:
+    image: redis:7-alpine
+    container_name: client-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - redis_client_data:/data
+      - ./configs/redis/client-redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - client-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Local Vault for client secrets
+  vault-client:
+    image: hashicorp/vault:latest
+    container_name: client-vault
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_ROOT_TOKEN}
+      - VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200
+      - VAULT_LOCAL_CONFIG=${VAULT_CLIENT_CONFIG}
+    volumes:
+      - vault_client_data:/vault/data:rw
+      - vault_client_logs:/vault/logs:rw
+      - ./configs/vault/client-vault.hcl:/vault/config/vault.hcl:ro
+    ports:
+      - "8200:8200"
+    networks:
+      - client-internal
+    cap_add:
+      - IPC_LOCK
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    command: vault server -config=/vault/config/vault.hcl
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # WireGuard VPN Client
+  wireguard-client:
+    image: linuxserver/wireguard:latest
+    container_name: client-wireguard
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-UTC}
+      - SERVERURL=${MSP_WIREGUARD_SERVER}
+      - SERVERPORT=51820
+      - CLIENTKEY=${WIREGUARD_CLIENT_KEY}
+      - CLIENTPSK=${WIREGUARD_CLIENT_PSK}
+    volumes:
+      - wireguard_client_config:/config
+      - ./configs/wireguard/client.conf:/config/wg0.conf:ro
+    networks:
+      - client-external
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    privileged: true
+
+  # Local monitoring (Prometheus + Node Exporter)
+  prometheus-client:
+    image: prom/prometheus:latest
+    container_name: client-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./configs/prometheus/client-prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_client_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - client-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  # Node Exporter for system metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: client-node-exporter
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+      - '--collector.filesystem.ignored-mount-points'
+      - '^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "9100:9100"
+    networks:
+      - client-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  # Compliance Scanner (Client-side)
+  compliance-scanner:
+    build:
+      context: ./compliance
+      dockerfile: Dockerfile.client
+    container_name: client-compliance-scanner
+    environment:
+      - VAULT_ADDR=http://vault-client:8200
+      - VAULT_TOKEN=${VAULT_ROOT_TOKEN}
+      - CLIENT_ID=${CLIENT_ID}
+      - COMPLIANCE_LEVEL=${COMPLIANCE_LEVEL:-level2}
+      - SCAN_SCHEDULE=${SCAN_SCHEDULE:-"0 1 * * *"}
+      - MSP_UPLOAD_ENABLED=${MSP_UPLOAD_ENABLED:-false}
+      - MSP_UPLOAD_URL=${MSP_UPLOAD_URL}
+    volumes:
+      - ./compliance:/app/compliance:ro
+      - compliance_client_reports:/app/reports:rw
+      - /var/log:/host/logs:ro
+      - /etc:/host/etc:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    networks:
+      - client-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # Log Collector (Forward to MSP or store locally)
+  log-collector:
+    image: fluent/fluent-bit:latest
+    container_name: client-log-collector
+    volumes:
+      - ./configs/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./configs/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - /var/log:/var/log:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - log_collector_data:/var/log/fluent-bit
+    networks:
+      - client-internal
+      - client-external
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - wireguard-client
+
+  # Backup Agent (Local backups + optional MSP sync)
+  backup-agent:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile.client
+    container_name: client-backup-agent
+    environment:
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-"0 2 * * *"}
+      - BACKUP_RETENTION=${BACKUP_RETENTION:-7}
+      - LOCAL_BACKUP_PATH=/backup/local
+      - MSP_SYNC_ENABLED=${MSP_SYNC_ENABLED:-false}
+      - MSP_BACKUP_URL=${MSP_BACKUP_URL}
+      - CLIENT_ID=${CLIENT_ID}
+      - ENCRYPTION_KEY=${BACKUP_ENCRYPTION_KEY}
+    volumes:
+      - postgres_client_data:/backup/postgres:ro
+      - vault_client_data:/backup/vault:ro
+      - awx_client_projects:/backup/awx:ro
+      - ./configs:/backup/configs:ro
+      - backup_client_data:/backup/local
+      - backup_temp:/tmp
+    networks:
+      - client-internal
+      - client-external
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - postgres-client
+      - vault-client
+
+  # Health Check Service
+  health-checker:
+    build:
+      context: ./health
+      dockerfile: Dockerfile.client
+    container_name: client-health-checker
+    environment:
+      - CHECK_INTERVAL=${HEALTH_CHECK_INTERVAL:-60}
+      - MSP_REPORTING_ENABLED=${MSP_REPORTING_ENABLED:-true}
+      - MSP_HEALTH_URL=${MSP_HEALTH_URL}
+      - CLIENT_ID=${CLIENT_ID}
+      - ALERT_WEBHOOK=${CLIENT_ALERT_WEBHOOK}
+    volumes:
+      - ./configs/health/checks.yml:/app/checks.yml:ro
+      - health_data:/app/data
+    networks:
+      - client-internal
+      - client-external
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # Graceful Disconnection Service
+  disconnection-service:
+    build:
+      context: ./disconnection
+      dockerfile: Dockerfile
+    container_name: client-disconnection-service
+    environment:
+      - CLIENT_ID=${CLIENT_ID}
+      - MSP_API_URL=${MSP_API_URL}
+      - MSP_API_TOKEN=${MSP_API_TOKEN}
+      - DISCONNECT_WEBHOOK=${DISCONNECT_WEBHOOK}
+      - CLEANUP_RETENTION=${CLEANUP_RETENTION:-30}
+    volumes:
+      - ./configs/disconnection/cleanup.yml:/app/cleanup.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - disconnection_data:/app/data
+    networks:
+      - client-internal
+      - client-external
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # Nginx for client-side web interface
+  nginx-client:
+    image: nginx:alpine
+    container_name: client-nginx
+    volumes:
+      - ./configs/nginx/client-nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./configs/nginx/client-conf.d:/etc/nginx/conf.d:ro
+      - ./client-static:/usr/share/nginx/html:ro
+      - ./configs/ssl:/etc/ssl/certs:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - client-external
+      - client-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - awx-client
+
+networks:
+  client-internal:
+    driver: bridge
+    internal: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: client-internal
+      com.docker.network.driver.mtu: 1500
+
+  client-external:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.31.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: client-external
+      com.docker.network.driver.mtu: 1500
+
+volumes:
+  # Database volumes
+  postgres_client_data:
+    driver: local
+  redis_client_data:
+    driver: local
+  
+  # AWX volumes
+  awx_client_projects:
+    driver: local
+  awx_client_inventory:
+    driver: local
+  
+  # Vault volumes
+  vault_client_data:
+    driver: local
+  vault_client_logs:
+    driver: local
+  
+  # WireGuard
+  wireguard_client_config:
+    driver: local
+  
+  # Monitoring
+  prometheus_client_data:
+    driver: local
+  
+  # Application volumes
+  compliance_client_reports:
+    driver: local
+  log_collector_data:
+    driver: local
+  backup_client_data:
+    driver: local
+  backup_temp:
+    driver: local
+  health_data:
+    driver: local
+  disconnection_data:
+    driver: local

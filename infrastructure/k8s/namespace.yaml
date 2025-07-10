@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: msp-platform
+  labels:
+    name: msp-platform
+    tier: production
+    compliance: cmmc-level2
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: msp-clients
+  labels:
+    name: msp-clients
+    tier: production
+    compliance: cmmc-level2
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: msp-monitoring
+  labels:
+    name: msp-monitoring
+    tier: production
+    compliance: cmmc-level2

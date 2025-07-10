@@ -1,0 +1,632 @@
+version: '3.8'
+
+# Production MSP Infrastructure Stack
+# High-availability, multi-region deployment with monitoring
+
+services:
+  # Load Balancer (HAProxy)
+  load-balancer:
+    image: haproxy:2.8-alpine
+    container_name: msp-haproxy
+    volumes:
+      - ./configs/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./configs/ssl:/etc/ssl/certs:ro
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8404:8404"  # HAProxy stats
+    networks:
+      - msp-external
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - awx-web
+      - vault
+      - grafana
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8404/stats"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # PostgreSQL Primary (HA Setup)
+  postgres-primary:
+    image: postgres:15-alpine
+    container_name: msp-postgres-primary
+    environment:
+      - POSTGRES_DB=awx
+      - POSTGRES_USER=awx
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_REPLICATION_USER=replica
+      - POSTGRES_REPLICATION_PASSWORD=${POSTGRES_REPLICATION_PASSWORD}
+      - POSTGRES_INITDB_ARGS="--auth-host=md5"
+    volumes:
+      - postgres_primary_data:/var/lib/postgresql/data
+      - ./configs/postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./configs/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./configs/postgres/init-replica.sql:/docker-entrypoint-initdb.d/init-replica.sql:ro
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U awx -d awx"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # PostgreSQL Replica (Read-only)
+  postgres-replica:
+    image: postgres:15-alpine
+    container_name: msp-postgres-replica
+    environment:
+      - POSTGRES_USER=awx
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_MASTER_SERVICE=postgres-primary
+      - POSTGRES_REPLICATION_USER=replica
+      - POSTGRES_REPLICATION_PASSWORD=${POSTGRES_REPLICATION_PASSWORD}
+    volumes:
+      - postgres_replica_data:/var/lib/postgresql/data
+      - ./configs/postgres/recovery.conf:/var/lib/postgresql/recovery.conf:ro
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - postgres-primary
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U awx"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cluster (3 nodes)
+  redis-node-1:
+    image: redis:7-alpine
+    container_name: msp-redis-1
+    command: redis-server /usr/local/etc/redis/redis.conf --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
+    volumes:
+      - redis_1_data:/data
+      - ./configs/redis/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  redis-node-2:
+    image: redis:7-alpine
+    container_name: msp-redis-2
+    command: redis-server /usr/local/etc/redis/redis.conf --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
+    volumes:
+      - redis_2_data:/data
+      - ./configs/redis/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  redis-node-3:
+    image: redis:7-alpine
+    container_name: msp-redis-3
+    command: redis-server /usr/local/etc/redis/redis.conf --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000 --appendonly yes
+    volumes:
+      - redis_3_data:/data
+      - ./configs/redis/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  # AWX Web (Multiple instances behind load balancer)
+  awx-web-1:
+    image: quay.io/ansible/awx:latest
+    container_name: msp-awx-web-1
+    depends_on:
+      - postgres-primary
+      - redis-node-1
+    environment:
+      - SECRET_KEY=${AWX_SECRET_KEY}
+      - DATABASE_HOST=postgres-primary
+      - DATABASE_NAME=awx
+      - DATABASE_USER=awx
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis-node-1
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - AWX_ADMIN_USER=${AWX_ADMIN_USER:-admin}
+      - AWX_ADMIN_PASSWORD=${AWX_ADMIN_PASSWORD}
+    volumes:
+      - awx_projects:/var/lib/awx/projects:rw
+      - awx_inventory:/var/lib/awx/inventory:rw
+      - ./configs/awx/settings.py:/etc/tower/settings.py:ro
+      - ./ansible:/var/lib/awx/projects/ansible:ro
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8052/api/v2/ping/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  awx-web-2:
+    image: quay.io/ansible/awx:latest
+    container_name: msp-awx-web-2
+    depends_on:
+      - postgres-primary
+      - redis-node-2
+    environment:
+      - SECRET_KEY=${AWX_SECRET_KEY}
+      - DATABASE_HOST=postgres-primary
+      - DATABASE_NAME=awx
+      - DATABASE_USER=awx
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis-node-2
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - AWX_ADMIN_USER=${AWX_ADMIN_USER:-admin}
+      - AWX_ADMIN_PASSWORD=${AWX_ADMIN_PASSWORD}
+    volumes:
+      - awx_projects:/var/lib/awx/projects:rw
+      - awx_inventory:/var/lib/awx/inventory:rw
+      - ./configs/awx/settings.py:/etc/tower/settings.py:ro
+      - ./ansible:/var/lib/awx/projects/ansible:ro
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8052/api/v2/ping/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # AWX Task Workers (Scaled for workload)
+  awx-task-1:
+    image: quay.io/ansible/awx:latest
+    container_name: msp-awx-task-1
+    depends_on:
+      - postgres-primary
+      - redis-node-1
+    environment:
+      - SECRET_KEY=${AWX_SECRET_KEY}
+      - DATABASE_HOST=postgres-primary
+      - DATABASE_NAME=awx
+      - DATABASE_USER=awx
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis-node-1
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    volumes:
+      - awx_projects:/var/lib/awx/projects:rw
+      - awx_inventory:/var/lib/awx/inventory:rw
+      - ./configs/awx/settings.py:/etc/tower/settings.py:ro
+      - ./ansible:/var/lib/awx/projects/ansible:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    command: /usr/bin/launch_awx_task.sh
+
+  awx-task-2:
+    image: quay.io/ansible/awx:latest
+    container_name: msp-awx-task-2
+    depends_on:
+      - postgres-primary
+      - redis-node-2
+    environment:
+      - SECRET_KEY=${AWX_SECRET_KEY}
+      - DATABASE_HOST=postgres-primary
+      - DATABASE_NAME=awx
+      - DATABASE_USER=awx
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=redis-node-2
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    volumes:
+      - awx_projects:/var/lib/awx/projects:rw
+      - awx_inventory:/var/lib/awx/inventory:rw
+      - ./configs/awx/settings.py:/etc/tower/settings.py:ro
+      - ./ansible:/var/lib/awx/projects/ansible:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    command: /usr/bin/launch_awx_task.sh
+
+  # Vault Cluster (3 nodes)
+  vault-1:
+    image: hashicorp/vault:latest
+    container_name: msp-vault-1
+    environment:
+      - VAULT_ADDR=https://0.0.0.0:8200
+      - VAULT_LOCAL_CONFIG=${VAULT_CONFIG}
+    volumes:
+      - vault_1_data:/vault/data:rw
+      - vault_1_logs:/vault/logs:rw
+      - ./configs/vault/vault-cluster.hcl:/vault/config/vault.hcl:ro
+    ports:
+      - "8200:8200"
+    networks:
+      - msp-internal
+      - msp-external
+    cap_add:
+      - IPC_LOCK
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    command: vault server -config=/vault/config/vault.hcl
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  vault-2:
+    image: hashicorp/vault:latest
+    container_name: msp-vault-2
+    environment:
+      - VAULT_ADDR=https://0.0.0.0:8200
+      - VAULT_LOCAL_CONFIG=${VAULT_CONFIG}
+    volumes:
+      - vault_2_data:/vault/data:rw
+      - vault_2_logs:/vault/logs:rw
+      - ./configs/vault/vault-cluster.hcl:/vault/config/vault.hcl:ro
+    ports:
+      - "8201:8200"
+    networks:
+      - msp-internal
+      - msp-external
+    cap_add:
+      - IPC_LOCK
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    command: vault server -config=/vault/config/vault.hcl
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  vault-3:
+    image: hashicorp/vault:latest
+    container_name: msp-vault-3
+    environment:
+      - VAULT_ADDR=https://0.0.0.0:8200
+      - VAULT_LOCAL_CONFIG=${VAULT_CONFIG}
+    volumes:
+      - vault_3_data:/vault/data:rw
+      - vault_3_logs:/vault/logs:rw
+      - ./configs/vault/vault-cluster.hcl:/vault/config/vault.hcl:ro
+    ports:
+      - "8202:8200"
+    networks:
+      - msp-internal
+      - msp-external
+    cap_add:
+      - IPC_LOCK
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    command: vault server -config=/vault/config/vault.hcl
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # WireGuard VPN Server
+  wireguard:
+    image: linuxserver/wireguard:latest
+    container_name: msp-wireguard
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ:-UTC}
+      - SERVERURL=${WIREGUARD_SERVERURL}
+      - SERVERPORT=51820
+      - PEERS=${WIREGUARD_PEERS:-10}
+      - PEERDNS=auto
+      - INTERNAL_SUBNET=10.13.13.0
+    volumes:
+      - wireguard_config:/config
+      - /lib/modules:/lib/modules:ro
+    ports:
+      - "51820:51820/udp"
+    networks:
+      - msp-external
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.conf.all.src_valid_mark=1
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  # Monitoring Stack
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: msp-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=15d'
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./configs/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: msp-grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-worldmap-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./configs/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./configs/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./configs/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - msp-internal
+      - msp-external
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - prometheus
+
+  # Alertmanager
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: msp-alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
+    volumes:
+      - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "9093:9093"
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  # Elasticsearch (Centralized Logging)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: msp-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  # Kibana (Log Visualization)
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: msp-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    volumes:
+      - kibana_data:/usr/share/kibana/data
+    ports:
+      - "5601:5601"
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - elasticsearch
+
+  # Logstash (Log Processing)
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: msp-logstash
+    volumes:
+      - ./configs/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ./configs/logstash/patterns:/usr/share/logstash/patterns:ro
+    environment:
+      - LS_JAVA_OPTS=-Xmx1g -Xms1g
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - elasticsearch
+
+  # Nginx (Static Content & Reverse Proxy)
+  nginx:
+    image: nginx:alpine
+    container_name: msp-nginx
+    volumes:
+      - ./configs/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./configs/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./static:/usr/share/nginx/html:ro
+      - ./configs/ssl:/etc/ssl/certs:ro
+    ports:
+      - "8080:80"
+      - "8443:443"
+    networks:
+      - msp-external
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  # Compliance Validator (Custom Service)
+  compliance-validator:
+    build:
+      context: ./compliance
+      dockerfile: Dockerfile
+    container_name: msp-compliance-validator
+    depends_on:
+      - vault-1
+      - postgres-primary
+    environment:
+      - VAULT_ADDR=http://vault-1:8200
+      - VAULT_TOKEN=${VAULT_ROOT_TOKEN}
+      - DATABASE_URL=postgresql://awx:${POSTGRES_PASSWORD}@postgres-primary:5432/awx
+      - COMPLIANCE_LEVEL=${COMPLIANCE_LEVEL:-level2}
+      - NOTIFICATION_WEBHOOK=${COMPLIANCE_WEBHOOK_URL}
+    volumes:
+      - ./compliance:/app/compliance:ro
+      - compliance_reports:/app/reports:rw
+      - /var/log:/host/logs:ro
+      - /etc:/host/etc:ro
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+
+  # Backup Service
+  backup-service:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    container_name: msp-backup-service
+    environment:
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-"0 2 * * *"}
+      - BACKUP_RETENTION=${BACKUP_RETENTION:-30}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - BACKUP_BUCKET=${BACKUP_BUCKET}
+    volumes:
+      - postgres_primary_data:/backup/postgres:ro
+      - vault_1_data:/backup/vault:ro
+      - awx_projects:/backup/awx:ro
+      - ./configs:/backup/configs:ro
+      - backup_temp:/tmp
+    networks:
+      - msp-internal
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  msp-internal:
+    driver: bridge
+    internal: true
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: msp-internal
+      com.docker.network.driver.mtu: 1500
+
+  msp-external:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: msp-external
+      com.docker.network.driver.mtu: 1500
+
+volumes:
+  # Database volumes
+  postgres_primary_data:
+    driver: local
+  postgres_replica_data:
+    driver: local
+  
+  # Redis cluster volumes
+  redis_1_data:
+    driver: local
+  redis_2_data:
+    driver: local
+  redis_3_data:
+    driver: local
+  
+  # AWX volumes
+  awx_projects:
+    driver: local
+  awx_inventory:
+    driver: local
+  
+  # Vault cluster volumes
+  vault_1_data:
+    driver: local
+  vault_1_logs:
+    driver: local
+  vault_2_data:
+    driver: local
+  vault_2_logs:
+    driver: local
+  vault_3_data:
+    driver: local
+  vault_3_logs:
+    driver: local
+  
+  # WireGuard
+  wireguard_config:
+    driver: local
+  
+  # Monitoring volumes
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+  
+  # Logging volumes
+  elasticsearch_data:
+    driver: local
+  kibana_data:
+    driver: local
+  
+  # Application volumes
+  compliance_reports:
+    driver: local
+  backup_temp:
+    driver: local
