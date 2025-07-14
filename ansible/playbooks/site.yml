@@ -2,6 +2,9 @@
 # MSP Platform Master Orchestration Playbook
 # Central coordination for all MSP infrastructure management operations
 # Supports multi-client environments with tier-based service delivery
+#
+# Copyright (c) 2025 Seth Luby
+# Licensed under the MIT License - see LICENSE file for details
 
 - name: "MSP Platform: Master Orchestration"
   hosts: localhost

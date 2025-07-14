@@ -2,6 +2,9 @@
 # MSP Platform Client Onboarding Automation
 # Creates complete client infrastructure for managed services
 # Supports Foundation, Professional, and Enterprise tiers
+#
+# Copyright (c) 2025 Seth Luby
+# Licensed under the MIT License - see LICENSE file for details
 
 - name: "MSP Platform: Client Onboarding Automation"
   hosts: localhost

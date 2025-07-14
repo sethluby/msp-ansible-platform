@@ -2,6 +2,16 @@
 
 A comprehensive Ansible-based infrastructure management solution for Managed Service Providers. Provides centralized automation with secure client connectivity and flexible compliance framework support.
 
+## ⚠️ Important Notice: Testing and Validation Platform
+
+**This is a comprehensive testing and validation platform, not a production-ready solution.** This project provides:
+- Complete testing frameworks for MSP automation concepts
+- Comprehensive validation tools for compliance and security automation
+- Pilot testing infrastructure for controlled MSP partner evaluation
+- Research framework for business model validation
+
+**For Production Use**: Extensive testing, security auditing, and compliance validation would be required before any production deployment. This platform is designed for research, testing, and pilot program evaluation.
+
 ## Quick Start
 
 ### Repository Setup
@@ -34,18 +44,21 @@ services:
   postgres:        # AWX database
 ```
 
-## Business Model
+## Business Model Research Framework
 
-### Service Tiers
-- **Foundation**: $35-50/server/month (Basic monitoring, security hardening)
-- **Professional**: $65-89/server/month (Advanced compliance, custom automation)  
-- **Enterprise**: $95-125/server/month (Premium compliance frameworks including CMMC, dedicated support)
+### Example Service Tiers (Research Purposes Only)
+**Important Disclaimer**: *The following pricing examples are for research and testing framework purposes only. Each MSP would establish their own pricing based on their specific market, operational costs, and value proposition.*
 
-### Value Proposition
-- **50-70% cost reduction** vs in-house compliance teams
-- **99.9% compliance** success rate target
-- **No vendor lock-in** - clients retain full automation capabilities
-- **24/7 monitoring** with automated remediation
+- **Foundation (example: $35-50/server/month)**: Basic monitoring, security hardening, patch management
+- **Professional (example: $65-89/server/month)**: Advanced compliance, custom automation, 24/7 monitoring
+- **Enterprise (example: $95-125/server/month)**: Premium compliance frameworks including CMMC, dedicated support
+
+### Value Proposition Research
+**Note**: *The following are theoretical calculations for research and validation purposes only.*
+- **Theoretical cost reduction**: 50-70% vs in-house compliance teams (subject to validation)
+- **Target compliance success**: 99.9% success rate through automated validation
+- **No vendor lock-in**: Clients retain full automation capabilities through graceful disconnection
+- **Monitoring capabilities**: 24/7 automated response workflow testing
 
 ## Project Structure
 
@@ -214,8 +227,13 @@ The project leverages proven patterns from established community roles:
 
 See project wiki for complete integration details and implementation guides.
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 ## Contact & Support
 
 - **Repository**: [GitHub Issues and Discussions](https://github.com/sethluby/msp-ansible-platform)
 - **Documentation**: Comprehensive guides in docs/ directory
 - **Contributing**: See CONTRIBUTING.md for development guidelines
+- **License**: MIT License for maximum flexibility and community collaboration

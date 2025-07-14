@@ -1,5 +1,8 @@
 # MSP Platform Development Makefile
 # Provides common development, testing, and deployment tasks
+#
+# Copyright (c) 2025 Seth Luby
+# Licensed under the MIT License - see LICENSE file for details
 
 .PHONY: help install lint test test-roles test-integration clean setup docs deploy
 
