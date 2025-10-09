@@ -62,6 +62,7 @@
             name: auditd
           register: auditd_status
           when: not ansible_check_mode
+          changed_when: false
 
         - name: "CMMC Validation | Verify audit rules are loaded"
           command: auditctl -l

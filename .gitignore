@@ -44,4 +44,10 @@ venv/
 .vault_pass
 
 # Docker
-docker-compose.override.ymlwiki-repo/
+docker-compose.override.yml
+
+# Local wiki working copy
+wiki-repo/
+
+# Agent contributor guide (generated)
+AGENTS.md

@@ -105,6 +105,20 @@
             - item.sudo_access | default(false)
           register: sudo_config_results
 
+        - name: Check current password aging for users
+          ansible.builtin.shell: |
+            chage -l {{ item.username }} 2>/dev/null | awk -F': ' '
+              /Minimum number of days between password change/ {print "MIN=" $2}
+              /Maximum number of days between password change/ {print "MAX=" $2}
+              /Number of days of warning before password expires/ {print "WARN=" $2}
+            '
+          loop: "{{ target_users }}"
+          register: aging_check
+          changed_when: false
+          when:
+            - user_operation == "create"
+            - client_password_policy.enforce_aging | default(true)
+
         - name: Set password aging policy for new users
           ansible.builtin.shell: |
             chage -M {{ client_password_policy.max_age | default(90) }} \
@@ -112,10 +126,19 @@
                   -W {{ client_password_policy.warn_age | default(7) }} \
                   {{ item.username }}
           loop: "{{ target_users }}"
+          loop_control:
+            index_var: idx
           when: 
             - user_operation == "create"
             - client_password_policy.enforce_aging | default(true)
             - not ansible_check_mode
+            - aging_check is defined
+            - >-
+              not (
+                (aging_check.results[idx].stdout is search('MAX=' ~ (client_password_policy.max_age | default(90) | string))) and
+                (aging_check.results[idx].stdout is search('MIN=' ~ (client_password_policy.min_age | default(1) | string))) and
+                (aging_check.results[idx].stdout is search('WARN=' ~ (client_password_policy.warn_age | default(7) | string)))
+              )
           register: password_aging_results
       when: user_operation == "create"
       tags: [create, users]

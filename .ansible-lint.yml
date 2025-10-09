@@ -14,7 +14,6 @@ exclude_paths:
 skip_list:
   - galaxy[no-changelog]
   - galaxy[version-incorrect]
-  - risky-file-permissions
   - no-changed-when
   - command-instead-of-module
   - package-latest

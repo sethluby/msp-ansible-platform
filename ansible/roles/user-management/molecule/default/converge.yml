@@ -1,0 +1,20 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    # Disable all behavior that relies on missing include files
+    manage_users: false
+    manage_groups: false
+    enforce_password_policy: false
+    setup_sudo_access: false
+    manage_ssh_keys: false
+    configure_pam: false
+    audit_user_access: false
+    disable_unused_accounts: false
+    admin_users: []
+    service_accounts: []
+    client_users: []
+  roles:
+    - role: user-management
