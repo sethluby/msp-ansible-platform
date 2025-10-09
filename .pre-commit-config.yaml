@@ -1,0 +1,37 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+        files: \.(yml|yaml)$
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        files: \.(yml|yaml)$
+
+  - repo: https://github.com/ansible/ansible-lint
+    rev: v24.6.0
+    hooks:
+      - id: ansible-lint
+        additional_dependencies: []
+        files: ^ansible/|^molecule/|^\.ansible/|^roles/
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args: ['--baseline', '.secrets.baseline', '--exclude-files', '.*(\.enc|vault\.yml)$']
+
+exclude: |
+  ^\.git/|
+  ^\.ansible/|
+  ^docs/Reference/|
+  ^Reference/|
+  ^wiki-repo/
+

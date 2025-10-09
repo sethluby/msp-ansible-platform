@@ -49,7 +49,8 @@
     - name: Log user management operation initiation
       ansible.builtin.shell: |
         logger -n {{ msp_syslog_server }} -t "MSP-USER" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ user_session_id }} | Operation: {{ user_operation }} | Status: STARTED"
-      when: msp_syslog_server != ""
+      when: msp_syslog_server != "" and not ansible_check_mode
+      changed_when: false
       ignore_errors: true
       tags: [logging]
 
@@ -114,6 +115,7 @@
           when: 
             - user_operation == "create"
             - client_password_policy.enforce_aging | default(true)
+            - not ansible_check_mode
           register: password_aging_results
       when: user_operation == "create"
       tags: [create, users]
@@ -285,7 +287,8 @@
     - name: Log user management completion
       ansible.builtin.shell: |
         logger -n {{ msp_syslog_server }} -t "MSP-USER" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ user_session_id }} | Operation: {{ user_operation }} | Status: COMPLETED | Users: {{ target_users | length if target_users is defined else 0 }}"
-      when: msp_syslog_server != ""
+      when: msp_syslog_server != "" and not ansible_check_mode
+      changed_when: false
       ignore_errors: true
       tags: [logging]
 

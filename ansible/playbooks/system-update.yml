@@ -62,6 +62,7 @@
         - pre_update_snapshot | bool
         - ansible_lvm is defined
         - ansible_lvm.vgs | length > 0
+        - not ansible_check_mode
       tags: [snapshot, pre-update]
 
     - name: Record system state before updates
@@ -76,7 +77,8 @@
     - name: Log update initiation to MSP syslog
       ansible.builtin.shell: |
         logger -n {{ msp_syslog_server }} -t "MSP-UPDATE" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ update_session_id }} | Status: STARTED"
-      when: msp_syslog_server != ""
+      when: msp_syslog_server != "" and not ansible_check_mode
+      changed_when: false
       ignore_errors: true
       tags: [logging]
 
@@ -231,7 +233,8 @@
     - name: Log update completion to MSP syslog
       ansible.builtin.shell: |
         logger -n {{ msp_syslog_server }} -t "MSP-UPDATE" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ update_session_id }} | Status: COMPLETED | Reboot: {{ reboot_required }}"
-      when: msp_syslog_server != ""
+      when: msp_syslog_server != "" and not ansible_check_mode
+      changed_when: false
       ignore_errors: true
       tags: [logging]
 

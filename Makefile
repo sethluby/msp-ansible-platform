@@ -4,7 +4,7 @@
 # Copyright (c) 2025 Seth Luby
 # Licensed under the MIT License - see LICENSE file for details
 
-.PHONY: help install lint test test-roles test-integration clean setup docs deploy
+.PHONY: help install lint test test-roles test-integration clean setup docs deploy precommit check
 
 # Default target
 help: ## Show this help message
@@ -197,6 +197,15 @@ dev-setup: setup ## Setup development environment with all tools
 ansible-vault-create: ## Create a new Ansible vault file
 	@read -p "Enter vault file name: " vault_file; \
 	ansible-vault create "$$vault_file"
+
+# Local helpers
+precommit: ## Run pre-commit hooks on all files
+	@echo "Running pre-commit hooks..."
+	pre-commit run --all-files || true
+
+check: lint syntax-check ## Lint + syntax + pre-commit hooks
+	@echo "Running pre-commit checks..."
+	pre-commit run --all-files || true
 
 ansible-vault-edit: ## Edit an existing Ansible vault file
 	@read -p "Enter vault file name: " vault_file; \
