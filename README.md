@@ -44,21 +44,7 @@ services:
   postgres:        # AWX database
 ```
 
-## Business Model Research Framework
-
-### Example Service Tiers (Research Purposes Only)
-**Important Disclaimer**: *The following pricing examples are for research and testing framework purposes only. Each MSP would establish their own pricing based on their specific market, operational costs, and value proposition.*
-
-- **Foundation (example: $35-50/server/month)**: Basic monitoring, security hardening, patch management
-- **Professional (example: $65-89/server/month)**: Advanced compliance, custom automation, 24/7 monitoring
-- **Enterprise (example: $95-125/server/month)**: Premium compliance frameworks including CMMC, dedicated support
-
-### Value Proposition Research
-**Note**: *The following are theoretical calculations for research and validation purposes only.*
-- **Theoretical cost reduction**: 50-70% vs in-house compliance teams (subject to validation)
-- **Target compliance success**: 99.9% success rate through automated validation
-- **No vendor lock-in**: Clients retain full automation capabilities through graceful disconnection
-- **Monitoring capabilities**: 24/7 automated response workflow testing
+<!-- Archived business model content moved to docs/BUSINESS_MODEL_RESEARCH.md -->
 
 ## Project Structure
 
@@ -91,11 +77,9 @@ msp-ansible-platform/
 
 ## Current Status
 
-**Phase**: Production Complete (100%)  
-**Version**: 2.0.0  
-**Last Updated**: 2025-07-09
+Status: Testing and validation platform; pilot-ready components.
 
-### ✅ **Production Complete - 12 Enterprise Playbooks**
+### Implemented Playbooks
 - **system-update.yml** - Multi-OS patch management (RHEL, Ubuntu, SUSE) with maintenance windows
 - **disa-stig-compliance.yml** - 10+ DISA security controls with client exceptions
 - **cmmc-compliance.yml** - CMMC Level 2/3 automation across 8+ security domains
@@ -109,7 +93,7 @@ msp-ansible-platform/
 - **onboard-client.yml** - ✨ **NEW** - Automated client onboarding with VPN, SSH keys, and tier-based configuration
 - **prepare-disconnection.yml** - ✨ **NEW** - Graceful client disconnection with independence validation
 
-### ✅ **Enterprise Architecture Complete**
+### Architecture Highlights
 - **Multi-tenant isolation** - Client-specific variables, logging, and session tracking
 - **MSP operational excellence** - Centralized logging, rollback capabilities, error handling
 - **Security compliance** - DISA STIG, CMMC Level 2/3, CIS benchmarks automated
@@ -117,7 +101,7 @@ msp-ansible-platform/
 - **Comprehensive documentation** - 50+ page playbook reference, operational guides
 - **✨ Complete Ansible Role Suite** - 7 production roles: client-onboarding, graceful-disconnection, common, monitoring, backup, user-management, network-security
 
-### ✅ **Infrastructure Deployment Complete**
+### Infrastructure Deployment
 - **deploy-msp-infrastructure.yml** - Complete MSP platform deployment with monitoring stack
 - **deploy-client-infrastructure.yml** - Multi-architecture client deployment automation
 - **Bootstrap scripts** - Production-ready setup for all three deployment architectures
@@ -145,10 +129,10 @@ msp-ansible-platform/
 
 **Key Innovation**: Clients can choose ANY combination of these architectures based on their specific security, network, and operational requirements.
 
-## 🚀 **Production Ready Features**
+## Feature Highlights
 
-### ✨ **New Major Features (July 2025)**
-- **🔄 Automated Client Onboarding** - Complete end-to-end client setup in under 30 minutes
+### New Major Features
+- **Automated Client Onboarding** - End-to-end client setup
   - Interactive playbook with service tier selection (Foundation/Professional/Enterprise)
   - Automated WireGuard VPN deployment with pre-shared keys
   - SSH key generation and distribution
@@ -156,7 +140,7 @@ msp-ansible-platform/
   - Tier-based compliance framework initialization
   - Generated documentation and handover packages
 
-- **🔌 Graceful Client Disconnection** - Industry-first MSP independence feature
+- **Graceful Client Disconnection** - MSP independence workflow
   - Automated removal of MSP-specific endpoints and credentials
   - Local-only operation configuration with independence validation
   - Generated emergency procedures and local operations guide
@@ -169,23 +153,23 @@ msp-ansible-platform/
   - Health monitoring and resource management
   - Comprehensive operation reporting and audit logging
 
-### ✅ **Complete Testing & CI/CD Framework**
+### Testing & CI/CD Coverage
 - **✨ Molecule testing framework** - Comprehensive automated role testing with Docker containers
 - **✨ GitHub Actions CI/CD** - Full pipeline with lint, syntax check, security scan, and integration tests
 - **✨ Development toolkit** - Makefile with 25+ commands for development, testing, and deployment
 - **✨ Code quality tools** - ansible-lint, yamllint, security scanning, and documentation generation
 
-### **Production Readiness Checklist - 100% COMPLETE**
-- [x] ✅ Complete client onboarding automation with all service tiers
-- [x] ✅ Implement graceful disconnection with independence validation
-- [x] ✅ Create comprehensive Ansible role suite (7 roles)
-- [x] ✅ Deploy master site orchestration playbook
-- [x] ✅ Multi-tenant client isolation with tier-based configurations
-- [x] ✅ Complete compliance framework automation (CMMC, DISA STIG, CIS)
-- [x] ✅ Comprehensive documentation and operational guides
-- [x] ✅ Molecule testing framework for automated role validation
-- [x] ✅ Complete CI/CD pipeline with security scanning and quality gates
-- [x] ✅ Development toolkit with comprehensive testing and deployment automation
+### Implemented Capabilities
+- Complete client onboarding automation with service tiers
+- Graceful disconnection with independence validation
+- Comprehensive Ansible role suite (7 roles)
+- Master site orchestration playbook
+- Multi-tenant client isolation with tier-based configurations
+- Compliance framework automation (CMMC, DISA STIG, CIS)
+- Documentation and operational guides
+- Molecule testing framework for automated role validation
+- CI/CD pipeline with security scanning and quality gates
+- Development toolkit for testing and deployment
 
 ## Development Workflow
 

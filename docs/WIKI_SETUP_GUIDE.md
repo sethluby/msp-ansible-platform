@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide ensures the GitHub wiki at `https://github.com/sethluby/msp-ansible-platform.wiki.git` is properly configured with current documentation that reflects the production-ready state of the MSP Ansible Platform.
+This guide ensures the GitHub wiki at `https://github.com/sethluby/msp-ansible-platform.wiki.git` is properly configured with current documentation that reflects the current capabilities of the MSP Ansible Platform.
 
 ## Wiki Repository Setup
 
@@ -43,12 +43,10 @@ msp-ansible-platform.wiki/
 ## Documentation Congruence Verification
 
 ### Current Platform Status
-Ensure all documentation reflects the **production-ready** state:
+Ensure documentation reflects current capabilities and scope:
 
-- **Version**: 1.0.0-beta
-- **Completion**: 100% of core playbooks
-- **Status**: Production ready with enterprise multi-tenant architecture
-- **Playbooks**: 10 production-ready automation playbooks
+- **Status**: Testing and validation platform; pilot-ready components
+- **Playbooks**: Implemented playbooks are documented with examples
 - **Architecture**: Three optional client deployment models
 
 ### Key Documentation Updates Required
@@ -57,13 +55,11 @@ Ensure all documentation reflects the **production-ready** state:
 ```markdown
 # Ansible Infrastructure Management Platform
 
-**Status**: Production Ready (1.0.0-beta)  
-**Completion**: 100% Core Platform  
-**Last Updated**: 2025-06-28
+Status: Testing and validation platform; pilot-ready components.
 
 ## Platform Capabilities
 
-### ✅ **10 Production Playbooks Complete**
+### Implemented Playbooks
 - System updates (multi-OS patch management)
 - DISA STIG compliance (10+ security controls)
 - CMMC compliance (Level 2/3, 8+ domains)
@@ -75,14 +71,14 @@ Ensure all documentation reflects the **production-ready** state:
 - Service management (systemd lifecycle)
 - Asset inventory (multiple formats, reporting)
 
-### ✅ **Enterprise Multi-Tenant Architecture**
+### Multi-Tenant Architecture
 - Complete client isolation and operational separation
 - Centralized MSP logging with structured data
 - Client-specific policies and configuration management
 - Session tracking and audit trails
 - Rollback capabilities and error handling
 
-### ✅ **Three Optional Client Deployment Models**
+### Three Optional Client Deployment Models
 1. **Pull-Based**: Client-initiated automation (15-min cycles)
 2. **Bastion Host**: WireGuard VPN with real-time connectivity
 3. **Reverse Tunnel**: SSH tunnels for maximum security compliance
@@ -128,11 +124,11 @@ cp wiki/Daily-Operations.md msp-ansible-platform.wiki/Daily-Operations.md
 ### Step 2: Verify Content Consistency
 Ensure all wiki pages reflect:
 
-1. **Production Status**: No longer "in development" - fully production ready
-2. **Complete Capabilities**: All 10 playbooks implemented and tested
+1. **Status language**: Do not overstate readiness; reflect current capabilities
+2. **Capabilities**: Implemented playbooks are tested and documented
 3. **Architecture Options**: Three deployment models clearly marked as optional
 4. **Enterprise Features**: Multi-tenant architecture, compliance automation
-5. **Service Tiers**: Foundation ($35-50), Professional ($65-89), Enterprise ($95-125)
+5. Remove pricing/market language from public pages
 
 ### Step 3: Update Navigation
 Ensure wiki navigation reflects current structure:
@@ -145,8 +141,8 @@ Ensure wiki navigation reflects current structure:
 - [Client Deployment Models](Client-Deployment-Models) ⭐ THREE OPTIONS
 - [Quick Start Examples](Getting-Started)
 
-### 📚 Production Playbooks
-- [Complete Playbook Reference](Playbook-Reference) ⭐ ALL 10 PLAYBOOKS
+### 📚 Playbooks
+- [Playbook Reference](Playbook-Reference) ⭐ Implemented Playbooks
 - [Daily Operations Guide](Daily-Operations)
 - [Multi-Tenant Architecture](Multi-Tenant-Design)
 
@@ -172,13 +168,13 @@ cd msp-ansible-platform.wiki
 git add .
 
 # Commit with descriptive message
-git commit -m "Update wiki for production-ready platform v1.0.0-beta
+git commit -m "Update wiki to reflect current capabilities
 
-- Document 10 production playbooks (system updates, DISA STIG, CMMC, etc.)
+- Document implemented playbooks (system updates, DISA STIG, CMMC, etc.)
 - Add three optional client deployment architectures
-- Update multi-tenant enterprise architecture documentation
-- Reflect production-ready status and capabilities
-- Add comprehensive operational guides and examples"
+- Update multi-tenant architecture documentation
+- Remove pricing and avoid overstating readiness
+- Add operational guides and examples"
 
 # Push to GitHub wiki
 git push origin master
@@ -220,24 +216,24 @@ git push origin master
 
 Before considering wiki setup complete, verify:
 
-- [ ] **Home page** reflects production-ready status (v1.0.0-beta)
-- [ ] **All 10 playbooks** documented with examples
+- [ ] **Home page** reflects current capabilities and scope
+- [ ] **Implemented playbooks** documented with examples
 - [ ] **Three deployment models** clearly marked as optional
 - [ ] **Multi-tenant architecture** properly explained
-- [ ] **Service tiers** and pricing reflected accurately
+- [ ] Pricing and market language removed from public wiki
 - [ ] **Navigation** updated for current structure
 - [ ] **Links** working between wiki pages
 - [ ] **Code examples** tested and functional
 - [ ] **Architecture diagrams** current and accurate
-- [ ] **Status indicators** show production readiness
+- [ ] **Status indicators** are accurate and time-neutral
 
 ## Conclusion
 
-The GitHub wiki serves as the primary documentation portal for the MSP Ansible Platform. Ensuring it accurately reflects the production-ready state with all 10 playbooks and three optional client deployment architectures is critical for:
+The GitHub wiki serves as the primary documentation portal for the MSP Ansible Platform. Ensuring it accurately reflects current capabilities with documented playbooks and three optional client deployment architectures is critical for:
 
 - **Client confidence** in platform maturity
 - **Technical accuracy** for implementation teams
 - **Marketing alignment** with actual capabilities
 - **Operational support** for daily MSP activities
 
-The wiki should position the platform as a mature, enterprise-ready solution with flexible deployment options rather than a development project.
+The wiki should present the platform’s current capabilities with flexible deployment options and clear, testable examples.

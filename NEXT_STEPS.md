@@ -1,5 +1,7 @@
 # Next Steps for MSP Ansible Platform
 
+Note: This is a historical planning document. It reflects intended directions and should not be interpreted as market claims or readiness statements.
+
 **Author**: thndrchckn  
 **Last Updated**: 2025-06-19  
 **Status**: Ready for continued development
@@ -184,9 +186,7 @@ ansible/
 - **Competitive Advantage**: Graceful disconnection capability differentiates from competitors
 
 ### Revenue Potential
-- **Foundation Tier**: $95-125/server/month (ready for pilot deployment)
-- **Professional Tier**: $65-89/server/month (ready with monitoring additions)
-- **Enterprise Tier**: $42-59/server/month (ready with full automation)
+Removed to keep repository documentation focused on technical objectives and avoid pricing/market positioning.
 
 ## Quality Assurance Plan
 

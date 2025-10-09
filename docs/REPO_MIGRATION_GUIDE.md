@@ -64,7 +64,7 @@ Key Features:
 - Pull-based, Bastion Host, and Reverse Tunnel architectures
 - Complete client isolation with centralized MSP control
 - Multi-OS support (RHEL, Ubuntu, SUSE, Alpine)
-- Bootstrap-to-production automation
+- Bootstrap automation
 - Open source with enterprise capabilities
 ```
 
