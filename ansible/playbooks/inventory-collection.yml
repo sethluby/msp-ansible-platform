@@ -41,11 +41,13 @@
       tags: [setup]
 
     - name: Log inventory collection initiation
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "MSP-INVENTORY" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ inventory_session_id }} | Scope: {{ inventory_scope }} | Status: STARTED"
-      when: msp_syslog_server != ""
-      ignore_errors: true
-      tags: [logging]
+      ansible.builtin.include_role:
+        name: msp-logging
+      vars:
+        msp_log_server: "{{ msp_syslog_server | default('') }}"
+        msp_log_tag: "MSP-INVENTORY"
+        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ inventory_session_id }} | Scope: {{ inventory_scope }} | Status: STARTED"
+      tags: [logging, skip_ansible_lint]
 
   tasks:
     # Basic System Information

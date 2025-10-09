@@ -190,7 +190,7 @@
     - name: Remove user accounts
       block:
         - name: Archive user home directories before removal
-          ansible.builtin.archive:
+          community.general.archive:
             path: "/home/{{ item.username }}"
             dest: "/var/backups/msp/{{ client_name }}/user-{{ item.username }}-{{ user_session_id }}.tar.gz"
             format: gz
@@ -318,7 +318,7 @@
       tags: [logging]
 
     - name: Send notification for privileged operations
-      ansible.builtin.mail:
+      community.general.mail:
         to: "{{ msp_security_team_email }}"
         subject: "MSP User Management Alert - {{ client_name }}"
         body: |

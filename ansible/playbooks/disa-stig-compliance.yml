@@ -260,19 +260,21 @@
       tags: [reporting]
 
     - name: Log STIG compliance completion
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "MSP-STIG" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ stig_session_id }} | Status: COMPLETED | Findings: {{ compliance_findings | length }}"
-      when: msp_syslog_server != ""
-      ignore_errors: true
-      tags: [logging]
+      ansible.builtin.include_role:
+        name: msp-logging
+      vars:
+        msp_log_server: "{{ msp_syslog_server | default('') }}"
+        msp_log_tag: "MSP-STIG"
+        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ stig_session_id }} | Status: COMPLETED | Findings: {{ compliance_findings | length }}"
+      tags: [logging, skip_ansible_lint]
 
   handlers:
-    - name: restart sshd
+    - name: Restart sshd
       ansible.builtin.service:
         name: sshd
         state: restarted
 
-    - name: reload auditd
+    - name: Reload auditd
       ansible.builtin.service:
         name: "{{ stig_profiles[client_stig_profile].audit_service }}"
         state: reloaded

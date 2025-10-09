@@ -61,11 +61,13 @@
       tags: [setup]
 
     - name: Log service management initiation
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "SERVICE-MGMT" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ service_session_id }} | Operation: {{ service_operation }} | Services: {{ target_services | length if target_services is defined else 0 }} | Status: STARTED"
-      when: msp_syslog_server != ""
-      ignore_errors: true
-      tags: [logging]
+      ansible.builtin.include_role:
+        name: msp-logging
+      vars:
+        msp_log_server: "{{ msp_syslog_server | default('') }}"
+        msp_log_tag: "SERVICE-MGMT"
+        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ service_session_id }} | Operation: {{ service_operation }} | Services: {{ target_services | length if target_services is defined else 0 }} | Status: STARTED"
+      tags: [logging, skip_ansible_lint]
 
   tasks:
     # Service Status Operations
@@ -97,6 +99,7 @@
       block:
         - name: Check service dependencies
           ansible.builtin.shell: |
+            set -o pipefail
             systemctl list-dependencies {{ item }} --before | grep -v "{{ item }}"
           loop: "{{ target_services }}"
           register: service_dependencies
@@ -127,6 +130,7 @@
       block:
         - name: Check for dependent services
           ansible.builtin.shell: |
+            set -o pipefail
             systemctl list-dependencies {{ item }} --reverse | grep -v "{{ item }}"
           loop: "{{ target_services }}"
           register: dependent_services
@@ -432,7 +436,7 @@
       tags: [reporting]
 
     - name: Send notification for critical operations
-      ansible.builtin.mail:
+      community.general.mail:
         to: "{{ client_notification_email }}"
         subject: "Service Management Alert - {{ client_name }} - {{ service_operation }}"
         body: |
@@ -451,12 +455,14 @@
         - service_operation in ['stop', 'restart', 'disable']
         - client_notification_email is defined
         - client_notification_email != ""
-      ignore_errors: true
+      failed_when: false
       tags: [notification]
 
     - name: Log service management completion
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "SERVICE-MGMT" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ service_session_id }} | Operation: {{ service_operation }} | Services: {{ target_services | length if target_services is defined else 0 }} | Status: COMPLETED"
-      when: msp_syslog_server != ""
-      ignore_errors: true
-      tags: [logging]
+      ansible.builtin.include_role:
+        name: msp-logging
+      vars:
+        msp_log_server: "{{ msp_syslog_server | default('') }}"
+        msp_log_tag: "SERVICE-MGMT"
+        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ service_session_id }} | Operation: {{ service_operation }} | Services: {{ target_services | length if target_services is defined else 0 }} | Status: COMPLETED"
+      tags: [logging, skip_ansible_lint]

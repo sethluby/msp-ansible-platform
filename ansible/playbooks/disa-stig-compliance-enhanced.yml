@@ -137,7 +137,7 @@
             name: rsyslog
             enabled: true
             state: started
-      register: stig_v238353
+      # register removed to satisfy lint (registering a block is invalid)
       tags: [stig, syslog, V-238353]
 
     # V-238354: Firewall installation
@@ -153,7 +153,7 @@
             name: firewalld
             state: present
           when: ansible_os_family == "RedHat"
-      register: stig_v238354
+      # register removed to satisfy lint (registering a block is invalid)
       tags: [stig, firewall, V-238354]
 
     # V-238360: AppArmor (Ubuntu/Debian)
@@ -170,7 +170,7 @@
             enabled: true
             state: started
           when: ansible_os_family == "Debian"
-      register: stig_v238360
+      # register removed to satisfy lint (registering a block is invalid)
       tags: [stig, apparmor, V-238360]
 
     # Additional required packages

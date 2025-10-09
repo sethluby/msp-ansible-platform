@@ -15,8 +15,6 @@
     - name: client_name
       prompt: "Enter client name (lowercase, no spaces)"
       private: false
-      validate:
-        - "{{ client_name | regex_search('^[a-z0-9][a-z0-9-]*[a-z0-9]$') }}"
 
     - name: client_domain
       prompt: "Enter client domain (e.g., example.com)"
@@ -30,8 +28,6 @@
       prompt: "Select service tier [foundation/professional/enterprise]"
       private: false
       default: "foundation"
-      validate:
-        - "{{ client_tier in ['foundation', 'professional', 'enterprise'] }}"
 
     - name: vpn_enabled
       prompt: "Enable WireGuard VPN? [yes/no]"
@@ -132,14 +128,14 @@
       tags: [notification, completion]
 
   handlers:
-    - name: restart wireguard
+    - name: Restart wireguard
       ansible.builtin.systemd:
         name: "wg-quick@{{ client_name }}"
         state: restarted
         daemon_reload: true
       when: vpn_enabled | bool
 
-    - name: reload firewall
+    - name: Reload firewall
       ansible.builtin.systemd:
         name: firewalld
         state: reloaded

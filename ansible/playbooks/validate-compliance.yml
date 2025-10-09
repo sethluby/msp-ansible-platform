@@ -15,7 +15,7 @@
 
   pre_tasks:
     - name: "Validation Start | Display validation information"
-      debug:
+      ansible.builtin.debug:
         msg:
           - "=== {{ playbook_name }} v{{ playbook_version }} ==="
           - "Validation ID: {{ validation_id }}"
@@ -28,7 +28,7 @@
 
   tasks:
     - name: "CMMC Validation | Run post-implementation validation"
-      include_role:
+      ansible.builtin.include_role:
         name: cmmc-compliance
         tasks_from: validation
       vars:
@@ -46,7 +46,9 @@
           when: not ansible_check_mode
 
         - name: "CMMC Validation | Check SSH security settings"
-          shell: sshd -T | grep -E "(PasswordAuthentication|PubkeyAuthentication|PermitRootLogin)"
+          ansible.builtin.shell: |
+            set -o pipefail
+            sshd -T | grep -E "(PasswordAuthentication|PubkeyAuthentication|PermitRootLogin)"
           register: ssh_security
           changed_when: false
           when: not ansible_check_mode
@@ -58,14 +60,14 @@
     - name: "CMMC Validation | Test audit system"
       block:
         - name: "CMMC Validation | Check auditd service status"
-          systemd:
+          ansible.builtin.systemd:
             name: auditd
           register: auditd_status
           when: not ansible_check_mode
           changed_when: false
 
         - name: "CMMC Validation | Verify audit rules are loaded"
-          command: auditctl -l
+          ansible.builtin.command: auditctl -l
           register: audit_rules
           changed_when: false
           when: not ansible_check_mode
@@ -75,7 +77,7 @@
         - audit_validation
 
     - name: "CMMC Validation | Run compliance validator tool"
-      command: "{{ local_bin_dir | default('/usr/local/bin') }}/cmmc_validator.py --config-dir {{ cmmc_base_dir | default('/etc/cmmc') }} --verbose"
+      ansible.builtin.command: "{{ local_bin_dir | default('/usr/local/bin') }}/cmmc_validator.py --config-dir {{ cmmc_base_dir | default('/etc/cmmc') }} --verbose"
       register: validator_output
       changed_when: false
       failed_when: false
@@ -85,7 +87,7 @@
 
   post_tasks:
     - name: "Validation Complete | Generate validation report"
-      set_fact:
+      ansible.builtin.set_fact:
         validation_report:
           validation_id: "{{ validation_id }}"
           timestamp: "{{ ansible_date_time.iso8601 }}"
@@ -104,7 +106,7 @@
           overall_status: "{{ 'PASS' if (ssh_test.rc | default(1) == 0) and (auditd_status.status.ActiveState | default('inactive') == 'active') and (validator_output.rc | default(1) == 0) else 'FAIL' }}"
 
     - name: "Validation Complete | Save validation report"
-      copy:
+      ansible.builtin.copy:
         content: "{{ validation_report | to_nice_json }}"
         dest: "{{ cmmc_reports_dir | default('/var/log/cmmc/reports') }}/validation_{{ validation_id }}.json"
         owner: root
@@ -112,7 +114,7 @@
         mode: '0644'
 
     - name: "Validation Complete | Display results"
-      debug:
+      ansible.builtin.debug:
         msg:
           - "=== CMMC Validation Results ==="
           - "Overall Status: {{ validation_report.overall_status }}"

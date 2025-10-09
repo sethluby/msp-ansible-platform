@@ -16,7 +16,7 @@
 
   pre_tasks:
     - name: "Playbook Start | Display execution information"
-      debug:
+      ansible.builtin.debug:
         msg:
           - "=== {{ playbook_name }} v{{ playbook_version }} ==="
           - "Execution ID: {{ execution_id }}"
@@ -29,7 +29,7 @@
         - always
 
     - name: "Playbook Start | Validate required variables"
-      assert:
+      ansible.builtin.assert:
         that:
           - cmmc_level is defined
           - cmmc_client_id is defined
@@ -40,7 +40,7 @@
         - always
 
     - name: "Playbook Start | Create execution log entry"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: "{{ cmmc_implementation_log_dir | default('/var/log/cmmc') }}/playbook_execution.log"
         line: "{{ ansible_date_time.iso8601 }} - STARTED: {{ playbook_name }} ({{ execution_id }}) on {{ inventory_hostname }}"
         create: true
@@ -52,7 +52,7 @@
 
   tasks:
     - name: "CMMC Implementation | Deploy compliance controls"
-      include_role:
+      ansible.builtin.include_role:
         name: cmmc-compliance
       vars:
         # Pass execution context to role
@@ -63,7 +63,7 @@
 
   post_tasks:
     - name: "Playbook Complete | Generate implementation summary"
-      set_fact:
+      ansible.builtin.set_fact:
         implementation_summary:
           playbook: "{{ playbook_name }}"
           version: "{{ playbook_version }}"
@@ -78,7 +78,7 @@
         - always
 
     - name: "Playbook Complete | Save implementation summary"
-      copy:
+      ansible.builtin.copy:
         content: "{{ implementation_summary | to_nice_json }}"
         dest: "{{ cmmc_reports_dir | default('/var/log/cmmc/reports') }}/implementation_{{ execution_id }}.json"
         owner: root
@@ -88,7 +88,7 @@
         - always
 
     - name: "Playbook Complete | Log completion"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: "{{ cmmc_implementation_log_dir | default('/var/log/cmmc') }}/playbook_execution.log"
         line: "{{ ansible_date_time.iso8601 }} - COMPLETED: {{ playbook_name }} ({{ execution_id }}) on {{ inventory_hostname }}"
         owner: root
@@ -98,7 +98,7 @@
         - always
 
     - name: "Playbook Complete | Display completion summary"
-      debug:
+      ansible.builtin.debug:
         msg:
           - "=== CMMC Implementation Completed Successfully ==="
           - "Host: {{ inventory_hostname }}"
@@ -114,14 +114,14 @@
         - always
 
   handlers:
-    - name: restart sshd
-      systemd:
+    - name: Restart sshd
+      ansible.builtin.systemd:
         name: sshd
         state: restarted
       listen: restart sshd
 
-    - name: restart auditd
-      systemd:
+    - name: Restart auditd
+      ansible.builtin.systemd:
         name: auditd
         state: restarted
       listen: restart auditd

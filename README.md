@@ -240,6 +240,13 @@ The project leverages proven patterns from established community roles:
 
 See project wiki for complete integration details and implementation guides.
 
+## Terraform (Azure-First) Scaffolding
+
+- Azure-first Terraform scaffold for MSP landing zones and logging.
+- Start here: `msp-infrastructure/terraform/README.md`
+- Overview doc: `docs/TERRAFORM_OVERVIEW.md`
+- Live examples (safe to plan): `msp-infrastructure/terraform/live/clients/exampleco/dev/`
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

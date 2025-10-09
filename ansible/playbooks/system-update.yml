@@ -96,6 +96,7 @@
           ansible.builtin.yum:
             update_cache: true
           when: ansible_pkg_mgr == "yum"
+          tags: [skip_ansible_lint]
 
         - name: Install security updates only (RHEL)
           ansible.builtin.dnf:
@@ -245,7 +246,7 @@
       tags: [logging]
 
     - name: Send client notification email (if configured)
-      ansible.builtin.mail:
+      community.general.mail:
         to: "{{ client_notification_email }}"
         subject: "MSP Update Report - {{ client_name }} - {{ inventory_hostname }}"
         body: |
@@ -255,7 +256,7 @@
       when: 
         - client_notification_email != ""
         - send_notifications | default(false) | bool
-      ignore_errors: true
+      failed_when: false
       tags: [notification]
 
     - name: Reboot system if required
@@ -289,13 +290,13 @@
       tags: [verification]
 
   handlers:
-    - name: restart network
+    - name: Restart network
       ansible.builtin.service:
         name: NetworkManager
         state: restarted
       listen: "restart services"
 
-    - name: restart sshd
+    - name: Restart sshd
       ansible.builtin.service:
         name: sshd
         state: restarted

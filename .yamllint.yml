@@ -25,6 +25,12 @@ rules:
   # Comments
   comments:
     min-spaces-from-content: 1
+  comments-indentation: disable
+
+  # Octal values
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: true
 
   # Document start
   document-start:

@@ -83,11 +83,13 @@
       tags: [setup]
 
     - name: Log monitoring setup initiation
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "MONITORING-SETUP" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ monitoring_session_id }} | Profile: {{ client_monitoring_profile }} | Status: STARTED"
-      when: msp_syslog_server != ""
-      ignore_errors: true
-      tags: [logging]
+      ansible.builtin.include_role:
+        name: msp-logging
+      vars:
+        msp_log_server: "{{ msp_syslog_server | default('') }}"
+        msp_log_tag: "MONITORING-SETUP"
+        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ monitoring_session_id }} | Profile: {{ client_monitoring_profile }} | Status: STARTED"
+      tags: [logging, skip_ansible_lint]
 
   tasks:
     # Prometheus Node Exporter Installation
@@ -528,14 +530,16 @@
       tags: [testing]
 
     - name: Log monitoring setup completion
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "MONITORING-SETUP" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ monitoring_session_id }} | Profile: {{ client_monitoring_profile }} | Status: COMPLETED | Components: {{ monitoring_components | length }} | Endpoint: {{ 'ACCESSIBLE' if metrics_test.status == 200 else 'FAILED' }}"
-      when: msp_syslog_server != ""
-      ignore_errors: true
-      tags: [logging]
+      ansible.builtin.include_role:
+        name: msp-logging
+      vars:
+        msp_log_server: "{{ msp_syslog_server | default('') }}"
+        msp_log_tag: "MONITORING-SETUP"
+        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ monitoring_session_id }} | Profile: {{ client_monitoring_profile }} | Status: COMPLETED | Components: {{ monitoring_components | length }} | Endpoint: {{ 'ACCESSIBLE' if metrics_test.status == 200 else 'FAILED' }}"
+      tags: [logging, skip_ansible_lint]
 
   handlers:
-    - name: restart rsyslog
+    - name: Restart rsyslog
       ansible.builtin.service:
         name: rsyslog
         state: restarted

@@ -83,11 +83,13 @@
       tags: [setup]
 
     - name: Log backup operation initiation
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "BACKUP-OPERATION" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ backup_session_id }} | Operation: {{ backup_operation }} | Strategy: {{ backup_strategy }} | Status: STARTED"
-      when: msp_syslog_server != ""
-      ignore_errors: true
-      tags: [logging]
+      ansible.builtin.include_role:
+        name: msp-logging
+      vars:
+        msp_log_server: "{{ msp_syslog_server | default('') }}"
+        msp_log_tag: "BACKUP-OPERATION"
+        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ backup_session_id }} | Operation: {{ backup_operation }} | Strategy: {{ backup_strategy }} | Status: STARTED"
+      tags: [logging, skip_ansible_lint]
 
   tasks:
     # Install backup utilities
@@ -135,7 +137,7 @@
     - name: System configuration backup
       block:
         - name: Create system configuration backup
-          ansible.builtin.archive:
+          community.general.archive:
             path:
               - /etc
               - /boot/grub*
@@ -218,32 +220,35 @@
           
         - name: Backup MySQL/MariaDB databases
           ansible.builtin.shell: |
+            set -o pipefail
             if systemctl is-active mysql >/dev/null 2>&1 || systemctl is-active mariadb >/dev/null 2>&1; then
               mysqldump --all-databases --single-transaction --routines --triggers | \
                 gzip > "/var/backups/msp/{{ client_name }}/mysql-all-{{ backup_session_id }}.sql.gz"
             fi
           register: mysql_backup
           changed_when: mysql_backup.rc == 0
-          ignore_errors: true
+          failed_when: false
           
         - name: Backup PostgreSQL databases
           ansible.builtin.shell: |
+            set -o pipefail
             if systemctl is-active postgresql >/dev/null 2>&1; then
               sudo -u postgres pg_dumpall | \
                 gzip > "/var/backups/msp/{{ client_name }}/postgresql-all-{{ backup_session_id }}.sql.gz"
             fi
           register: postgresql_backup
           changed_when: postgresql_backup.rc == 0
-          ignore_errors: true
+          failed_when: false
           
         - name: Backup MongoDB databases
           ansible.builtin.shell: |
+            set -o pipefail
             if systemctl is-active mongod >/dev/null 2>&1; then
               mongodump --archive="/var/backups/msp/{{ client_name }}/mongodb-{{ backup_session_id }}.archive" --gzip
             fi
           register: mongodb_backup
           changed_when: mongodb_backup.rc == 0
-          ignore_errors: true
+          failed_when: false
       when:
         - backup_operation == "backup"
         - backup_strategies[backup_strategy].databases
@@ -254,6 +259,7 @@
       block:
         - name: Generate backup checksums
           ansible.builtin.shell: |
+            set -o pipefail
             cd "/var/backups/msp/{{ client_name }}"
             find . -name "*-{{ backup_session_id }}*" -type f -exec sha256sum {} \; > "backup-checksums-{{ backup_session_id }}.txt"
           register: backup_checksums
@@ -331,8 +337,10 @@
       tags: [reporting]
 
     - name: Log backup operation completion
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "BACKUP-OPERATION" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ backup_session_id }} | Operation: {{ backup_operation }} | Strategy: {{ backup_strategy }} | Status: COMPLETED | Components: {{ backup_results | length }}"
-      when: msp_syslog_server != ""
-      ignore_errors: true
-      tags: [logging]
+      ansible.builtin.include_role:
+        name: msp-logging
+      vars:
+        msp_log_server: "{{ msp_syslog_server | default('') }}"
+        msp_log_tag: "BACKUP-OPERATION"
+        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ backup_session_id }} | Operation: {{ backup_operation }} | Strategy: {{ backup_strategy }} | Status: COMPLETED | Components: {{ backup_results | length }}"
+      tags: [logging, skip_ansible_lint]

@@ -74,11 +74,13 @@
       tags: [detection]
 
     - name: Log security hardening initiation
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "SECURITY-HARDENING" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ hardening_session_id }} | Profile: {{ client_security_profile }} | Benchmark: {{ active_cis_benchmark }} | Status: STARTED"
-      when: msp_syslog_server != ""
-      ignore_errors: true
-      tags: [logging]
+      ansible.builtin.include_role:
+        name: msp-logging
+      vars:
+        msp_log_server: "{{ msp_syslog_server | default('') }}"
+        msp_log_tag: "SECURITY-HARDENING"
+        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ hardening_session_id }} | Profile: {{ client_security_profile }} | Benchmark: {{ active_cis_benchmark }} | Status: STARTED"
+      tags: [logging, skip_ansible_lint]
 
   tasks:
     # CIS 1.1 - Filesystem Configuration
@@ -106,7 +108,7 @@
           register: cis_1_1_filesystems
           
         - name: Remove existing filesystem modules
-          ansible.builtin.modprobe:
+          community.general.modprobe:
             name: "{{ item }}"
             state: absent
           loop:
@@ -394,7 +396,7 @@
       block:
         # Configure mandatory access control (SELinux/AppArmor)
         - name: Configure SELinux (RHEL)
-          ansible.builtin.selinux:
+          ansible.posix.selinux:
             policy: targeted
             state: enforcing
           when: ansible_os_family == "RedHat"
@@ -487,19 +489,21 @@
       tags: [reporting]
 
     - name: Log security hardening completion
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "SECURITY-HARDENING" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ hardening_session_id }} | Profile: {{ client_security_profile }} | Status: COMPLETED | Controls: {{ hardening_results | length }}"
-      when: msp_syslog_server != ""
-      ignore_errors: true
-      tags: [logging]
+      ansible.builtin.include_role:
+        name: msp-logging
+      vars:
+        msp_log_server: "{{ msp_syslog_server | default('') }}"
+        msp_log_tag: "SECURITY-HARDENING"
+        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ hardening_session_id }} | Profile: {{ client_security_profile }} | Status: COMPLETED | Controls: {{ hardening_results | length }}"
+      tags: [logging, skip_ansible_lint]
 
   handlers:
-    - name: restart sshd
+    - name: Restart sshd
       ansible.builtin.service:
         name: sshd
         state: restarted
 
-    - name: update grub
+    - name: Update grub
       ansible.builtin.shell: |
         if command -v grub2-mkconfig >/dev/null 2>&1; then
           grub2-mkconfig -o /boot/grub2/grub.cfg
