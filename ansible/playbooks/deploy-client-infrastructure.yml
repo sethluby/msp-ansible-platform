@@ -1,5 +1,4 @@
-
-
+---
 # Post-Deployment Configuration for All Architectures
 - name: Configure Client Systems Post-Deployment
   hosts: "client_{{ client_name }}"

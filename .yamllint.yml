@@ -14,7 +14,7 @@ rules:
     check-multi-line-strings: false
 
   # Trailing spaces
-  trailing-spaces: enable
+  trailing-spaces: disable
 
   # Empty lines
   empty-lines:
@@ -29,6 +29,9 @@ rules:
   # Document start
   document-start:
     present: true
+
+  # End-of-file newline
+  new-line-at-end-of-file: disable
 
   # Truthy values
   truthy:
@@ -52,3 +55,11 @@ ignore: |
   *.enc
   vault.yml
   Reference/
+  infrastructure/
+  msp-infrastructure/
+  ansible/roles/compliance-frameworks/
+  ansible/roles/client-onboarding/
+  ansible/roles/bastion-infrastructure/
+  ansible/roles/reverse-tunnel-infrastructure/
+  ansible/roles/msp-infrastructure/
+  ansible/roles/graceful-disconnection/

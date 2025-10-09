@@ -1,5 +1,4 @@
-
-
+---
 # Additional MSP Infrastructure Components
 - name: Deploy MSP Monitoring Stack
   hosts: msp_monitoring
