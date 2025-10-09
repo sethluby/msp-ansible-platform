@@ -47,11 +47,12 @@
       tags: [logging]
 
     - name: Log user management operation initiation
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "MSP-USER" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ user_session_id }} | Operation: {{ user_operation }} | Status: STARTED"
-      when: msp_syslog_server != "" and not ansible_check_mode
-      changed_when: false
-      ignore_errors: true
+      ansible.builtin.include_role:
+        name: msp-logging
+      vars:
+        msp_log_server: "{{ msp_syslog_server | default('') }}"
+        msp_log_tag: "MSP-USER"
+        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ user_session_id }} | Operation: {{ user_operation }} | Status: STARTED"
       tags: [logging]
 
   tasks:
@@ -308,11 +309,12 @@
       tags: [reporting]
 
     - name: Log user management completion
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "MSP-USER" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ user_session_id }} | Operation: {{ user_operation }} | Status: COMPLETED | Users: {{ target_users | length if target_users is defined else 0 }}"
-      when: msp_syslog_server != "" and not ansible_check_mode
-      changed_when: false
-      ignore_errors: true
+      ansible.builtin.include_role:
+        name: msp-logging
+      vars:
+        msp_log_server: "{{ msp_syslog_server | default('') }}"
+        msp_log_tag: "MSP-USER"
+        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ user_session_id }} | Operation: {{ user_operation }} | Status: COMPLETED | Users: {{ target_users | length if target_users is defined else 0 }}"
       tags: [logging]
 
     - name: Send notification for privileged operations

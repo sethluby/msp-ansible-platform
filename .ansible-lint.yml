@@ -16,7 +16,6 @@ skip_list:
   - galaxy[version-incorrect]
   - no-changed-when
   - command-instead-of-module
-  - package-latest
   - run-once[task]
 
 warn_list:

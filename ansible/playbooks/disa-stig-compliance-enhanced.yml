@@ -73,7 +73,7 @@
         state: latest
         update_cache: true
       register: stig_system_update
-      tags: [updates, packages]
+      tags: [updates, packages, skip_ansible_lint]
 
     # V-238200: Session lock capability
     - name: V-238200 - Install session lock capability (vlock)

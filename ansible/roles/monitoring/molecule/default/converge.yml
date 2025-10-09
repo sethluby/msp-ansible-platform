@@ -1,0 +1,9 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: No-op converge for scaffolding
+      ansible.builtin.debug:
+        msg: "monitoring role scenario scaffold"

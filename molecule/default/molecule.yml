@@ -9,7 +9,7 @@ driver:
 
 platforms:
   - name: msp-rhel9
-    image: quay.io/ansible/creator-ee:latest
+    image: quay.io/ansible/creator-ee:stable-2.16
     pre_build_image: true
     privileged: true
     command: /sbin/init
@@ -54,7 +54,7 @@ platforms:
       - test_targets
 
   - name: msp-controller
-    image: quay.io/ansible/creator-ee:latest
+    image: quay.io/ansible/creator-ee:stable-2.16
     pre_build_image: true
     privileged: true
     command: /sbin/init

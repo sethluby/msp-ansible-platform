@@ -1,0 +1,24 @@
+---
+# Example client variables for ACME Corp
+client_name: acme
+
+# Update policy
+client_update_policy: security
+enforce_maintenance_window: false
+
+# User management
+notify_security_team: false
+client_user_policy: standard
+client_password_policy:
+  enforce_aging: true
+  min_age: 1
+  max_age: 90
+  warn_age: 7
+
+# Logging (optional remote syslog)
+msp_syslog_server: ""
+
+# Monitoring/backup toggles (role-driven)
+enable_metrics_collection: true
+backup_enabled: true
+backup_strategy: rsync

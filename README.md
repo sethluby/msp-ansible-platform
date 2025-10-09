@@ -26,6 +26,28 @@ cp .env.example .env
 # Edit .env with your configuration
 ```
 
+### Usage Paths: Baseline vs CMMC Overlay
+
+- Baseline MSP (common operations)
+  - Patching: `ansible-playbook ansible/playbooks/system-update.yml -e client_name=acme`
+  - Users: `ansible-playbook ansible/playbooks/user-management.yml -e client_name=acme -e user_operation=audit`
+  - Backup/Monitoring: include `backup` and `monitoring` roles per client vars
+
+- CMMC Overlay (selected controls)
+  - ansible-lockdown integration: `ansible-playbooks/integrate-lockdown-compliance.yml -e client_name=acme -e client_compliance_framework=cis`
+  - Validation: `ansible-playbooks/validate-compliance.yml -e cmmc_level=level2 -e cmmc_client_id=acme`
+  - Control mapping: see `docs/cmmc-control-mapping.md`
+
+### Quickstart Demo
+
+Run a local Molecule demo of the default scenario (Docker required):
+
+```bash
+make quickstart-demo
+# Cleanup when done
+make quickstart-destroy
+```
+
 ## Architecture Overview
 
 ### Core Design Principles
@@ -74,6 +96,13 @@ msp-ansible-platform/
 ├── msp-infrastructure/        # MSP core services deployment
 └── compliance/                # Compliance framework implementations
 ```
+
+### Example Inventory (optional)
+
+See `ansible/inventory/examples/hosts.yml` and `ansible/inventory/examples/group_vars/client_acme/main.yml` for a minimal client layout you can copy into your environment.
+
+### Lab Setup Guide
+For a step-by-step MSP lab walk‑through (baseline and connectivity paths), see `docs/LAB_SETUP_GUIDE.md`.
 
 ## Current Status
 

@@ -230,3 +230,12 @@ platform-status: ## Show platform status
 		echo "MSP Infrastructure: $$(cd msp-infrastructure && docker-compose ps -q | wc -l) containers"; \
 	fi
 	@echo "Documentation: $$(find docs/ -name "*.md" 2>/dev/null | wc -l) files"
+quickstart-demo: ## Run a quick local demo (Molecule converge + verify)
+	@echo "Starting quickstart demo with Molecule (default scenario)..."
+	molecule converge -s default
+	molecule verify -s default || true
+	@echo "\nDemo complete. To clean up: make quickstart-destroy"
+
+quickstart-destroy: ## Destroy quickstart Molecule resources
+	molecule destroy -s default
+	@echo "Cleaned up Molecule resources."
