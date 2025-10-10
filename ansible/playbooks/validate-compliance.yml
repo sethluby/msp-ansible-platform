@@ -8,19 +8,19 @@
     playbook_version: 1.0.0
     validation_id: "{{ ansible_date_time.epoch }}"
   pre_tasks:
-        - name: Validation Start | Display validation information
+    - name: Validation Start | Display validation information
       tags:
         - always
       ansible.builtin.debug:
         msg:
-          - === {{ playbook_name }} v{{ playbook_version }} ===
+          - "=== {{ playbook_name }} v{{ playbook_version }} ==="
           - "Validation ID: {{ validation_id }}"
           - "Target Host: {{ inventory_hostname }}"
           - "CMMC Level: {{ cmmc_level | default('level2') }}"
           - "Client ID: {{ cmmc_client_id | default('default_client') }}"
           - "Timestamp: {{ ansible_date_time.iso8601 }}"
   tasks:
-        - name: CMMC Validation | Run post-implementation validation
+    - name: CMMC Validation | Run post-implementation validation
       tags:
         - cmmc_validation
       vars:
@@ -28,8 +28,9 @@
         validation_execution_id: "{{ validation_id }}"
       ansible.builtin.include_role:
         name: cmmc-compliance
-        tasks_from: validation
-        - name: CMMC Validation | Test SSH configuration
+      tasks_from: validation
+
+    - name: CMMC Validation | Test SSH configuration
       when: cmmc_enable_access_control | default(true) | bool
       tags:
         - ssh_validation
@@ -39,22 +40,16 @@
           register: ssh_test
           changed_when: false
           when: not ansible_check_mode
+
         - name: CMMC Validation | Check SSH security settings
-          ansible.builtin.shell: 'set -o pipefail
-
-            |
-
+          ansible.builtin.shell: |
             set -o pipefail
-
-            set -o pipefail
-
             sshd -T | grep -E "(PasswordAuthentication|PubkeyAuthentication|PermitRootLogin)"
-
-            '
           register: ssh_security
           changed_when: false
           when: not ansible_check_mode
-        - name: CMMC Validation | Test audit system
+
+    - name: CMMC Validation | Test audit system
       when: cmmc_enable_audit_accountability | default(true) | bool
       tags:
         - audit_validation
@@ -65,12 +60,14 @@
           register: auditd_status
           when: not ansible_check_mode
           changed_when: false
+
         - name: CMMC Validation | Verify audit rules are loaded
           ansible.builtin.command: auditctl -l
           register: audit_rules
           changed_when: false
           when: not ansible_check_mode
-        - name: CMMC Validation | Run compliance validator tool
+
+    - name: CMMC Validation | Run compliance validator tool
       when: not ansible_check_mode
       tags:
         - validator_test
@@ -79,7 +76,7 @@
       changed_when: false
       failed_when: false
   post_tasks:
-        - name: Validation Complete | Generate validation report
+    - name: Validation Complete | Generate validation report
       ansible.builtin.set_fact:
         validation_report:
           validation_id: "{{ validation_id }}"
@@ -96,21 +93,20 @@
           validator_test:
             exit_code: "{{ validator_output.rc if validator_output is defined else 'SKIPPED' }}"
             status: "{{ 'PASS' if validator_output.rc == 0 else 'FAIL' if validator_output is defined else 'SKIPPED' }}"
-          overall_status: "{{ 'PASS' if (ssh_test.rc | default(1) == 0)\n   and (auditd_status.status.ActiveState | default('inactive') == 'active')\n   and (validator_output.rc | default(1)
-            == 0)\n   else 'FAIL' }}"
-        - name: Validation Complete | Save validation report
+          overall_status: "{{ 'PASS' if (ssh_test.rc | default(1) == 0) and (auditd_status.status.ActiveState | default('inactive') == 'active') and (validator_output.rc | default(1) == 0) else 'FAIL' }}"
+    - name: Validation Complete | Save validation report
       ansible.builtin.copy:
         content: "{{ validation_report | to_nice_json }}"
         dest: "{{ cmmc_reports_dir | default('/var/log/cmmc/reports') }}/validation_{{ validation_id }}.json"
         owner: root
         group: root
         mode: "0644"
-        - name: Validation Complete | Display results
+    - name: Validation Complete | Display results
       tags:
         - always
       ansible.builtin.debug:
         msg:
-          - === CMMC Validation Results ===
+          - "=== CMMC Validation Results ==="
           - "Overall Status: {{ validation_report.overall_status }}"
           - "SSH Configuration: {{ validation_report.ssh_validation.config_test }}"
           - "Audit Service: {{ validation_report.audit_validation.service_status }}"

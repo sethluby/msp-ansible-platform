@@ -9,7 +9,7 @@
     - role: common
       tags:
         - common
-    - role: monitoring
+        - role: monitoring
       tags:
         - monitoring
         - metrics
@@ -24,47 +24,47 @@
       vars:
         firewall_mode: msp_monitoring
   post_tasks:
-        - name: Configure MSP monitoring endpoints
+    - name: Configure MSP monitoring endpoints
       tags:
-        - configuration
+      - configuration
       notify: restart prometheus
       ansible.builtin.template:
-        src: ../roles/monitoring/templates/prometheus-msp.yml.j2
-        dest: /etc/prometheus/prometheus.yml
-        backup: true
-- name: Deploy Client Management Infrastructure
-  hosts: msp_client_managers
-  become: true
-  gather_facts: true
-  roles:
-        - role: common
+      src: ../roles/monitoring/templates/prometheus-msp.yml.j2
+      dest: /etc/prometheus/prometheus.yml
+      backup: true
+    - name: Deploy Client Management Infrastructure
+      hosts: msp_client_managers
+      become: true
+      gather_facts: true
+      roles:
+      - role: common
       tags:
-        - common
-        - role: msp-infrastructure
+      - common
+      - role: msp-infrastructure
       tags:
-        - client-mgmt
+      - client-mgmt
       vars:
-        enable_wireguard_hub: true
-        enable_ssh_jumphost: true
-        enable_git_repos: true
-        - role: network-security
+      enable_wireguard_hub: true
+      enable_ssh_jumphost: true
+      enable_git_repos: true
+      - role: network-security
       tags:
-        - security
-        - vpn
+      - security
+      - vpn
       vars:
-        firewall_mode: client_connectivity
+      firewall_mode: client_connectivity
   post_tasks:
-        - name: Initialize client repository structure
+    - name: Initialize client repository structure
       tags:
-        - initialization
+      - initialization
       loop:
-        - repositories
-        - configs
-        - logs
-        - backups
+      - repositories
+      - configs
+      - logs
+      - backups
       ansible.builtin.file:
-        path: /opt/msp/clients/{{ item }}
-        state: directory
-        owner: git
-        group: git
-        mode: "0755"
+      path: /opt/msp/clients/{{ item }}
+      state: directory
+      owner: git
+      group: git
+      mode: "0755"

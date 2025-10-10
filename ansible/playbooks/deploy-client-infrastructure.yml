@@ -8,7 +8,7 @@
       tags:
         - common
         - post-config
-    - role: security-hardening
+        - role: security-hardening
       tags:
         - security
         - hardening
@@ -30,62 +30,62 @@
         client_name: "{{ client_name }}"
         user_operation: initialize
   post_tasks:
-        - name: Generate client deployment report
+    - name: Generate client deployment report
       tags:
-        - reporting
+      - reporting
       ansible.builtin.template:
-        src: ../roles/client-infrastructure/templates/deployment-report.j2
-        dest: /var/log/msp/{{ client_name }}/deployment-report-{{ ansible_date_time.date }}.json
-        owner: root
-        group: root
-        mode: "0644"
-        - name: Log client deployment completion
+      src: ../roles/client-infrastructure/templates/deployment-report.j2
+      dest: /var/log/msp/{{ client_name }}/deployment-report-{{ ansible_date_time.date }}.json
+      owner: root
+      group: root
+      mode: "0644"
+    - name: Log client deployment completion
       tags:
-        - logging
+      - logging
       vars:
-        msp_log_server: "{{ msp_syslog_server | default('') }}"
-        msp_log_tag: CLIENT-DEPLOY
-        msp_log_message: "Deployment completed | Client: {{ client_name }} | Architecture: {{ deployment_architecture }} | Status: SUCCESS"
+      msp_log_server: "{{ msp_syslog_server | default('') }}"
+      msp_log_tag: CLIENT-DEPLOY
+      msp_log_message: "Deployment completed | Client: {{ client_name }} | Architecture: {{ deployment_architecture }} | Status: SUCCESS"
       ansible.builtin.include_role:
         name: msp-logging
-- name: Finalize Client Onboarding
-  hosts: localhost
-  gather_facts: false
+    - name: Finalize Client Onboarding
+      hosts: localhost
+      gather_facts: false
   tasks:
-        - name: Update MSP client registry
+    - name: Update MSP client registry
       tags:
-        - registry
+      - registry
       ansible.builtin.lineinfile:
-        path: /opt/msp/config/clients.registry
-        line: "{{ client_name }}:{{ deployment_architecture }}:{{ ansible_date_time.iso8601 }}:ACTIVE"
-        create: true
-        owner: root
-        group: root
-        mode: "0644"
-        - name: Create client-specific group_vars
+      path: /opt/msp/config/clients.registry
+      line: "{{ client_name }}:{{ deployment_architecture }}:{{ ansible_date_time.iso8601 }}:ACTIVE"
+      create: true
+      owner: root
+      group: root
+      mode: "0644"
+    - name: Create client-specific group_vars
       tags:
-        - configuration
+      - configuration
       ansible.builtin.template:
-        src: ../roles/client-infrastructure/templates/client-group-vars.yml.j2
-        dest: ../group_vars/client_{{ client_name }}/main.yml
-        owner: root
-        group: root
-        mode: "0644"
-        - name: Send client onboarding notification
+      src: ../roles/client-infrastructure/templates/client-group-vars.yml.j2
+      dest: ../group_vars/client_{{ client_name }}/main.yml
+      owner: root
+      group: root
+      mode: "0644"
+    - name: Send client onboarding notification
       tags:
-        - notification
+      - notification
       ansible.builtin.mail:
-        to: "{{ client_notification_email | default(omit) }}"
-        subject: MSP Client Onboarding Complete - {{ client_name }}
-        body: "Client: {{ client_name }}\nArchitecture: {{ deployment_architecture }}\nStatus: Successfully deployed\nTimestamp: {{ ansible_date_time.iso8601 }}\n\nNext Steps:\n1. Verify
-          client connectivity\n2. Run initial compliance scan\n3. Configure monitoring thresholds\n4. Schedule first maintenance window\n"
-        when: client_notification_email is defined
-        - name: Log final deployment status
-          tags:
-            - logging
+      to: "{{ client_notification_email | default(omit) }}"
+      subject: MSP Client Onboarding Complete - {{ client_name }}
+      body: "Client: {{ client_name }}\nArchitecture: {{ deployment_architecture }}\nStatus: Successfully deployed\nTimestamp: {{ ansible_date_time.iso8601 }}\n\nNext Steps:\n1. Verify
+      client connectivity\n2. Run initial compliance scan\n3. Configure monitoring thresholds\n4. Schedule first maintenance window\n"
+      when: client_notification_email is defined
+    - name: Log final deployment status
+      tags:
+      - logging
       vars:
-        msp_log_server: "{{ msp_syslog_server | default('') }}"
-        msp_log_tag: CLIENT-ONBOARD
-        msp_log_message: "Client onboarding finalized | Client: {{ client_name }} | Architecture: {{ deployment_architecture }} | Registry: UPDATED"
+      msp_log_server: "{{ msp_syslog_server | default('') }}"
+      msp_log_tag: CLIENT-ONBOARD
+      msp_log_message: "Client onboarding finalized | Client: {{ client_name }} | Architecture: {{ deployment_architecture }} | Registry: UPDATED"
       ansible.builtin.include_role:
         name: msp-logging

@@ -3,13 +3,15 @@ for file in ansible/playbooks/*.yml; do
     grep -q "^---" "$file" || sed -i '1i---' "$file"
 
     # Fix common indentation patterns
-    sed -i '/^  pre_tasks:$/,/^  tasks:$/{
+    sed -i '/^  pre_tasks:$/,/^  tasks:$/ {
+      s/^\s\{8\}- name:/    - name:/
       s/^  - name:/    - name:/
       s/^    tags:/      tags:/
       s/^    - /        - /
     }' "$file"
 
-  sed -i '/^  tasks:$/,/^  post_tasks:$/{
+  sed -i '/^  tasks:$/,/^  post_tasks:$/ {
+      s/^\s\{8\}- name:/    - name:/
       s/^  - name:/    - name:/
       s/^    tags:/      tags:/
       s/^    - /        - /
@@ -17,6 +19,7 @@ for file in ansible/playbooks/*.yml; do
 
     # Fix indentation within post_tasks
     sed -i '/^  post_tasks:$/,${
+      s/^\s\{8\}- name:/    - name:/
       s/^  - name:/    - name:/
       s/^    tags:/      tags:/
       s/^    - /        - /

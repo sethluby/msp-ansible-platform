@@ -1,5 +1,18 @@
 # MSP Ansible Infrastructure Management Platform
 
+## Architecture At-a-Glance
+
+```text
+[MSP Control Plane]
+  AWX/Controller + Vault + CI/CD + SIEM
+       |  Connectivity per client (choose one or mix)
+       +-- Pull (HTTPS)      -> clients pull playbooks; run locally
+       +-- WireGuard Bastion -> AWX SSH/WinRM via VPN to client networks
+       +-- Reverse SSH       -> client agents maintain tunnels; AWX via loopback
+  Targets: Azure | AWS | GCP (VMs, Kubernetes nodes, selected PaaS*)
+  *PaaS coverage depends on available modules and access model
+```
+
 A comprehensive Ansible-based infrastructure management solution for Managed Service Providers. Provides centralized automation with secure client connectivity and flexible compliance framework support.
 
 ## ⚠️ Important Notice: Testing and Validation Platform
@@ -11,6 +24,194 @@ A comprehensive Ansible-based infrastructure management solution for Managed Ser
 - Research framework for business model validation
 
 **For Production Use**: Extensive testing, security auditing, and compliance validation would be required before any production deployment. This platform is designed for research, testing, and pilot program evaluation.
+
+## MSP Architecture (Azure/AWS/GCP)
+
+The platform is cloud-agnostic with three client connectivity patterns. From the MSP’s perspective you operate a single control plane that safely automates tenants across Azure, AWS, and GCP.
+
+```text
++--------------------------------------------------------------+
+| MSP Control Plane                                            |
+|                                                              |
+|  GitHub (Ansible repo, IaC)  ->  CI/CD (lint/test)           |
+|                \                                              |
+|                 \                                             |
+|  Ansible AWX/Controller  <-->  Vault (secrets)               |
+|          |                         |                          |
+|          +---- Reports/Artifacts --+--> SIEM/Log Store        |
++--------------------------------------------------------------+
+
+Client Connectivity Patterns (choose per-tenant, mix as needed)
+
+  [1] Pull-Based (outbound-only)
+      Client cron/systemd timer -> HTTPS pull from Git repo
+      Client runs Ansible locally; ships logs to MSP SIEM (HTTPS)
+
+  [2] Bastion (WireGuard hub-and-spoke)
+      AWX -> MSP WireGuard Hub ==VPN== Client WireGuard Peer -> Nodes (SSH/WinRM)
+
+  [3] Reverse Tunnel (outbound-only)
+      Client reverse-SSH agent ==> MSP Tunnel Host; AWX connects via loopback ports
+
+Legend: 'outbound-only' means no inbound rules on client networks.
+```
+
+### Architecture Decision Matrix
+
+- Pull-Based (HTTPS-only)
+  - Choose when: outbound-only networks, high client autonomy, air-gapped/partially connected.
+  - Pros: no inbound rules, simple operations, scales with Git, resilient to MSP outages.
+  - Considerations: local timers/agents, slower control loop, local secret bootstrap required.
+
+- Bastion (WireGuard hub-and-spoke)
+  - Choose when: need real-time operations, interactive troubleshooting, central execution from AWX.
+  - Pros: direct access over VPN, low-latency jobs, centralized secrets in Vault/AWX.
+  - Considerations: manage WG keys/peers, small per-tenant VM, network change control for VPN.
+
+- Reverse Tunnel (SSH)
+  - Choose when: zero inbound allowed, strict compliance, ephemeral just-in-time access.
+  - Pros: zero inbound exposure, granular port forwards, strong audit trail of access paths.
+  - Considerations: tunnel host operations, agent resilience, port-forward allocation/scale.
+
+### End-to-End Architecture (MSP + Clients)
+
+```text
++------------------------------------- MSP Control Plane -------------------------------------+
+| GitHub (repo)  CI/CD   |   AWX/Controller   |   Vault (per-tenant secrets)   |   SIEM/Logs   |
+|         \              |         |          |                |                |              |
+|          \             |     +---+----+    |          +-----+-----+        +--+--+          |
+|           \            |     |  WG Hub |<=========>   | Tunnel Host |<=====> Port Forwards   |
+|            \           |     +--------+                +-----------+        (reverse-SSH)    |
++------------------------+---------------------------------------------------------------------------
+                         |                         |                         |
+                         |                         |                         |
+                (B) Bastion VPN             (C) Reverse Tunnels        (A) Pull-Based
+                         |                         |                         |
++------------------------v-------------------------v-------------------------v------------------+
+|                                   Clients (Multi-Cloud Tenants)                               |
+|  Client A (Azure)                 Client B (AWS)                    Client C (GCP)            |
+|  +------------------+            +------------------+               +------------------+      |
+|  | Bastion (WG peer)|<==========>| AWX via WG       |               | Reverse agents   |=====>|
+|  | (optional)       |            | (optional)       |               | to Tunnel Host   |      |
+|  +--+-----------+---+            +----+--------+----+               +----+--------+----+      |
+|     |           |                     |        |                          |        |          |
+|   SSH/WinRM   HTTPS (pull)         SSH/WinRM  HTTPS (pull)              SSH/WinRM  HTTPS (pull)|
+|     |           |                     |        |                          |        |          |
+|  Targets: VMs, AKS nodes,        Targets: EC2, EKS nodes,           Targets: GCE, GKE nodes,   |
+|           PaaS (supported)                PaaS (supported)                  PaaS (supported)   |
+|                                                                                               |
+| Notes:                                                                                        |
+| - Pull-Based: nodes/agents pull playbooks from Git (HTTPS) and run locally.                   |
+| - Bastion: AWX reaches targets over WireGuard via client bastion peer.                        |
+| - Reverse: client agents maintain reverse-SSH to MSP Tunnel Host; AWX uses loopback ports.    |
++------------------------------------------------------------------------------------------------+
+
+Operational model: multi-tenant inventories and per-client secrets in Vault; connectivity per-client.
+```
+
+#### Tenant Isolation & Inventory Model
+- Separate inventory groups per client (see `ansible/inventory/examples/hosts.yml`).
+- Client-specific configuration under `ansible/inventory/examples/group_vars/client_<name>/`.
+- Per-tenant secrets isolated in Vault (KV pathing by client); AWX templates map vars to secrets.
+- Network isolation via dedicated WG peers or independent reverse tunnels per client.
+
+#### Identity & RBAC (AWX, optional IdP/SSO)
+- IdP/SSO: Integrate AWX/Controller with OIDC or SAML (e.g., Entra ID/Azure AD, Okta, Google Workspace).
+- Tenancy model: One AWX Organization per client; Projects/Inventories scoped to that Org.
+- RBAC: Teams per client with least-privilege roles (e.g., Execute on Job Templates, limited Inventory).
+- Credentials: Store per-tenant credentials in AWX and Vault; avoid embedding secrets in projects.
+- Approvals: Use Workflow Job Templates with approval gates for sensitive operations.
+- Audit: Forward AWX logs/events to SIEM; ensure IdP group-to-role mappings are auditable.
+
+#### Client Lifecycle & Data Flows
+- Onboarding: `ansible/playbooks/onboard-client.yml` provisions keys, optional VPN, monitoring, docs.
+- Operations: AWX job templates target client groups; modules use SSH/WinRM (or local for pull-based).
+- Compliance/Reporting: playbooks run controls; logs route to SIEM and client’s native logging if desired.
+- Graceful Disconnection: `ansible/playbooks/prepare-disconnection.yml` removes MSP endpoints and hands off.
+
+### Azure (Tenant) – MSP View
+
+```text
++------------------------------- Azure Subscription (Tenant) -------------------------------+
+|                                                                                           |
+|  VNet(s) & Subnets                                                                        |
+|   +----------------------+     +----------------------+     +---------------------------+  |
+|   | Linux/Windows VMs    |     | AKS worker nodes     |     | PaaS (optional targets)   |  |
+|   +----------+-----------+     +----------+-----------+     +-------------+-------------+  |
+|              |                            |                               |                |
+|              |                            |                               |                |
+|   (opt) Azure Arc/Automation*  (opt) guest mgmt agents*                  (opt) APIs*       |
+|              |                            |                               |                |
+|   (A) Pull-Based: VMs/Nodes pull playbooks from Git (HTTPS)                               |
+|   (B) Bastion:    Small VM runs WireGuard Peer  <== VPN ==>  MSP WireGuard Hub            |
+|                   AWX -> SSH/WinRM via WG IPs to targets                                   |
+|   (C) Reverse:    Reverse-SSH agents on targets  ==>  MSP Tunnel Host -> AWX loopback      |
+|                                                                                           |
+|   Optional client-native services: Key Vault (secrets), Log Analytics (logs)               |
++-------------------------------------------------------------------------------------------+
+
+MSP Control Plane: AWX/Controller, Vault, CI/CD, SIEM (multi-tenant feeds)
+*Azure-native integrations are optional; default path is SSH/WinRM over WG or reverse tunnel.
+```
+
+### AWS (Tenant) – MSP View
+
+```text
++-------------------------------------- AWS Account (Tenant) --------------------------------------+
+|                                                                                                  |
+|  VPC, private subnets                                                                             |
+|   +----------------------+    +----------------------+    +-----------------------------------+  |
+|   | EC2 Linux/Windows    |    | EKS worker nodes     |    | RDS/ElastiCache/etc (optional)    |  |
+|   +----------+-----------+    +----------+-----------+    +--------------------+---------------+  |
+|              |                           |                                   |                  |
+|              |                           |                                   |                  |
+|   (opt) SSM Agent* (RunCommand/Patch)    |                                   |                  |
+|              |                           |                                   |                  |
+|   (A) Pull-Based: Instances pull from Git (HTTPS); logs to CloudWatch -> MSP SIEM (optional)     |
+|   (B) Bastion:    Small EC2 runs WireGuard Peer <== VPN ==> MSP WireGuard Hub;                   |
+|                   AWX -> SSH/WinRM over WG to targets                                            |
+|   (C) Reverse:    Reverse-SSH agents on targets ==> MSP Tunnel Host -> AWX loopback               |
+|                                                                                                  |
+|   Optional client-native services: Secrets Manager/Parameter Store (client-owned), CloudWatch     |
++--------------------------------------------------------------------------------------------------+
+
+MSP Control Plane: AWX/Controller, Vault, CI/CD, SIEM (multi-tenant feeds)
+*SSM can be used by agreement for patch/exec; default path is SSH/WinRM via WG or reverse tunnel.
+```
+
+### GCP (Tenant) – MSP View
+
+```text
++---------------------------------------- GCP Project (Tenant) ---------------------------------------+
+|                                                                                                      |
+|  VPC, private subnets                                                                                 |
+|   +----------------------+    +----------------------+    +---------------------------------------+   |
+|   | GCE Linux/Windows    |    | GKE worker nodes     |    | Cloud SQL/Memorystore (optional)      |   |
+|   +----------+-----------+    +----------+-----------+    +----------------------+----------------+   |
+|              |                           |                                 |                        |
+|              |                           |                                 |                        |
+|   (opt) OS Config/OS Inventory*         |                                 |                        |
+|              |                           |                                 |                        |
+|   (A) Pull-Based: Instances pull from Git (HTTPS); logs to Cloud Logging -> MSP SIEM (optional)      |
+|   (B) Bastion:    Small GCE runs WireGuard Peer <== VPN ==> MSP WireGuard Hub;                       |
+|                   AWX -> SSH/WinRM over WG to targets                                                |
+|   (C) Reverse:    Reverse-SSH agents on targets ==> MSP Tunnel Host -> AWX loopback                   |
+|                                                                                                      |
+|   Optional client-native services: Secret Manager (client-owned), Cloud Logging/Monitoring            |
++------------------------------------------------------------------------------------------------------+ 
+
+MSP Control Plane: AWX/Controller, Vault, CI/CD, SIEM (multi-tenant feeds)
+*OS Config can be used for inventory/patch; default path is SSH/WinRM via WG or reverse tunnel.
+```
+
+Key repo entry points for each pattern:
+- Pull-Based: `bootstrap/bootstrap-pull-based.sh` (timer-based pull + local apply)
+- Bastion (WireGuard): `bootstrap/bootstrap-bastion-host.sh` (client peer) and AWX inventory uses WG IPs
+- Reverse Tunnel: `bootstrap/bootstrap-reverse-tunnel.sh` (per-node agent) and AWX connects via loopback
+
+Primary orchestration playbooks:
+- MSP core: `ansible/playbooks/deploy-msp-infrastructure.yml`
+- Client infra (choose pattern): `ansible/playbooks/deploy-client-infrastructure.yml`
 
 ## Quick Start
 
