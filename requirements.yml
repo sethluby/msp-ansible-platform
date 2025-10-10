@@ -58,12 +58,10 @@ roles:
     version: main
 
   - name: dev-sec.ssh-hardening
-    src: https://github.com/dev-sec/ansible-ssh-hardening
-    version: main
+    # Use latest release from Ansible Galaxy to avoid branch mismatches
 
   - name: dev-sec.os-hardening
-    src: https://github.com/dev-sec/ansible-os-hardening
-    version: main
+    # Use latest release from Ansible Galaxy to avoid branch mismatches
 
   # Monitoring and observability
   - name: cloudalchemy.prometheus
