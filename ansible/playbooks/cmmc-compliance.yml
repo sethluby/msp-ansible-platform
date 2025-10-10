@@ -45,39 +45,30 @@
       tags:
       - validation
       ansible.builtin.assert:
-      that:
-      - client_name is defined
-      - client_cmmc_level in ['Level_1', 'Level_2', 'Level_3']
-      - client_cmmc_profile in ['basic', 'enhanced', 'expert']
-      fail_msg: Invalid CMMC compliance parameters
+        that:
+          - client_name is defined
+          - client_cmmc_level in ['Level_1', 'Level_2', 'Level_3']
+          - client_cmmc_profile in ['basic', 'enhanced', 'expert']
+        fail_msg: "Invalid CMMC compliance parameters"
 
     - name: Create client CMMC compliance log directory
       tags:
       - logging
       ansible.builtin.file:
-      path: /var/log/msp/{{ client_name }}/cmmc-compliance
-      state: directory
-      mode: '0750'
-      owner: root
-      group: root
+        path: /var/log/msp/{{ client_name }}/cmmc-compliance
+        state: directory
+        mode: '0750'
+        owner: root
+        group: root
     - name: Log CMMC compliance initiation
       when: msp_syslog_server != ""
       tags:
       - logging
+      changed_when: false
       failed_when: false
-      ansible.builtin.shell: 'set -o pipefail
-
-      >-
-
-      logger -n {{ msp_syslog_server }} -t "CMMC-COMPLIANCE"
-
-      "Client: {{ client_name }} | Host: {{ inventory_hostname }} |
-
-      Session: {{ cmmc_session_id }} | Level: {{ client_cmmc_level }} |
-
-      Status: STARTED"
-
-      '
+      ansible.builtin.shell: >-
+        logger -n {{ msp_syslog_server }} -t "CMMC-COMPLIANCE"
+        "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ cmmc_session_id }} | Level: {{ client_cmmc_level }} | Status: STARTED"
   tasks:
     - name: CMMC AC.L2-3.1.1 - Limit system access to authorized users
       when: '"AC.L2-3.1.1" not in client_cmmc_exceptions'
@@ -86,36 +77,36 @@
       - access_control
       - AC.L2-3.1.1
       block:
-    - name: Configure account lockout policy
-      ansible.builtin.lineinfile:
-      path: /etc/security/faillock.conf
-      regexp: '{{ item.regexp }}'
-      line: '{{ item.line }}'
-      create: true
-      backup: true
-      loop:
-      - regexp: ^#?deny
-      line: deny = 3
-      - regexp: ^#?unlock_time
-      line: unlock_time = 900
-      - regexp: ^#?fail_interval
-      line: fail_interval = 900
-      register: cmmc_ac_1_1_lockout
+        - name: Configure account lockout policy
+          ansible.builtin.lineinfile:
+            path: /etc/security/faillock.conf
+            regexp: '{{ item.regexp }}'
+            line: '{{ item.line }}'
+            create: true
+            backup: true
+          loop:
+            - regexp: ^#?deny
+              line: deny = 3
+            - regexp: ^#?unlock_time
+              line: unlock_time = 900
+            - regexp: ^#?fail_interval
+              line: fail_interval = 900
+          register: cmmc_ac_1_1_lockout
 
-    - name: Configure password aging
-      ansible.builtin.lineinfile:
-      path: /etc/login.defs
-      regexp: '{{ item.regexp }}'
-      line: '{{ item.line }}'
-      backup: true
-      loop:
-      - regexp: ^PASS_MAX_DAYS
-      line: PASS_MAX_DAYS 60
-      - regexp: ^PASS_MIN_DAYS
-      line: PASS_MIN_DAYS 1
-      - regexp: ^PASS_WARN_AGE
-      line: PASS_WARN_AGE 7
-      register: cmmc_ac_1_1_aging
+        - name: Configure password aging
+          ansible.builtin.lineinfile:
+            path: /etc/login.defs
+            regexp: '{{ item.regexp }}'
+            line: '{{ item.line }}'
+            backup: true
+          loop:
+            - regexp: ^PASS_MAX_DAYS
+              line: PASS_MAX_DAYS 60
+            - regexp: ^PASS_MIN_DAYS
+              line: PASS_MIN_DAYS 1
+            - regexp: ^PASS_WARN_AGE
+              line: PASS_WARN_AGE 7
+          register: cmmc_ac_1_1_aging
     - name: CMMC AC.L2-3.1.2 - Manage user accounts
       when: '"AC.L2-3.1.2" not in client_cmmc_exceptions'
       tags:
@@ -123,37 +114,33 @@
       - access_control
       - AC.L2-3.1.2
       block:
-    - name: Disable unused system accounts
-      ansible.builtin.user:
-      name: '{{ item }}'
-      shell: 'set -o pipefail
+        - name: Disable unused system accounts
+          ansible.builtin.user:
+            name: '{{ item }}'
+            shell: /sbin/nologin
+            password: '!'
+          loop:
+            - games
+            - ftp
+            - nobody
+            - apache
+            - www-data
+          failed_when: false
+          register: cmmc_ac_1_2_disable
 
-      /sbin/nologin
-
-      '
-      password: '!'
-      loop:
-      - games
-      - ftp
-      - nobody
-      - apache
-      - www-data
-      failed_when: false
-      register: cmmc_ac_1_2_disable
-
-    - name: Remove .rhosts and .netrc files
-      ansible.builtin.find:
-      paths: /home
-      patterns: .rhosts,.netrc
-      hidden: true
-      recurse: true
-      register: rhosts_files
-    - name: Delete found .rhosts and .netrc files
-      ansible.builtin.file:
-      path: '{{ item.path }}'
-      state: absent
-      loop: '{{ rhosts_files.files }}'
-      register: cmmc_ac_1_2_cleanup
+        - name: Remove .rhosts and .netrc files
+          ansible.builtin.find:
+            paths: /home
+            patterns: .rhosts,.netrc
+            hidden: true
+            recurse: true
+          register: rhosts_files
+        - name: Delete found .rhosts and .netrc files
+          ansible.builtin.file:
+            path: '{{ item.path }}'
+            state: absent
+          loop: '{{ rhosts_files.files }}'
+          register: cmmc_ac_1_2_cleanup
     - name: CMMC AU.L2-3.3.1 - Create and retain audit logs
       when: '"AU.L2-3.3.1" not in client_cmmc_exceptions'
       tags:
@@ -161,59 +148,41 @@
       - audit
       - AU.L2-3.3.1
       block:
-    - name: Configure auditd service
-      ansible.builtin.service:
-      name: auditd
-      state: started
-      enabled: true
-    - name: Configure audit rules for CMMC
-      ansible.builtin.blockinfile:
-      path: /etc/audit/rules.d/50-cmmc.rules
-      create: true
-      block: '# CMMC AU.L2-3.3.1 - Audit Events
+        - name: Configure auditd service
+          ansible.builtin.service:
+            name: auditd
+            state: started
+            enabled: true
+        - name: Configure audit rules for CMMC
+          ansible.builtin.blockinfile:
+            path: /etc/audit/rules.d/50-cmmc.rules
+            create: true
+            block: |
+              # CMMC AU.L2-3.3.1 - Audit Events
 
+              # Unsuccessful file access (AC violations)
+              -a always,exit -F arch=b64 -S open,openat,open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=unset -k access
+              -a always,exit -F arch=b64 -S open,openat,open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=unset -k access
 
-      # Unsuccessful file access (AC violations)
+              # Privileged commands
+              -a always,exit -F path=/usr/bin/su -F perm=x -F auid>=1000 -F auid!=unset -k privileged
+              -a always,exit -F path=/usr/bin/sudo -F perm=x -F auid>=1000 -F auid!=unset -k privileged
 
-      -a always,exit -F arch=b64 -S open,openat,open_by_handle_at -F exit=-EACCES -F auid>=1000 -F auid!=unset -k access
+              # Account modifications
+              -w /etc/passwd -p wa -k identity
+              -w /etc/group -p wa -k identity
+              -w /etc/gshadow -p wa -k identity
+              -w /etc/shadow -p wa -k identity
 
-      -a always,exit -F arch=b64 -S open,openat,open_by_handle_at -F exit=-EPERM -F auid>=1000 -F auid!=unset -k access
-
-
-      # Privileged commands
-
-      -a always,exit -F path=/usr/bin/su -F perm=x -F auid>=1000 -F auid!=unset -k privileged
-
-      -a always,exit -F path=/usr/bin/sudo -F perm=x -F auid>=1000 -F auid!=unset -k privileged
-
-
-      # Account modifications
-
-      -w /etc/passwd -p wa -k identity
-
-      -w /etc/group -p wa -k identity
-
-      -w /etc/gshadow -p wa -k identity
-
-      -w /etc/shadow -p wa -k identity
-
-
-      # Network environment
-
-      -a always,exit -F arch=b64 -S sethostname,setdomainname -k network_modifications
-
-      -w /etc/issue -p wa -k network_modifications
-
-      -w /etc/issue.net -p wa -k network_modifications
-
-      -w /etc/hosts -p wa -k network_modifications
-
-      -w /etc/sysconfig/network -p wa -k network_modifications
-
-      '
-      marker: '# {mark} CMMC AUDIT RULES'
-      notify: Reload auditd
-      register: cmmc_au_3_1_rules
+              # Network environment
+              -a always,exit -F arch=b64 -S sethostname,setdomainname -k network_modifications
+              -w /etc/issue -p wa -k network_modifications
+              -w /etc/issue.net -p wa -k network_modifications
+              -w /etc/hosts -p wa -k network_modifications
+              -w /etc/sysconfig/network -p wa -k network_modifications
+            marker: '# {mark} CMMC AUDIT RULES'
+          notify: Reload auditd
+          register: cmmc_au_3_1_rules
 
     - name: CMMC CM.L2-3.4.1 - Establish and maintain baseline configurations
       when: '"CM.L2-3.4.1" not in client_cmmc_exceptions'
@@ -222,22 +191,26 @@
       - configuration_management
       - CM.L2-3.4.1
       block:
-    - name: Install and configure AIDE (file integrity monitoring)
-      ansible.builtin.package:
-      name: aide
-      state: present
-    - name: Initialize AIDE database
-      ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nif [ ! -f /var/lib/aide/aide.db.gz ]; then\n  aide --init\n  mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz\nfi\n"
-      register: aide_init_result
-      changed_when: '''moved'' in aide_init_result.stdout'
-    - name: Configure AIDE for daily checks
-      ansible.builtin.cron:
-      name: CMMC CM.L2-3.4.1 - Daily AIDE check
-      minute: '0'
-      hour: '5'
-      job: /usr/sbin/aide --check 2>&1 | logger -t AIDE
-      user: root
-      register: cmmc_cm_4_1_aide
+        - name: Install and configure AIDE (file integrity monitoring)
+          ansible.builtin.package:
+            name: aide
+            state: present
+        - name: Initialize AIDE database
+          ansible.builtin.shell: |
+            if [ ! -f /var/lib/aide/aide.db.gz ]; then
+              aide --init
+              mv /var/lib/aide/aide.db.new.gz /var/lib/aide/aide.db.gz
+            fi
+          register: aide_init_result
+          changed_when: "'moved' in aide_init_result.stdout"
+        - name: Configure AIDE for daily checks
+          ansible.builtin.cron:
+            name: CMMC CM.L2-3.4.1 - Daily AIDE check
+            minute: '0'
+            hour: '5'
+            job: /usr/sbin/aide --check 2>&1 | logger -t AIDE
+            user: root
+          register: cmmc_cm_4_1_aide
     - name: CMMC IA.L2-3.5.1 - Identify users uniquely
       when: '"IA.L2-3.5.1" not in client_cmmc_exceptions'
       tags:
@@ -245,39 +218,25 @@
       - identification_authentication
       - IA.L2-3.5.1
       block:
-    - name: Ensure no duplicate UIDs exist
-      ansible.builtin.shell: 'set -o pipefail
-
-      |
-
-      set -o pipefail
-
-      awk -F: ''{print $3}'' /etc/passwd | sort | uniq -d
-
-      '
-
-      changed_when: false
-      failed_when: duplicate_uids.stdout | length > 0
-    - name: Ensure no duplicate usernames exist
-      ansible.builtin.shell: 'set -o pipefail
-
-      |
-
-      set -o pipefail
-
-      awk -F: ''{print $1}'' /etc/passwd | sort | uniq -d
-
-      '
-      register: duplicate_users
-      changed_when: false
-      failed_when: duplicate_users.stdout | length > 0
-    - name: Configure unique user identification
-      ansible.builtin.lineinfile:
-      path: /etc/login.defs
-      regexp: ^UID_MIN
-      line: UID_MIN 1000
-      backup: true
-      register: cmmc_ia_5_1_uid
+        - name: Ensure no duplicate UIDs exist
+          ansible.builtin.shell: |
+            awk -F: '{print $3}' /etc/passwd | sort | uniq -d
+          register: duplicate_uids
+          changed_when: false
+          failed_when: duplicate_uids.stdout | length > 0
+        - name: Ensure no duplicate usernames exist
+          ansible.builtin.shell: |
+            awk -F: '{print $1}' /etc/passwd | sort | uniq -d
+          register: duplicate_users
+          changed_when: false
+          failed_when: duplicate_users.stdout | length > 0
+        - name: Configure unique user identification
+          ansible.builtin.lineinfile:
+            path: /etc/login.defs
+            regexp: ^UID_MIN
+            line: UID_MIN 1000
+            backup: true
+          register: cmmc_ia_5_1_uid
     - name: CMMC IA.L2-3.5.2 - Implement multi-factor authentication
       when:
       - '"IA.L2-3.5.2" not in client_cmmc_exceptions'
@@ -287,43 +246,43 @@
       - identification_authentication
       - IA.L2-3.5.2
       block:
-    - name: Install required packages for MFA
-      ansible.builtin.package:
-      name: '{{ item }}'
-      state: present
-      loop:
-      - google-authenticator
-      - libpam-google-authenticator
-      when: ansible_os_family == "Debian"
-    - name: Install required packages for MFA (RHEL)
-      ansible.builtin.package:
-      name: '{{ item }}'
-      state: present
-      loop:
-      - google-authenticator
-      - pam_google_authenticator
-      when: ansible_os_family == "RedHat"
-    - name: Configure PAM for Google Authenticator
-      ansible.builtin.lineinfile:
-      path: /etc/pam.d/sshd
-      line: auth required pam_google_authenticator.so
-      insertafter: auth       substack     password-auth
-      backup: true
-      register: cmmc_ia_5_2_pam
+        - name: Install required packages for MFA
+          ansible.builtin.package:
+            name: '{{ item }}'
+            state: present
+          loop:
+            - google-authenticator
+            - libpam-google-authenticator
+          when: ansible_os_family == "Debian"
+        - name: Install required packages for MFA (RHEL)
+          ansible.builtin.package:
+            name: '{{ item }}'
+            state: present
+          loop:
+            - google-authenticator
+            - pam_google_authenticator
+          when: ansible_os_family == "RedHat"
+        - name: Configure PAM for Google Authenticator
+          ansible.builtin.lineinfile:
+            path: /etc/pam.d/sshd
+            line: auth required pam_google_authenticator.so
+            insertafter: 'auth       substack     password-auth'
+            backup: true
+          register: cmmc_ia_5_2_pam
 
-    - name: Configure SSH for challenge-response auth
-      ansible.builtin.lineinfile:
-      path: /etc/ssh/sshd_config
-      regexp: '{{ item.regexp }}'
-      line: '{{ item.line }}'
-      backup: true
-      loop:
-      - regexp: ^#?ChallengeResponseAuthentication
-      line: ChallengeResponseAuthentication yes
-      - regexp: ^#?AuthenticationMethods
-      line: AuthenticationMethods publickey,keyboard-interactive
-      notify: Restart sshd
-      register: cmmc_ia_5_2_ssh
+        - name: Configure SSH for challenge-response auth
+          ansible.builtin.lineinfile:
+            path: /etc/ssh/sshd_config
+            regexp: '{{ item.regexp }}'
+            line: '{{ item.line }}'
+            backup: true
+          loop:
+            - regexp: ^#?ChallengeResponseAuthentication
+              line: ChallengeResponseAuthentication yes
+            - regexp: ^#?AuthenticationMethods
+              line: AuthenticationMethods publickey,keyboard-interactive
+          notify: Restart sshd
+          register: cmmc_ia_5_2_ssh
     - name: CMMC SC.L2-3.13.1 - Monitor, control, and protect communications
       when: '"SC.L2-3.13.1" not in client_cmmc_exceptions'
       tags:
@@ -331,36 +290,36 @@
       - system_communications_protection
       - SC.L2-3.13.1
       block:
-    - name: Configure secure network protocols
-      ansible.builtin.lineinfile:
-      path: /etc/ssh/sshd_config
-      regexp: '{{ item.regexp }}'
-      line: '{{ item.line }}'
-      backup: true
-      loop:
-      - regexp: ^#?Protocol
-      line: Protocol 2
-      - regexp: ^#?Ciphers
-      line: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
-      - regexp: ^#?MACs
-      line: MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512
-      - regexp: ^#?KexAlgorithms
-      line: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512
-      notify: Restart sshd
-      register: cmmc_sc_13_1_ssh
+        - name: Configure secure network protocols
+          ansible.builtin.lineinfile:
+            path: /etc/ssh/sshd_config
+            regexp: '{{ item.regexp }}'
+            line: '{{ item.line }}'
+            backup: true
+          loop:
+            - regexp: ^#?Protocol
+              line: Protocol 2
+            - regexp: ^#?Ciphers
+              line: Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+            - regexp: ^#?MACs
+              line: MACs hmac-sha2-256-etm@openssh.com,hmac-sha2-512-etm@openssh.com,hmac-sha2-256,hmac-sha2-512
+            - regexp: ^#?KexAlgorithms
+              line: KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org,diffie-hellman-group16-sha512,diffie-hellman-group18-sha512
+          notify: Restart sshd
+          register: cmmc_sc_13_1_ssh
 
-    - name: Disable insecure services
-      ansible.builtin.service:
-      name: '{{ item }}'
-      state: stopped
-      enabled: false
-      loop:
-      - telnet
-      - rsh
-      - rlogin
-      - ftp
-      failed_when: false
-      register: cmmc_sc_13_1_services
+        - name: Disable insecure services
+          ansible.builtin.service:
+            name: '{{ item }}'
+            state: stopped
+            enabled: false
+          loop:
+            - telnet
+            - rsh
+            - rlogin
+            - ftp
+          failed_when: false
+          register: cmmc_sc_13_1_services
     - name: CMMC SI.L2-3.14.1 - Identify and correct system flaws
       when: '"SI.L2-3.14.1" not in client_cmmc_exceptions'
       tags:
@@ -368,32 +327,32 @@
       - system_information_integrity
       - SI.L2-3.14.1
       block:
-    - name: Configure automatic security updates
-      ansible.builtin.lineinfile:
-      path: /etc/dnf/automatic.conf
-      regexp: '{{ item.regexp }}'
-      line: '{{ item.line }}'
-      create: true
-      loop:
-      - regexp: ^upgrade_type
-      line: upgrade_type = security
-      - regexp: ^apply_updates
-      line: apply_updates = yes
-      - regexp: ^emit_via
-      line: emit_via = stdio
-      when: ansible_pkg_mgr == "dnf"
+        - name: Configure automatic security updates
+          ansible.builtin.lineinfile:
+            path: /etc/dnf/automatic.conf
+            regexp: '{{ item.regexp }}'
+            line: '{{ item.line }}'
+            create: true
+          loop:
+            - regexp: ^upgrade_type
+              line: upgrade_type = security
+            - regexp: ^apply_updates
+              line: apply_updates = yes
+            - regexp: ^emit_via
+              line: emit_via = stdio
+          when: ansible_pkg_mgr == "dnf"
 
-    - name: Configure unattended-upgrades (Ubuntu)
-      ansible.builtin.package:
-      name: unattended-upgrades
-      state: present
-      when: ansible_os_family == "Debian"
-    - name: Enable automatic security updates service
-      ansible.builtin.service:
-      name: '{{ ''dnf-automatic-install.timer'' if ansible_pkg_mgr == ''dnf'' else ''unattended-upgrades'' }}'
-      state: started
-      enabled: true
-      register: cmmc_si_14_1_service
+        - name: Configure unattended-upgrades (Ubuntu)
+          ansible.builtin.package:
+            name: unattended-upgrades
+            state: present
+          when: ansible_os_family == "Debian"
+        - name: Enable automatic security updates service
+          ansible.builtin.service:
+            name: '{{ ''dnf-automatic-install.timer'' if ansible_pkg_mgr == ''dnf'' else ''unattended-upgrades'' }}'
+            state: started
+            enabled: true
+          register: cmmc_si_14_1_service
     - name: CMMC Level 3 Enhanced Security Controls
       when:
       - client_cmmc_level == "Level_3"
@@ -403,32 +362,32 @@
       - level_3
       - enhanced_controls
       block:
-    - name: CMMC AC.L2-3.1.20 - Control external system connections
-      ansible.builtin.lineinfile:
-      path: /etc/hosts.deny
-      line: 'ALL: ALL'
-      create: true
-      backup: true
+        - name: CMMC AC.L2-3.1.20 - Control external system connections
+          ansible.builtin.lineinfile:
+            path: /etc/hosts.deny
+            line: 'ALL: ALL'
+            create: true
+            backup: true
 
-    - name: CMMC AU.L2-3.3.8 - Provide time stamps for audit records
-      ansible.builtin.lineinfile:
-      path: /etc/chrony.conf
-      regexp: '{{ item.regexp }}'
-      line: '{{ item.line }}'
-      backup: true
-      loop:
-      - regexp: ^#?server
-      line: server time.nist.gov iburst
-      - regexp: ^#?makestep
-      line: makestep 1.0 3
-      register: cmmc_au_3_8_time
-    - name: CMMC SI.L2-3.14.4 - Monitor information system security alerts
-      ansible.builtin.lineinfile:
-      path: /etc/rsyslog.conf
-      line: '*.crit @@{{ msp_syslog_server }}'
-      backup: true
-      when: msp_syslog_server != ""
-      register: cmmc_si_14_4_monitoring
+        - name: CMMC AU.L2-3.3.8 - Provide time stamps for audit records
+          ansible.builtin.lineinfile:
+            path: /etc/chrony.conf
+            regexp: '{{ item.regexp }}'
+            line: '{{ item.line }}'
+            backup: true
+          loop:
+            - regexp: ^#?server
+              line: server time.nist.gov iburst
+            - regexp: ^#?makestep
+              line: makestep 1.0 3
+          register: cmmc_au_3_8_time
+        - name: CMMC SI.L2-3.14.4 - Monitor information system security alerts
+          ansible.builtin.lineinfile:
+            path: /etc/rsyslog.conf
+            line: '*.crit @@{{ msp_syslog_server }}'
+            backup: true
+          when: msp_syslog_server != ""
+          register: cmmc_si_14_4_monitoring
     - name: Apply client-specific CMMC exceptions
       when: client_cmmc_exceptions | length > 0
       tags:
@@ -436,51 +395,51 @@
       - exceptions
       loop: '{{ client_cmmc_exceptions }}'
       ansible.builtin.debug:
-      msg: Skipping CMMC control {{ item }} per client exception
+        msg: "Skipping CMMC control {{ item }} per client exception"
   post_tasks:
     - name: Collect CMMC compliance findings
       tags:
       - reporting
       loop:
-      - control: AC.L2-3.1.1
-      status: '{{ ''IMPLEMENTED'' if cmmc_ac_1_1_lockout.changed else ''COMPLIANT'' }}'
-      description: Account lockout policy configured
-      - control: AC.L2-3.1.2
-      status: '{{ ''IMPLEMENTED'' if cmmc_ac_1_2_disable.changed else ''COMPLIANT'' }}'
-      description: System accounts managed
-      - control: AU.L2-3.3.1
-      status: '{{ ''IMPLEMENTED'' if cmmc_au_3_1_rules.changed else ''COMPLIANT'' }}'
-      description: Audit logging configured
-      - control: CM.L2-3.4.1
-      status: '{{ ''IMPLEMENTED'' if cmmc_cm_4_1_aide.changed else ''COMPLIANT'' }}'
-      description: Baseline configuration monitoring
-      - control: IA.L2-3.5.1
-      status: '{{ ''IMPLEMENTED'' if cmmc_ia_5_1_uid.changed else ''COMPLIANT'' }}'
-      description: Unique user identification
-      - control: IA.L2-3.5.2
-      status: '{{ ''IMPLEMENTED'' if cmmc_ia_5_2_pam.changed else ''COMPLIANT'' }}'
-      description: Multi-factor authentication
-      level: Level_2+
-      - control: SC.L2-3.13.1
-      status: '{{ ''IMPLEMENTED'' if cmmc_sc_13_1_ssh.changed else ''COMPLIANT'' }}'
-      description: Secure communications
-      - control: SI.L2-3.14.1
-      status: '{{ ''IMPLEMENTED'' if cmmc_si_14_1_service.changed else ''COMPLIANT'' }}'
-      description: Automated security updates
+        - control: AC.L2-3.1.1
+          status: "{{ 'IMPLEMENTED' if cmmc_ac_1_1_lockout.changed else 'COMPLIANT' }}"
+          description: Account lockout policy configured
+        - control: AC.L2-3.1.2
+          status: "{{ 'IMPLEMENTED' if cmmc_ac_1_2_disable.changed else 'COMPLIANT' }}"
+          description: System accounts managed
+        - control: AU.L2-3.3.1
+          status: "{{ 'IMPLEMENTED' if cmmc_au_3_1_rules.changed else 'COMPLIANT' }}"
+          description: Audit logging configured
+        - control: CM.L2-3.4.1
+          status: "{{ 'IMPLEMENTED' if cmmc_cm_4_1_aide.changed else 'COMPLIANT' }}"
+          description: Baseline configuration monitoring
+        - control: IA.L2-3.5.1
+          status: "{{ 'IMPLEMENTED' if cmmc_ia_5_1_uid.changed else 'COMPLIANT' }}"
+          description: Unique user identification
+        - control: IA.L2-3.5.2
+          status: "{{ 'IMPLEMENTED' if cmmc_ia_5_2_pam.changed else 'COMPLIANT' }}"
+          description: Multi-factor authentication
+          level: Level_2+
+        - control: SC.L2-3.13.1
+          status: "{{ 'IMPLEMENTED' if cmmc_sc_13_1_ssh.changed else 'COMPLIANT' }}"
+          description: Secure communications
+        - control: SI.L2-3.14.1
+          status: "{{ 'IMPLEMENTED' if cmmc_si_14_1_service.changed else 'COMPLIANT' }}"
+          description: Automated security updates
       ansible.builtin.set_fact:
-      compliance_findings: '{{ compliance_findings + [item] }}'
+        compliance_findings: '{{ compliance_findings + [item] }}'
     - name: Generate CMMC compliance report
       tags:
       - reporting
       ansible.builtin.template:
-      src: cmmc_compliance_report.j2
-      dest: /var/log/msp/{{ client_name }}/cmmc-compliance/cmmc-report-{{ cmmc_session_id }}.json
-      mode: '0640'
+        src: cmmc_compliance_report.j2
+        dest: /var/log/msp/{{ client_name }}/cmmc-compliance/cmmc-report-{{ cmmc_session_id }}.json
+        mode: '0640'
     - name: Create CMMC compliance summary
       tags:
       - reporting
       ansible.builtin.copy:
-      content: 'CMMC Compliance Summary for {{ client_name }}
+        content: 'CMMC Compliance Summary for {{ client_name }}
 
       ============================================
 
@@ -514,24 +473,24 @@
       Report Generated: {{ ansible_date_time.iso8601 }}
 
       '
-      dest: /var/log/msp/{{ client_name }}/cmmc-compliance/cmmc-summary-{{ cmmc_session_id }}.txt
-      mode: '0640'
+        dest: /var/log/msp/{{ client_name }}/cmmc-compliance/cmmc-summary-{{ cmmc_session_id }}.txt
+        mode: '0640'
     - name: Log CMMC compliance completion
       tags:
       - logging
       - skip_ansible_lint
       vars:
-      msp_log_server: '{{ msp_syslog_server | default('''') }}'
-      msp_log_tag: CMMC-COMPLIANCE
-      msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ cmmc_session_id }} | Level: {{ client_cmmc_level }} | Status: COMPLETED | Controls: {{ compliance_findings | length }}'
+        msp_log_server: '{{ msp_syslog_server | default('''') }}'
+        msp_log_tag: CMMC-COMPLIANCE
+        msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ cmmc_session_id }} | Level: {{ client_cmmc_level }} | Status: COMPLETED | Controls: {{ compliance_findings | length }}'
       ansible.builtin.include_role:
-      name: msp-logging
+        name: msp-logging
   handlers:
     - name: Restart sshd
-    ansible.builtin.service:
-      name: sshd
-      state: restarted
+      ansible.builtin.service:
+        name: sshd
+        state: restarted
     - name: Reload auditd
-    ansible.builtin.service:
-      name: auditd
-      state: reloaded
+      ansible.builtin.service:
+        name: auditd
+        state: reloaded
