@@ -20,29 +20,29 @@
       tags:
       - validation
       ansible.builtin.assert:
-      that:
-      - client_name is defined
-      - user_operation in ['create', 'modify', 'remove', 'list', 'audit']
-      - target_users is defined or user_operation in ['list', 'audit']
-      fail_msg: Invalid user management parameters
+        that:
+          - client_name is defined
+          - user_operation in ['create', 'modify', 'remove', 'list', 'audit']
+          - target_users is defined or user_operation in ['list', 'audit']
+        fail_msg: "Invalid user management parameters"
     - name: Create client user management log directory
       tags:
       - logging
       ansible.builtin.file:
-      path: /var/log/msp/{{ client_name }}/user-management
-      state: directory
-      mode: '0750'
-      owner: root
-      group: root
+        path: /var/log/msp/{{ client_name }}/user-management
+        state: directory
+        mode: '0750'
+        owner: root
+        group: root
     - name: Log user management operation initiation
       tags:
       - logging
       vars:
-      msp_log_server: '{{ msp_syslog_server | default('''') }}'
-      msp_log_tag: MSP-USER
-      msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ user_session_id }} | Operation: {{ user_operation }} | Status: STARTED'
-    ansible.builtin.include_role:
-      name: msp-logging
+        msp_log_server: '{{ msp_syslog_server | default('''') }}'
+        msp_log_tag: MSP-USER
+        msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ user_session_id }} | Operation: {{ user_operation }} | Status: STARTED'
+      ansible.builtin.include_role:
+        name: msp-logging
   tasks:
     - name: Create user accounts
       when: user_operation == "create"
@@ -50,53 +50,49 @@
       - create
       - users
       block:
-    - name: Create user groups for client isolation
-      ansible.builtin.group:
-      name: '{{ client_name }}-users'
-      state: present
-      gid: '{{ client_user_gid | default(omit) }}'
+        - name: Create user groups for client isolation
+          ansible.builtin.group:
+            name: '{{ client_name }}-users'
+            state: present
+            gid: '{{ client_user_gid | default(omit) }}'
 
-    - name: Create individual user accounts
-      ansible.builtin.user:
-      name: '{{ item.username }}'
-      comment: '{{ item.fullname | default(''MSP Managed User'') }} - Client: {{ client_name }}'
-      group: '{{ client_name }}-users'
-      groups: '{{ item.groups | default([]) }}'
-      shell: 'set -o pipefail
-
-      "{{ item.shell | default(''/bin/bash'') }}"
-
-      '
-      home: '{{ item.home | default(''/home/'' + item.username) }}'
-      create_home: '{{ item.create_home | default(true) }}'
-      password: '{{ item.password | default(''!'') }}'
-      state: present
-      expires: '{{ item.expires | default(-1) }}'
-      loop: '{{ target_users }}'
-      when: user_operation == "create"
-      register: user_creation_results
-      no_log: '{{ hide_sensitive_logs | default(true) }}'
-    - name: Set up SSH keys for new users
-      ansible.posix.authorized_key:
-      user: '{{ item.0.username }}'
-      key: '{{ item.1 }}'
-      state: present
-      comment: MSP Managed Key - {{ client_name }}
-      loop: '{{ target_users | subelements(''ssh_keys'', skip_missing=True) }}'
-      when: user_operation == "create"
-      register: ssh_key_results
-    - name: Configure sudo access for privileged users
-      ansible.builtin.lineinfile:
-      path: /etc/sudoers.d/{{ client_name }}-users
-      line: '{{ item.username }} ALL=(ALL) {{ ''NOPASSWD:'' if item.nopasswd_sudo | default(false) else '''' }}{{ item.sudo_commands | default(''ALL'') }}'
-      create: true
-      mode: '0440'
-      validate: visudo -cf %s
-      loop: '{{ target_users }}'
-      when:
-      - user_operation == "create"
-      - item.sudo_access | default(false)
-      register: sudo_config_results
+        - name: Create individual user accounts
+          ansible.builtin.user:
+            name: '{{ item.username }}'
+            comment: "{{ item.fullname | default('MSP Managed User') }} - Client: {{ client_name }}"
+            group: '{{ client_name }}-users'
+            groups: '{{ item.groups | default([]) }}'
+            shell: "{{ item.shell | default('/bin/bash') }}"
+            home: "{{ item.home | default('/home/' + item.username) }}"
+            create_home: '{{ item.create_home | default(true) }}'
+            password: "{{ item.password | default('!') }}"
+            state: present
+            expires: '{{ item.expires | default(-1) }}'
+          loop: '{{ target_users }}'
+          when: user_operation == "create"
+          register: user_creation_results
+          no_log: '{{ hide_sensitive_logs | default(true) }}'
+        - name: Set up SSH keys for new users
+          ansible.posix.authorized_key:
+            user: "{{ item.0.username }}"
+            key: "{{ item.1 }}"
+            state: present
+            comment: "MSP Managed Key - {{ client_name }}"
+          loop: '{{ target_users | subelements(''ssh_keys'', skip_missing=True) }}'
+          when: user_operation == "create"
+          register: ssh_key_results
+        - name: Configure sudo access for privileged users
+          ansible.builtin.lineinfile:
+            path: /etc/sudoers.d/{{ client_name }}-users
+            line: '{{ item.username }} ALL=(ALL) {{ ''NOPASSWD:'' if item.nopasswd_sudo | default(false) else '''' }}{{ item.sudo_commands | default(''ALL'') }}'
+            create: true
+            mode: '0440'
+            validate: visudo -cf %s
+          loop: '{{ target_users }}'
+          when:
+            - user_operation == "create"
+            - item.sudo_access | default(false)
+          register: sudo_config_results
     - name: Check current password aging for users
       ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nchage -l {{ item.username }} 2>/dev/null | awk -F': ' '\n  /Minimum number of days between password change/ {print \"MIN=\" $2}\n  /Maximum number of days between password change/ {print \"MAX=\" $2}\n  /Number of days of warning before password expires/ {print \"WARN=\" $2}\n'\n"
       loop: '{{ target_users }}'
@@ -123,90 +119,84 @@
       - modify
       - users
       block:
-    - name: Update user account properties
-      ansible.builtin.user:
-      name: '{{ item.username }}'
-      comment: '{{ item.fullname | default(omit) }}'
-      groups: '{{ item.groups | default(omit) }}'
-      shell: 'set -o pipefail
-
-      "{{ item.shell | default(omit) }}"
-
-      '
-      home: '{{ item.home | default(omit) }}'
-      expires: '{{ item.expires | default(omit) }}'
-      password: '{{ item.password | default(omit) }}'
-      state: present
-      loop: '{{ target_users }}'
-      when: user_operation == "modify"
-
-      no_log: '{{ hide_sensitive_logs | default(true) }}'
-    - name: Update SSH keys for modified users
-      ansible.posix.authorized_key:
-      user: '{{ item.0.username }}'
-      key: '{{ item.1 }}'
-      state: '{{ item.0.ssh_key_action | default(''present'') }}'
-      loop: '{{ target_users | subelements(''ssh_keys'', skip_missing=True) }}'
-      when: user_operation == "modify"
-      register: ssh_key_modification_results
-    - name: Update sudo configuration
-      ansible.builtin.lineinfile:
-      path: /etc/sudoers.d/{{ client_name }}-users
-      regexp: ^{{ item.username }}\s+
-      line: '{{ item.username }} ALL=(ALL) {{ ''NOPASSWD:'' if item.nopasswd_sudo | default(false) else '''' }}{{ item.sudo_commands | default(''ALL'') }}'
-      state: '{{ ''present'' if item.sudo_access | default(false) else ''absent'' }}'
-      create: true
-      mode: '0440'
-      validate: visudo -cf %s
-      loop: '{{ target_users }}'
-      when: user_operation == "modify"
-      register: sudo_modification_results
+        - name: Update user account properties
+          ansible.builtin.user:
+            name: '{{ item.username }}'
+            comment: '{{ item.fullname | default(omit) }}'
+            groups: '{{ item.groups | default(omit) }}'
+            shell: "{{ item.shell | default(omit) }}"
+            home: '{{ item.home | default(omit) }}'
+            expires: '{{ item.expires | default(omit) }}'
+            password: '{{ item.password | default(omit) }}'
+            state: present
+          loop: '{{ target_users }}'
+          when: user_operation == "modify"
+          no_log: '{{ hide_sensitive_logs | default(true) }}'
+        - name: Update SSH keys for modified users
+          ansible.posix.authorized_key:
+            user: "{{ item.0.username }}"
+            key: "{{ item.1 }}"
+            state: '{{ item.0.ssh_key_action | default(''present'') }}'
+          loop: '{{ target_users | subelements(''ssh_keys'', skip_missing=True) }}'
+          when: user_operation == "modify"
+          register: ssh_key_modification_results
+        - name: Update sudo configuration
+          ansible.builtin.lineinfile:
+            path: /etc/sudoers.d/{{ client_name }}-users
+            regexp: ^{{ item.username }}\s+
+            line: '{{ item.username }} ALL=(ALL) {{ ''NOPASSWD:'' if item.nopasswd_sudo | default(false) else '''' }}{{ item.sudo_commands | default(''ALL'') }}'
+            state: '{{ ''present'' if item.sudo_access | default(false) else ''absent'' }}'
+            create: true
+            mode: '0440'
+            validate: visudo -cf %s
+          loop: '{{ target_users }}'
+          when: user_operation == "modify"
+          register: sudo_modification_results
     - name: Remove user accounts
       when: user_operation == "remove"
       tags:
       - remove
       - users
       block:
-    - name: Archive user home directories before removal
-      community.general.archive:
-      path: /home/{{ item.username }}
-      dest: /var/backups/msp/{{ client_name }}/user-{{ item.username }}-{{ user_session_id }}.tar.gz
-      format: gz
-      owner: root
-      group: root
-      mode: '0600'
-      loop: '{{ target_users }}'
-      when:
-      - user_operation == "remove"
-      - archive_user_data | default(true)
-      failed_when: false
-
-    - name: Remove user accounts
-      ansible.builtin.user:
-      name: '{{ item.username }}'
-      state: absent
-      remove: '{{ item.remove_home | default(false) }}'
-      force: '{{ item.force_removal | default(false) }}'
-      loop: '{{ target_users }}'
-      when: user_operation == "remove"
-      register: user_removal_results
-    - name: Clean up sudo configuration for removed users
-      ansible.builtin.lineinfile:
-      path: /etc/sudoers.d/{{ client_name }}-users
-      regexp: ^{{ item.username }}\s+
-      state: absent
-      loop: '{{ target_users }}'
-      when: user_operation == "remove"
-      register: sudo_cleanup_results
-    - name: Remove user cron jobs
-      ansible.builtin.cron:
-      name: '{{ item.1 }}'
-      user: '{{ item.0.username }}'
-      state: absent
-      loop: '{{ target_users | subelements(''cron_jobs'', skip_missing=True) }}'
-      when: user_operation == "remove"
-      failed_when: false
-      register: cron_cleanup_results
+        - name: Archive user home directories before removal
+          community.general.archive:
+            path: /home/{{ item.username }}
+            dest: /var/backups/msp/{{ client_name }}/user-{{ item.username }}-{{ user_session_id }}.tar.gz
+            format: gz
+            owner: root
+            group: root
+            mode: '0600'
+          loop: '{{ target_users }}'
+          when:
+            - user_operation == "remove"
+            - archive_user_data | default(true)
+          failed_when: false
+        - name: Remove user accounts
+          ansible.builtin.user:
+            name: '{{ item.username }}'
+            state: absent
+            remove: '{{ item.remove_home | default(false) }}'
+            force: '{{ item.force_removal | default(false) }}'
+          loop: '{{ target_users }}'
+          when: user_operation == "remove"
+          register: user_removal_results
+        - name: Clean up sudo configuration for removed users
+          ansible.builtin.lineinfile:
+            path: /etc/sudoers.d/{{ client_name }}-users
+            regexp: ^{{ item.username }}\s+
+            state: absent
+          loop: '{{ target_users }}'
+          when: user_operation == "remove"
+          register: sudo_cleanup_results
+        - name: Remove user cron jobs
+          ansible.builtin.cron:
+            name: '{{ item.1 }}'
+            user: '{{ item.0.username }}'
+            state: absent
+          loop: '{{ target_users | subelements(''cron_jobs'', skip_missing=True) }}'
+          when: user_operation == "remove"
+          failed_when: false
+          register: cron_cleanup_results
     - name: Audit user accounts
       when: user_operation == "audit"
       tags:
@@ -285,27 +275,27 @@
       tags:
       - reporting
       loop:
-      - operation: '{{ user_operation }}'
-      users_affected: '{{ target_users | length if target_users is defined else 0 }}'
-      status: completed
+        - operation: '{{ user_operation }}'
+          users_affected: '{{ target_users | length if target_users is defined else 0 }}'
+          status: completed
       ansible.builtin.set_fact:
-      operation_results: '{{ operation_results + [item] }}'
+        operation_results: '{{ operation_results + [item] }}'
     - name: Generate user management report
       tags:
       - reporting
       ansible.builtin.template:
-      src: user_management_report.j2
-      dest: /var/log/msp/{{ client_name }}/user-management/user-report-{{ user_session_id }}.json
-      mode: '0640'
+        src: user_management_report.j2
+        dest: /var/log/msp/{{ client_name }}/user-management/user-report-{{ user_session_id }}.json
+        mode: '0640'
     - name: Log user management completion
       tags:
       - logging
       vars:
-      msp_log_server: '{{ msp_syslog_server | default('''') }}'
-      msp_log_tag: MSP-USER
-      msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ user_session_id }} | Operation: {{ user_operation }} | Status: COMPLETED | Users: {{ target_users | length if target_users is defined else 0 }}'
-    ansible.builtin.include_role:
-      name: msp-logging
+        msp_log_server: '{{ msp_syslog_server | default('''') }}'
+        msp_log_tag: MSP-USER
+        msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ user_session_id }} | Operation: {{ user_operation }} | Status: COMPLETED | Users: {{ target_users | length if target_users is defined else 0 }}'
+      ansible.builtin.include_role:
+        name: msp-logging
     - name: Send notification for privileged operations
       when:
       - user_operation in ['create', 'remove']
@@ -315,18 +305,12 @@
       - notification
       failed_when: false
       community.general.mail:
-      to: '{{ msp_security_team_email }}'
-      subject: MSP User Management Alert - {{ client_name }}
-      body: 'User management operation completed:
-
-      Client: {{ client_name }}
-
-      Operation: {{ user_operation }}
-
-      Host: {{ inventory_hostname }}
-
-      Session: {{ user_session_id }}
-
-      Users affected: {{ target_users | length if target_users is defined else 0 }}
-
-      '
+        to: '{{ msp_security_team_email }}'
+        subject: "MSP User Management Alert - {{ client_name }}"
+        body: |
+          User management operation completed:
+          Client: {{ client_name }}
+          Operation: {{ user_operation }}
+          Host: {{ inventory_hostname }}
+          Session: {{ user_session_id }}
+          Users affected: {{ target_users | length if target_users is defined else 0 }}

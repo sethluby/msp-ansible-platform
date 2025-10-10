@@ -12,91 +12,91 @@
       tags:
       - always
       ansible.builtin.debug:
-      msg:
-      - === {{ playbook_name }} v{{ playbook_version }} ===
-      - "Execution ID: {{ execution_id }}"
-      - "Target Host: {{ inventory_hostname }}"
-      - "CMMC Level: {{ cmmc_level | default('level2') }}"
-      - "Client ID: {{ cmmc_client_id | default('default_client') }}"
-      - "Environment: {{ cmmc_environment | default('production') }}"
-      - "Timestamp: {{ ansible_date_time.iso8601 }}"
+        msg:
+          - === {{ playbook_name }} v{{ playbook_version }} ===
+          - "Execution ID: {{ execution_id }}"
+          - "Target Host: {{ inventory_hostname }}"
+          - "CMMC Level: {{ cmmc_level | default('level2') }}"
+          - "Client ID: {{ cmmc_client_id | default('default_client') }}"
+          - "Environment: {{ cmmc_environment | default('production') }}"
+          - "Timestamp: {{ ansible_date_time.iso8601 }}"
     - name: Playbook Start | Validate required variables
       tags:
       - always
       ansible.builtin.assert:
-      that:
-      - cmmc_level is defined
-      - cmmc_client_id is defined
-      - cmmc_environment is defined
-      fail_msg: Required CMMC variables not defined. Check group_vars configuration.
-      success_msg: Required CMMC variables validated successfully
+        that:
+          - cmmc_level is defined
+          - cmmc_client_id is defined
+          - cmmc_environment is defined
+        fail_msg: "Required CMMC variables not defined. Check group_vars configuration."
+        success_msg: "Required CMMC variables validated successfully"
     - name: Playbook Start | Create execution log entry
       tags:
       - always
       ansible.builtin.lineinfile:
-      path: "{{ cmmc_implementation_log_dir | default('/var/log/cmmc') }}/playbook_execution.log"
-      line: "{{ ansible_date_time.iso8601 }} - STARTED: {{ playbook_name }} ({{ execution_id }}) on {{ inventory_hostname }}"
-      create: true
-      owner: root
-      group: root
-      mode: "0644"
+        path: "{{ cmmc_implementation_log_dir | default('/var/log/cmmc') }}/playbook_execution.log"
+        line: "{{ ansible_date_time.iso8601 }} - STARTED: {{ playbook_name }} ({{ execution_id }}) on {{ inventory_hostname }}"
+        create: true
+        owner: root
+        group: root
+        mode: "0644"
   tasks:
     - name: CMMC Implementation | Deploy compliance controls
       tags:
       - cmmc_implementation
       vars:
-      playbook_execution_id: "{{ execution_id }}"
-      playbook_start_time: "{{ ansible_date_time.iso8601 }}"
+        playbook_execution_id: "{{ execution_id }}"
+        playbook_start_time: "{{ ansible_date_time.iso8601 }}"
       ansible.builtin.include_role:
-      name: cmmc-compliance
+        name: cmmc-compliance
   post_tasks:
     - name: Playbook Complete | Generate implementation summary
       tags:
       - always
       ansible.builtin.set_fact:
-      implementation_summary:
-      playbook: "{{ playbook_name }}"
-      version: "{{ playbook_version }}"
-      execution_id: "{{ execution_id }}"
-      start_time: "{{ ansible_date_time.iso8601 }}"
-      target_host: "{{ inventory_hostname }}"
-      cmmc_level: "{{ cmmc_level }}"
-      client_id: "{{ cmmc_client_id }}"
-      environment: "{{ cmmc_environment }}"
-      status: completed
+        implementation_summary:
+          playbook: "{{ playbook_name }}"
+          version: "{{ playbook_version }}"
+          execution_id: "{{ execution_id }}"
+          start_time: "{{ ansible_date_time.iso8601 }}"
+          target_host: "{{ inventory_hostname }}"
+          cmmc_level: "{{ cmmc_level }}"
+          client_id: "{{ cmmc_client_id }}"
+          environment: "{{ cmmc_environment }}"
+          status: completed
     - name: Playbook Complete | Save implementation summary
       tags:
       - always
       ansible.builtin.copy:
-      content: "{{ implementation_summary | to_nice_json }}"
-      dest: "{{ cmmc_reports_dir | default('/var/log/cmmc/reports') }}/implementation_{{ execution_id }}.json"
-      owner: root
-      group: root
-      mode: "0644"
+        content: "{{ implementation_summary | to_nice_json }}"
+        dest: "{{ cmmc_reports_dir | default('/var/log/cmmc/reports') }}/implementation_{{ execution_id }}.json"
+        owner: root
+        group: root
+        mode: "0644"
     - name: Playbook Complete | Log completion
       tags:
       - always
       ansible.builtin.lineinfile:
-      path: "{{ cmmc_implementation_log_dir | default('/var/log/cmmc') }}/playbook_execution.log"
-      line: "{{ ansible_date_time.iso8601 }} - COMPLETED: {{ playbook_name }} ({{ execution_id }}) on {{ inventory_hostname }}"
-      owner: root
-      group: root
-      mode: "0644"
+        path: "{{ cmmc_implementation_log_dir | default('/var/log/cmmc') }}/playbook_execution.log"
+        line: "{{ ansible_date_time.iso8601 }} - COMPLETED: {{ playbook_name }} ({{ execution_id }}) on {{ inventory_hostname }}"
+        owner: root
+        group: root
+        mode: "0644"
     - name: Playbook Complete | Display completion summary
       tags:
       - always
       ansible.builtin.debug:
-      msg:
-      - === CMMC Implementation Completed Successfully ===
-      - "Host: {{ inventory_hostname }}"
-      - "CMMC Level: {{ cmmc_level }}"
-      - "Client: {{ cmmc_client_id }}"
-      - "Execution ID: {{ execution_id }}"
-      - "Report: {{ cmmc_reports_dir | default('/var/log/cmmc/reports') }}/implementation_{{ execution_id }}.json"
-      - "Next Steps:"
-      - "  1. Run validation: ansible-playbook validate-compliance.yml"
-      - "  2. Review reports in: {{ cmmc_reports_dir | default('/var/log/cmmc/reports') }}"
-      - "  3. Test compliance validator: {{ local_bin_dir | default('/usr/local/bin') }}/cmmc_validator.py"
+        msg:
+          - === CMMC Implementation Completed Successfully ===
+          - "Host: {{ inventory_hostname }}"
+          - "CMMC Level: {{ cmmc_level }}"
+          - "Client: {{ cmmc_client_id }}"
+          - "Execution ID: {{ execution_id }}"
+          - "Report: {{ cmmc_reports_dir | default('/var/log/cmmc/reports') }}/implementation_{{ execution_id }}.json"
+          - "Next Steps:"
+          - "  1. Run validation: ansible-playbook validate-compliance.yml"
+          - "  2. Review reports in: {{ cmmc_reports_dir | default('/var/log/cmmc/reports') }}"
+          - "  3. Test compliance validator: {{ local_bin_dir | default('/usr/local/bin') }}/cmmc_validator.py"
   handlers:
     - name: Restart sshd
       ansible.builtin.systemd:
