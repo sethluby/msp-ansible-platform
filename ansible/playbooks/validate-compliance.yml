@@ -28,7 +28,7 @@
         validation_execution_id: "{{ validation_id }}"
       ansible.builtin.include_role:
         name: cmmc-compliance
-      tasks_from: validation
+        tasks_from: validation
 
     - name: CMMC Validation | Test SSH configuration
       when: cmmc_enable_access_control | default(true) | bool
