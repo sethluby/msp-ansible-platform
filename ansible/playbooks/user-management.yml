@@ -105,7 +105,7 @@
       ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nchage -M {{ client_password_policy.max_age | default(90) }} \\\n      -m {{ client_password_policy.min_age | default(1) }} \\\n      -W {{ client_password_policy.warn_age | default(7) }} \\\n      {{ item.username }}\n"
       loop: '{{ target_users }}'
       loop_control:
-      index_var: idx
+        index_var: idx
       when:
       - user_operation == "create"
       - client_password_policy.enforce_aging | default(true)
@@ -200,76 +200,61 @@
     - name: Audit user accounts
       when: user_operation == "audit"
       tags:
-      - audit
-      - users
+        - audit
+        - users
       block:
-    - name: Gather user account information
-      ansible.builtin.getent:
-      database: passwd
-      register: system_users
+        - name: Gather user account information
+          ansible.builtin.getent:
+            database: passwd
+          register: system_users
 
-    - name: Gather group information
-      ansible.builtin.getent:
-      database: group
-      register: system_groups
-    - name: Check password aging information
-      ansible.builtin.shell: 'set -o pipefail
+        - name: Gather group information
+          ansible.builtin.getent:
+            database: group
+          register: system_groups
 
-      |
+        - name: Check password aging information
+          ansible.builtin.shell: |
+            chage -l {{ item }} 2>/dev/null || echo "No aging info for {{ item }}"
+          loop: '{{ system_users.ansible_facts.getent_passwd.keys() | list }}'
+          register: password_aging_info
+          changed_when: false
 
-      set -o pipefail
+        - name: Check sudo privileges
+          ansible.builtin.shell: |
+            sudo -l -U {{ item }} 2>/dev/null || echo "No sudo for {{ item }}"
+          loop: '{{ system_users.ansible_facts.getent_passwd.keys() | list }}'
+          register: sudo_privileges_info
+          changed_when: false
 
-      chage -l {{ item }} 2>/dev/null || echo "No aging info for {{ item }}"
-
-      '
-      loop: '{{ system_users.ansible_facts.getent_passwd.keys() | list }}'
-      register: password_aging_info
-      changed_when: false
-    - name: Check sudo privileges
-      ansible.builtin.shell: 'set -o pipefail
-
-      |
-
-      set -o pipefail
-
-      sudo -l -U {{ item }} 2>/dev/null || echo "No sudo for {{ item }}"
-
-      '
-      loop: '{{ system_users.ansible_facts.getent_passwd.keys() | list }}'
-      register: sudo_privileges_info
-      changed_when: false
-    - name: Identify client-managed users
-      ansible.builtin.set_fact:
-      client_managed_users: '{{ system_users.ansible_facts.getent_passwd | dict2items | selectattr(''value.4'', ''search'', client_name) | map(attribute=''key'') | list }}'
+        - name: Identify client-managed users
+          ansible.builtin.set_fact:
+            client_managed_users: '{{ system_users.ansible_facts.getent_passwd | dict2items | selectattr(''value.4'', ''search'', client_name) | map(attribute=''key'') | list }}'
     - name: List user accounts
       when: user_operation == "list"
       tags:
-      - list
-      - users
+        - list
+        - users
       block:
-    - name: Get all user accounts
-      ansible.builtin.getent:
-      database: passwd
-      register: all_users
+        - name: Get all user accounts
+          ansible.builtin.getent:
+            database: passwd
+          register: all_users
 
-    - name: Filter client-specific users
-      ansible.builtin.set_fact:
-      filtered_users: '{{ all_users.ansible_facts.getent_passwd | dict2items | selectattr(''value.4'', ''search'', client_name) | list }}'
-      when: filter_client_users | default(true)
-    - name: Display user information
-      ansible.builtin.debug:
-      msg: 'Username: {{ item.key }}
+        - name: Filter client-specific users
+          ansible.builtin.set_fact:
+            filtered_users: '{{ all_users.ansible_facts.getent_passwd | dict2items | selectattr(''value.4'', ''search'', client_name) | list }}'
+          when: filter_client_users | default(true)
 
-      UID: {{ item.value.1 }}
-
-      GID: {{ item.value.2 }}
-
-      Home: {{ item.value.4 }}
-
-      Shell: {{ item.value.5 }}
-
-      '
-      loop: '{{ filtered_users | default(all_users.ansible_facts.getent_passwd | dict2items) }}'
+        - name: Display user information
+          ansible.builtin.debug:
+            msg: |
+              Username: {{ item.key }}
+              UID: {{ item.value.1 }}
+              GID: {{ item.value.2 }}
+              Home: {{ item.value.4 }}
+              Shell: {{ item.value.5 }}
+          loop: '{{ filtered_users | default(all_users.ansible_facts.getent_passwd | dict2items) }}'
   post_tasks:
     - name: Collect operation results
       tags:
