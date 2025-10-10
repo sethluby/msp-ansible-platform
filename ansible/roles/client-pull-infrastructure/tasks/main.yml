@@ -1,36 +1,38 @@
----
-# Client Pull Infrastructure Role - Main Tasks
-# Configures client systems for autonomous ansible-pull operations
-
 - name: Validate pull-based deployment parameters
   ansible.builtin.assert:
     that:
-      - client_name is defined
-      - git_repo_url is defined
-      - pull_interval is defined
-    fail_msg: "Required variables missing for pull-based deployment"
-  tags: [validation]
-
+    - client_name is defined
+    - git_repo_url is defined
+    - pull_interval is defined
+    fail_msg: Required variables missing for pull-based deployment
+  tags:
+  - validation
 - name: Include client pull installation
   ansible.builtin.include_tasks: install_pull_client.yml
-  tags: [installation, pull-client]
-
+  tags:
+  - installation
+  - pull-client
 - name: Include Git repository configuration
   ansible.builtin.include_tasks: configure_git.yml
-  tags: [git, repository]
-
+  tags:
+  - git
+  - repository
 - name: Include Ansible pull configuration
   ansible.builtin.include_tasks: configure_ansible_pull.yml
-  tags: [ansible-pull, automation]
-
+  tags:
+  - ansible-pull
+  - automation
 - name: Include systemd service creation
   ansible.builtin.include_tasks: create_systemd_services.yml
-  tags: [systemd, services]
-
+  tags:
+  - systemd
+  - services
 - name: Include monitoring setup
   ansible.builtin.include_tasks: setup_monitoring.yml
-  tags: [monitoring, health-checks]
-
+  tags:
+  - monitoring
+  - health-checks
 - name: Include verification tasks
   ansible.builtin.include_tasks: verify_pull_setup.yml
-  tags: [verification]
+  tags:
+  - verification

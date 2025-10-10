@@ -1,219 +1,225 @@
----
-# MSP Platform Master Orchestration Playbook
-# Central coordination for all MSP infrastructure management operations
-# Supports multi-client environments with tier-based service delivery
-#
-# Copyright (c) 2025 Seth Luby
-# Licensed under the MIT License - see LICENSE file for details
-
-- name: "MSP Platform: Master Orchestration Setup"
+- name: 'MSP Platform: Master Orchestration Setup'
   hosts: localhost
   connection: local
   gather_facts: true
   become: true
   vars:
-    # Platform configuration
-    msp_platform_version: "2.0.0"
-    operation_timestamp: "{{ ansible_date_time.iso8601 }}"
-
-    # Default operation modes
-    operation_mode: "{{ operation | default('status') }}"  # status, deploy, update, compliance, backup, monitor
-    target_clients: "{{ clients | default('all') }}"       # all, specific client name, or comma-separated list
-    service_tier_filter: "{{ tier | default('all') }}"     # all, foundation, professional, enterprise
-
-    # Logging and reporting
+    msp_platform_version: 2.0.0
+    operation_timestamp: '{{ ansible_date_time.iso8601 }}'
+    operation_mode: '{{ operation | default(''status'') }}'
+    target_clients: '{{ clients | default(''all'') }}'
+    service_tier_filter: '{{ tier | default(''all'') }}'
     enable_detailed_logging: true
     generate_operation_report: true
     send_notifications: true
-
   pre_tasks:
-    - name: Display operation summary
-      ansible.builtin.debug:
-        msg: |
-          🏢 MSP Platform Master Orchestration
-          ===================================
-          Version: {{ msp_platform_version }}
-          Operation: {{ operation_mode | title }}
-          Targets: {{ target_clients }}
-          Service Tier: {{ service_tier_filter | title }}
-          Timestamp: {{ operation_timestamp }}
+  - name: Display operation summary
+    ansible.builtin.debug:
+      msg: '🏢 MSP Platform Master Orchestration
 
-    - name: Validate operation parameters
-      ansible.builtin.assert:
-        that:
-          - operation_mode in ['status', 'deploy', 'update', 'compliance', 'backup', 'monitor', 'onboard', 'disconnect']
-          - service_tier_filter in ['all', 'foundation', 'professional', 'enterprise']
-        fail_msg: "Invalid operation parameters specified"
-        success_msg: "Operation parameters validated"
+        ===================================
 
-    - name: Discover active clients
-      ansible.builtin.find:
-        paths: /opt/msp-platform/clients
-        file_type: directory
-        depth: 1
-      register: client_directories
-      when: target_clients == 'all'
+        Version: {{ msp_platform_version }}
 
-    - name: Set client list for all clients
-      ansible.builtin.set_fact:
-        client_list: "{{ client_directories.files | map(attribute='path') | map('basename') | list }}"
-      when: target_clients == 'all'
+        Operation: {{ operation_mode | title }}
 
-    - name: Set client list for specific clients
-      ansible.builtin.set_fact:
-        client_list: "{{ target_clients.split(',') | map('trim') | list }}"
-      when: target_clients != 'all'
+        Targets: {{ target_clients }}
 
-    - name: Filter clients by service tier
-      ansible.builtin.set_fact:
-        filtered_clients: "{{ client_list | select('match', tier_pattern) | list }}"
-      vars:
-        tier_pattern: ".*"  # This would need dynamic filtering based on client configs
-      when: service_tier_filter != 'all'
+        Service Tier: {{ service_tier_filter | title }}
 
-    - name: Use all clients when no tier filter
-      ansible.builtin.set_fact:
-        filtered_clients: "{{ client_list }}"
-      when: service_tier_filter == 'all'
+        Timestamp: {{ operation_timestamp }}
 
+        '
+  - name: Validate operation parameters
+    ansible.builtin.assert:
+      that:
+      - operation_mode in ['status', 'deploy', 'update', 'compliance', 'backup', 'monitor', 'onboard', 'disconnect']
+      - service_tier_filter in ['all', 'foundation', 'professional', 'enterprise']
+      fail_msg: Invalid operation parameters specified
+      success_msg: Operation parameters validated
+  - name: Discover active clients
+    when: target_clients == 'all'
+    register: client_directories
+    ansible.builtin.find:
+      paths: /opt/msp-platform/clients
+      file_type: directory
+      depth: 1
+  - name: Set client list for all clients
+    when: target_clients == 'all'
+    ansible.builtin.set_fact:
+      client_list: '{{ client_directories.files | map(attribute=''path'') | map(''basename'') | list }}'
+  - name: Set client list for specific clients
+    when: target_clients != 'all'
+    ansible.builtin.set_fact:
+      client_list: '{{ target_clients.split('','') | map(''trim'') | list }}'
+  - name: Filter clients by service tier
+    when: service_tier_filter != 'all'
+    vars:
+      tier_pattern: .*
+    ansible.builtin.set_fact:
+      filtered_clients: '{{ client_list | select(''match'', tier_pattern) | list }}'
+  - name: Use all clients when no tier filter
+    when: service_tier_filter == 'all'
+    ansible.builtin.set_fact:
+      filtered_clients: '{{ client_list }}'
   tasks:
-    # Status Operations
-    - name: Execute status check operations
-      ansible.builtin.include_tasks: tasks/status_operations.yml
-      vars:
-        target_client_list: "{{ filtered_clients }}"
-      when: operation_mode == 'status'
-      tags: [status, monitoring]
-
-    # Infrastructure Deployment
-    - name: Execute infrastructure deployment
-      ansible.builtin.include_tasks: tasks/deployment_operations.yml
-      vars:
-        target_client_list: "{{ filtered_clients }}"
-      when: operation_mode == 'deploy'
-      tags: [deployment, infrastructure]
-
+  - name: Execute status check operations
+    when: operation_mode == 'status'
+    tags:
+    - status
+    - monitoring
+    vars:
+      target_client_list: '{{ filtered_clients }}'
+    ansible.builtin.include_tasks: tasks/status_operations.yml
+  - name: Execute infrastructure deployment
+    when: operation_mode == 'deploy'
+    tags:
+    - deployment
+    - infrastructure
+    vars:
+      target_client_list: '{{ filtered_clients }}'
+    ansible.builtin.include_tasks: tasks/deployment_operations.yml
   post_tasks:
-    - name: Generate operation report
-      ansible.builtin.template:
-        src: templates/operation_report.md.j2
-        dest: "/var/log/msp-platform/reports/{{ operation_mode }}_{{ ansible_date_time.date }}_{{ ansible_date_time.time }}.md"
-        mode: '0644'
-      vars:
-        operation_results: "{{ ansible_play_batch }}"
-        affected_clients: "{{ filtered_clients }}"
-      when: generate_operation_report | bool
-      tags: [reporting, documentation]
+  - name: Generate operation report
+    when: generate_operation_report | bool
+    tags:
+    - reporting
+    - documentation
+    vars:
+      operation_results: '{{ ansible_play_batch }}'
+      affected_clients: '{{ filtered_clients }}'
+    ansible.builtin.template:
+      src: templates/operation_report.md.j2
+      dest: /var/log/msp-platform/reports/{{ operation_mode }}_{{ ansible_date_time.date }}_{{ ansible_date_time.time }}.md
+      mode: '0644'
+  - name: Display operation summary
+    ansible.builtin.debug:
+      msg: '✅ MSP Platform Operation Completed
 
-    - name: Display operation summary
-      ansible.builtin.debug:
-        msg: |
-          ✅ MSP Platform Operation Completed
-          ================================
-          Operation: {{ operation_mode | title }}
-          Clients Affected: {{ filtered_clients | length }}
-          Status: SUCCESS
-          Duration: {{ ansible_date_time.iso8601 }}
+        ================================
 
-          Affected Clients:
-          {{ filtered_clients | join('\n') if filtered_clients | length > 0 else 'None' }}
+        Operation: {{ operation_mode | title }}
 
-    - name: Log operation completion
-      ansible.builtin.lineinfile:
-        path: /var/log/msp-platform/operations.log
-        line: "{{ operation_timestamp }} | {{ operation_mode }} | {{ filtered_clients | join(',') }} | SUCCESS"
-        create: true
-        mode: '0644'
-      tags: [logging, audit]
+        Clients Affected: {{ filtered_clients | length }}
 
-    - name: Send completion notifications
-      ansible.builtin.include_tasks: tasks/send_notifications.yml
-      vars:
-        notification_type: "operation_complete"
-        operation_summary:
-          mode: "{{ operation_mode }}"
-          clients: "{{ filtered_clients }}"
-          timestamp: "{{ operation_timestamp }}"
-      when: send_notifications | bool
-      tags: [notification, communication]
+        Status: SUCCESS
 
-# Import playbooks based on operation mode
-# These must be at play level, not within tasks
+        Duration: {{ ansible_date_time.iso8601 }}
 
+
+        Affected Clients:
+
+        {{ filtered_clients | join(''\n'') if filtered_clients | length > 0 else ''None'' }}
+
+        '
+  - name: Log operation completion
+    tags:
+    - logging
+    - audit
+    ansible.builtin.lineinfile:
+      path: /var/log/msp-platform/operations.log
+      line: '{{ operation_timestamp }} | {{ operation_mode }} | {{ filtered_clients | join('','') }} | SUCCESS'
+      create: true
+      mode: '0644'
+  - name: Send completion notifications
+    when: send_notifications | bool
+    tags:
+    - notification
+    - communication
+    vars:
+      notification_type: operation_complete
+      operation_summary:
+        mode: '{{ operation_mode }}'
+        clients: '{{ filtered_clients }}'
+        timestamp: '{{ operation_timestamp }}'
+    ansible.builtin.include_tasks: tasks/send_notifications.yml
 - name: Import client onboarding playbook
   ansible.builtin.import_playbook: onboard-client.yml
   when: operation_mode is defined and operation_mode == 'onboard'
-
 - name: Import graceful disconnection playbook
   ansible.builtin.import_playbook: prepare-disconnection.yml
   when: operation_mode is defined and operation_mode == 'disconnect'
-
 - name: Import system update playbook
   ansible.builtin.import_playbook: system-update.yml
   when: operation_mode is defined and operation_mode == 'update'
-
 - name: Import compliance validation playbook
   ansible.builtin.import_playbook: validate-compliance.yml
   when: operation_mode is defined and operation_mode == 'compliance'
-
 - name: Import backup operations playbook
   ansible.builtin.import_playbook: backup-recovery.yml
   when: operation_mode is defined and operation_mode == 'backup'
-
 - name: Import monitoring operations playbook
   ansible.builtin.import_playbook: monitoring-alerting.yml
   when: operation_mode is defined and operation_mode == 'monitor'
-
 - name: Import security hardening playbook
   ansible.builtin.import_playbook: security-hardening.yml
   when: operation_mode is defined and operation_mode == 'harden'
-
-# Additional plays for specific infrastructure components
-- name: "MSP Infrastructure Health Check"
+- name: MSP Infrastructure Health Check
   hosts: localhost
   connection: local
   gather_facts: false
   become: true
   tasks:
-    - name: Check MSP platform services
-      ansible.builtin.systemd:
-        name: "{{ item }}"
-        state: started
-      register: service_status
-      loop:
-        - docker
-        - firewalld
-        - rsyslog
-      tags: [health, services]
+  - name: Check MSP platform services
+    tags:
+    - health
+    - services
+    register: service_status
+    loop:
+    - docker
+    - firewalld
+    - rsyslog
+    ansible.builtin.systemd:
+      name: '{{ item }}'
+      state: started
+  - name: Validate MSP platform directories
+    tags:
+    - health
+    - filesystem
+    register: directory_status
+    loop:
+    - /opt/msp-platform
+    - /opt/msp-platform/clients
+    - /var/log/msp-platform
+    - /var/log/msp-platform/reports
+    ansible.builtin.stat:
+      path: '{{ item }}'
+  - name: Check available resources
+    tags:
+    - health
+    - resources
+    register: resource_status
+    changed_when: false
+    ansible.builtin.shell: 'set -o pipefail
 
-    - name: Validate MSP platform directories
-      ansible.builtin.stat:
-        path: "{{ item }}"
-      register: directory_status
-      loop:
-        - /opt/msp-platform
-        - /opt/msp-platform/clients
-        - /var/log/msp-platform
-        - /var/log/msp-platform/reports
-      tags: [health, filesystem]
+      |
 
-    - name: Check available resources
-      ansible.builtin.shell: |
-        set -o pipefail
-        echo "Disk: $(df -h /opt/msp-platform | tail -1 | awk '{print $4}') available"
-        echo "Memory: $(free -h | grep '^Mem:' | awk '{print $7}') available"
-        echo "Load: $(uptime | awk -F'load average:' '{print $2}')"
-      register: resource_status
-      changed_when: false
-      tags: [health, resources]
+      set -o pipefail
 
-    - name: Display platform health summary
-      ansible.builtin.debug:
-        msg: |
-          🏥 MSP Platform Health Status
-          ============================
-          Services: {{ 'OK' if service_status.results | selectattr('failed', 'equalto', false) | list | length == service_status.results | length else 'ISSUES' }}
-          Directories: {{ 'OK' if directory_status.results | selectattr('stat.exists', 'equalto', true) | list | length == directory_status.results | length else 'MISSING' }}
-          Resources: {{ resource_status.stdout_lines | join(' | ') }}
-          Active Clients: {{ filtered_clients | length if filtered_clients is defined else 'Unknown' }}
-      tags: [health, summary]
+      set -o pipefail
+
+      echo "Disk: $(df -h /opt/msp-platform | tail -1 | awk ''{print $4}'') available"
+
+      echo "Memory: $(free -h | grep ''^Mem:'' | awk ''{print $7}'') available"
+
+      echo "Load: $(uptime | awk -F''load average:'' ''{print $2}'')"
+
+      '
+  - name: Display platform health summary
+    tags:
+    - health
+    - summary
+    ansible.builtin.debug:
+      msg: '🏥 MSP Platform Health Status
+
+        ============================
+
+        Services: {{ ''OK'' if service_status.results | selectattr(''failed'', ''equalto'', false) | list | length == service_status.results | length else ''ISSUES'' }}
+
+        Directories: {{ ''OK'' if directory_status.results | selectattr(''stat.exists'', ''equalto'', true) | list | length == directory_status.results | length else ''MISSING'' }}
+
+        Resources: {{ resource_status.stdout_lines | join('' | '') }}
+
+        Active Clients: {{ filtered_clients | length if filtered_clients is defined else ''Unknown'' }}
+
+        '

@@ -1,23 +1,38 @@
----
 - name: Display log message (Ansible)
   ansible.builtin.debug:
-    msg: "{{ msp_log_tag }}: {{ msp_log_message }}"
+    msg: '{{ msp_log_tag }}: {{ msp_log_message }}'
   changed_when: false
-
 - name: Send log to remote syslog (if configured)
-  ansible.builtin.shell: |
+  ansible.builtin.shell: 'set -o pipefail
+
+    |
+
     set -o pipefail
+
+    set -o pipefail
+
     logger -n {{ msp_log_server }} -t "{{ msp_log_tag }}" "{{ msp_log_message }}"
+
+    '
   when: msp_log_server | length > 0 and not ansible_check_mode
   changed_when: false
   failed_when: false
-  tags: [skip_ansible_lint]
-
+  tags:
+  - skip_ansible_lint
 - name: Send log to local syslog (fallback)
-  ansible.builtin.shell: |
+  ansible.builtin.shell: 'set -o pipefail
+
+    |
+
     set -o pipefail
+
+    set -o pipefail
+
     logger -t "{{ msp_log_tag }}" "{{ msp_log_message }}"
+
+    '
   when: (msp_log_server | length == 0) and not ansible_check_mode
   changed_when: false
   failed_when: false
-  tags: [skip_ansible_lint]
+  tags:
+  - skip_ansible_lint

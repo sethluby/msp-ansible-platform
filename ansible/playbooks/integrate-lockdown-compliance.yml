@@ -1,220 +1,181 @@
----
-# MSP Platform Integration with ansible-lockdown Roles
-# Demonstrates how to use ansible-lockdown roles within MSP multi-tenant framework
-# Provides client-specific compliance using proven community roles
-
 - name: MSP Platform - ansible-lockdown Integration
-  hosts: "{{ target_hosts | default('all') }}"
+  hosts: '{{ target_hosts | default(''all'') }}'
   become: true
   gather_facts: true
-
   vars:
-    # MSP Client Configuration
-    client_name: "{{ client_name | mandatory }}"
-    client_compliance_framework: "{{ client_compliance_framework | default('cis') }}"  # cis, stig
-    client_compliance_level: "{{ client_compliance_level | default('level1') }}"      # level1, level2
-    client_profile: "{{ client_profile | default('server') }}"                        # server, workstation
-
-    # ansible-lockdown role variable mapping for MSP clients
-    # CIS Configuration
-    rhel8cis_level_1: "{{ (client_compliance_level == 'level1') | bool }}"
-    rhel8cis_level_2: "{{ (client_compliance_level == 'level2') | bool }}"
-    rhel8cis_server: "{{ (client_profile == 'server') | bool }}"
-    rhel8cis_workstation: "{{ (client_profile == 'workstation') | bool }}"
-    rhel8cis_disruption_high: "{{ client_allow_disruption | default(false) }}"
-    rhel8cis_skip_reboot: true  # MSP environments typically avoid reboots during normal operations
-
-    # STIG Configuration
-    rhel8stig_cat1_patch: "{{ client_cat1_controls | default(true) }}"
-    rhel8stig_cat2_patch: "{{ client_cat2_controls | default(true) }}"
-    rhel8stig_cat3_patch: "{{ client_cat3_controls | default(false) }}"
-    rhel8stig_disruption_high: "{{ client_allow_disruption | default(false) }}"
+    client_name: '{{ client_name | mandatory }}'
+    client_compliance_framework: '{{ client_compliance_framework | default(''cis'') }}'
+    client_compliance_level: '{{ client_compliance_level | default(''level1'') }}'
+    client_profile: '{{ client_profile | default(''server'') }}'
+    rhel8cis_level_1: '{{ (client_compliance_level == ''level1'') | bool }}'
+    rhel8cis_level_2: '{{ (client_compliance_level == ''level2'') | bool }}'
+    rhel8cis_server: '{{ (client_profile == ''server'') | bool }}'
+    rhel8cis_workstation: '{{ (client_profile == ''workstation'') | bool }}'
+    rhel8cis_disruption_high: '{{ client_allow_disruption | default(false) }}'
+    rhel8cis_skip_reboot: true
+    rhel8stig_cat1_patch: '{{ client_cat1_controls | default(true) }}'
+    rhel8stig_cat2_patch: '{{ client_cat2_controls | default(true) }}'
+    rhel8stig_cat3_patch: '{{ client_cat3_controls | default(false) }}'
+    rhel8stig_disruption_high: '{{ client_allow_disruption | default(false) }}'
     rhel8stig_skip_reboot: true
-
-    # MSP Reporting Integration
-    msp_compliance_report_path: "/var/log/msp/{{ client_name }}/compliance"
-    msp_audit_timestamp: "{{ ansible_date_time.iso8601 }}"
-
+    msp_compliance_report_path: /var/log/msp/{{ client_name }}/compliance
+    msp_audit_timestamp: '{{ ansible_date_time.iso8601 }}'
   pre_tasks:
-    - name: MSP | Validate client compliance requirements
-      ansible.builtin.assert:
-        that:
-          - client_name is defined
-          - client_compliance_framework in ['cis', 'stig']
-          - ansible_os_family in ['RedHat', 'Debian']
-        fail_msg: "Invalid client configuration or unsupported OS"
-      tags: [always, validation]
-
-    - name: MSP | Create client compliance directory
-      ansible.builtin.file:
-        path: "{{ msp_compliance_report_path }}"
-        state: directory
-        mode: '0750'
-        owner: root
-        group: root
-      tags: [always, setup]
-
-    - name: MSP | Display integration information
-      ansible.builtin.debug:
-        msg:
-          - "MSP ansible-lockdown Integration for {{ client_name }}"
-          - "Framework: {{ client_compliance_framework | upper }}"
-          - "Level: {{ client_compliance_level }}"
-          - "Profile: {{ client_profile }}"
-          - "OS: {{ ansible_distribution }} {{ ansible_distribution_major_version }}"
-      tags: [always, info]
-
+  - name: MSP | Validate client compliance requirements
+    tags:
+    - always
+    - validation
+    ansible.builtin.assert:
+      that:
+      - client_name is defined
+      - client_compliance_framework in ['cis', 'stig']
+      - ansible_os_family in ['RedHat', 'Debian']
+      fail_msg: Invalid client configuration or unsupported OS
+  - name: MSP | Create client compliance directory
+    tags:
+    - always
+    - setup
+    ansible.builtin.file:
+      path: '{{ msp_compliance_report_path }}'
+      state: directory
+      mode: '0750'
+      owner: root
+      group: root
+  - name: MSP | Display integration information
+    tags:
+    - always
+    - info
+    ansible.builtin.debug:
+      msg:
+      - MSP ansible-lockdown Integration for {{ client_name }}
+      - 'Framework: {{ client_compliance_framework | upper }}'
+      - 'Level: {{ client_compliance_level }}'
+      - 'Profile: {{ client_profile }}'
+      - 'OS: {{ ansible_distribution }} {{ ansible_distribution_major_version }}'
   tasks:
-    # RHEL 8 CIS Benchmark Integration
-    - name: MSP | Apply RHEL 8 CIS Benchmark
-      ansible.builtin.include_role:
-        name: ansible-lockdown.RHEL8-CIS
-      when:
-        - client_compliance_framework == 'cis'
-        - ansible_distribution in ['RedHat', 'CentOS', 'Rocky', 'AlmaLinux']
-        - ansible_distribution_major_version == '8'
-      tags:
-        - cis
-        - rhel8
-        - hardening
-        - "{{ client_name }}"
-
-    # RHEL 9 CIS Benchmark Integration
-    - name: MSP | Apply RHEL 9 CIS Benchmark
-      ansible.builtin.include_role:
-        name: ansible-lockdown.RHEL9-CIS
-      when:
-        - client_compliance_framework == 'cis'
-        - ansible_distribution in ['RedHat', 'CentOS', 'Rocky', 'AlmaLinux']
-        - ansible_distribution_major_version == '9'
-      tags:
-        - cis
-        - rhel9
-        - hardening
-        - "{{ client_name }}"
-
-    # Ubuntu 20.04 CIS Benchmark Integration
-    - name: MSP | Apply Ubuntu 20.04 CIS Benchmark
-      ansible.builtin.include_role:
-        name: ansible-lockdown.UBUNTU20-CIS
-      when:
-        - client_compliance_framework == 'cis'
-        - ansible_distribution == 'Ubuntu'
-        - ansible_distribution_version == '20.04'
-      tags:
-        - cis
-        - ubuntu20
-        - hardening
-        - "{{ client_name }}"
-
-    # Ubuntu 22.04 CIS Benchmark Integration
-    - name: MSP | Apply Ubuntu 22.04 CIS Benchmark
-      ansible.builtin.include_role:
-        name: ansible-lockdown.UBUNTU22-CIS
-      when:
-        - client_compliance_framework == 'cis'
-        - ansible_distribution == 'Ubuntu'
-        - ansible_distribution_version == '22.04'
-      tags:
-        - cis
-        - ubuntu22
-        - hardening
-        - "{{ client_name }}"
-
-    # RHEL 8 STIG Integration
-    - name: MSP | Apply RHEL 8 STIG Controls
-      ansible.builtin.include_role:
-        name: ansible-lockdown.RHEL8-STIG
-      when:
-        - client_compliance_framework == 'stig'
-        - ansible_distribution in ['RedHat', 'CentOS', 'Rocky', 'AlmaLinux']
-        - ansible_distribution_major_version == '8'
-      tags:
-        - stig
-        - rhel8
-        - dod
-        - "{{ client_name }}"
-
-    # RHEL 9 STIG Integration
-    - name: MSP | Apply RHEL 9 STIG Controls
-      ansible.builtin.include_role:
-        name: ansible-lockdown.RHEL9-STIG
-      when:
-        - client_compliance_framework == 'stig'
-        - ansible_distribution in ['RedHat', 'CentOS', 'Rocky', 'AlmaLinux']
-        - ansible_distribution_major_version == '9'
-      tags:
-        - stig
-        - rhel9
-        - dod
-        - "{{ client_name }}"
-
-    # MSP Post-Compliance Integration
-    - name: MSP | Install monitoring integration
-      ansible.builtin.include_role:
-        name: monitoring
-      vars:
-        monitoring_client_name: "{{ client_name }}"
-        monitoring_compliance_framework: "{{ client_compliance_framework }}"
-      when: msp_enable_monitoring | default(true)
-      tags:
-        - msp
-        - monitoring
-        - integration
-
-    - name: MSP | Configure backup integration
-      ansible.builtin.include_role:
-        name: backup
-      vars:
-        backup_client_name: "{{ client_name }}"
-        backup_include_compliance_configs: true
-      when: msp_enable_backup | default(true)
-      tags:
-        - msp
-        - backup
-        - integration
-
+  - name: MSP | Apply RHEL 8 CIS Benchmark
+    when:
+    - client_compliance_framework == 'cis'
+    - ansible_distribution in ['RedHat', 'CentOS', 'Rocky', 'AlmaLinux']
+    - ansible_distribution_major_version == '8'
+    tags:
+    - cis
+    - rhel8
+    - hardening
+    - '{{ client_name }}'
+    ansible.builtin.include_role:
+      name: ansible-lockdown.RHEL8-CIS
+  - name: MSP | Apply RHEL 9 CIS Benchmark
+    when:
+    - client_compliance_framework == 'cis'
+    - ansible_distribution in ['RedHat', 'CentOS', 'Rocky', 'AlmaLinux']
+    - ansible_distribution_major_version == '9'
+    tags:
+    - cis
+    - rhel9
+    - hardening
+    - '{{ client_name }}'
+    ansible.builtin.include_role:
+      name: ansible-lockdown.RHEL9-CIS
+  - name: MSP | Apply Ubuntu 20.04 CIS Benchmark
+    when:
+    - client_compliance_framework == 'cis'
+    - ansible_distribution == 'Ubuntu'
+    - ansible_distribution_version == '20.04'
+    tags:
+    - cis
+    - ubuntu20
+    - hardening
+    - '{{ client_name }}'
+    ansible.builtin.include_role:
+      name: ansible-lockdown.UBUNTU20-CIS
+  - name: MSP | Apply Ubuntu 22.04 CIS Benchmark
+    when:
+    - client_compliance_framework == 'cis'
+    - ansible_distribution == 'Ubuntu'
+    - ansible_distribution_version == '22.04'
+    tags:
+    - cis
+    - ubuntu22
+    - hardening
+    - '{{ client_name }}'
+    ansible.builtin.include_role:
+      name: ansible-lockdown.UBUNTU22-CIS
+  - name: MSP | Apply RHEL 8 STIG Controls
+    when:
+    - client_compliance_framework == 'stig'
+    - ansible_distribution in ['RedHat', 'CentOS', 'Rocky', 'AlmaLinux']
+    - ansible_distribution_major_version == '8'
+    tags:
+    - stig
+    - rhel8
+    - dod
+    - '{{ client_name }}'
+    ansible.builtin.include_role:
+      name: ansible-lockdown.RHEL8-STIG
+  - name: MSP | Apply RHEL 9 STIG Controls
+    when:
+    - client_compliance_framework == 'stig'
+    - ansible_distribution in ['RedHat', 'CentOS', 'Rocky', 'AlmaLinux']
+    - ansible_distribution_major_version == '9'
+    tags:
+    - stig
+    - rhel9
+    - dod
+    - '{{ client_name }}'
+    ansible.builtin.include_role:
+      name: ansible-lockdown.RHEL9-STIG
+  - name: MSP | Install monitoring integration
+    when: msp_enable_monitoring | default(true)
+    tags:
+    - msp
+    - monitoring
+    - integration
+    vars:
+      monitoring_client_name: '{{ client_name }}'
+      monitoring_compliance_framework: '{{ client_compliance_framework }}'
+    ansible.builtin.include_role:
+      name: monitoring
+  - name: MSP | Configure backup integration
+    when: msp_enable_backup | default(true)
+    tags:
+    - msp
+    - backup
+    - integration
+    vars:
+      backup_client_name: '{{ client_name }}'
+      backup_include_compliance_configs: true
+    ansible.builtin.include_role:
+      name: backup
   post_tasks:
-    - name: MSP | Generate compliance report
-      ansible.builtin.template:
-        src: msp_lockdown_compliance_report.j2
-        dest: "{{ msp_compliance_report_path }}/lockdown-compliance-{{ msp_audit_timestamp }}.json"
-        mode: '0640'
-      vars:
-        compliance_data:
-          client: "{{ client_name }}"
-          framework: "{{ client_compliance_framework }}"
-          level: "{{ client_compliance_level }}"
-          profile: "{{ client_profile }}"
-          timestamp: "{{ msp_audit_timestamp }}"
-          os_info:
-            family: "{{ ansible_os_family }}"
-            distribution: "{{ ansible_distribution }}"
-            version: "{{ ansible_distribution_version }}"
-          roles_applied: "{{ ansible_play_role_names | default([]) }}"
-      tags:
-        - always
-        - reporting
-
-    - name: MSP | Display completion summary
-      ansible.builtin.debug:
-        msg:
-          - "✅ MSP ansible-lockdown Integration Complete"
-          - "Client: {{ client_name }}"
-          - "Framework: {{ client_compliance_framework | upper }}"
-          - "Report: {{ msp_compliance_report_path }}/lockdown-compliance-{{ msp_audit_timestamp }}.json"
-          - "Applied roles: {{ ansible_play_role_names | default([]) | join(', ') }}"
-      tags:
-        - always
-        - summary
-
-# Usage Examples:
-#
-# Apply CIS Level 1 Server hardening for client "acme-corp":
-# ansible-playbook integrate-lockdown-compliance.yml -e client_name=acme-corp -e client_compliance_framework=cis -e client_compliance_level=level1 -e client_profile=server
-#
-# Apply STIG controls for client "defense-contractor":
-# ansible-playbook integrate-lockdown-compliance.yml -e client_name=defense-contractor -e client_compliance_framework=stig -e client_cat1_controls=true -e client_cat2_controls=true
-#
-# Apply with selective tags:
-# ansible-playbook integrate-lockdown-compliance.yml -e client_name=test-client --tags "cis,rhel8,monitoring"
+  - name: MSP | Generate compliance report
+    tags:
+    - always
+    - reporting
+    vars:
+      compliance_data:
+        client: '{{ client_name }}'
+        framework: '{{ client_compliance_framework }}'
+        level: '{{ client_compliance_level }}'
+        profile: '{{ client_profile }}'
+        timestamp: '{{ msp_audit_timestamp }}'
+        os_info:
+          family: '{{ ansible_os_family }}'
+          distribution: '{{ ansible_distribution }}'
+          version: '{{ ansible_distribution_version }}'
+        roles_applied: '{{ ansible_play_role_names | default([]) }}'
+    ansible.builtin.template:
+      src: msp_lockdown_compliance_report.j2
+      dest: '{{ msp_compliance_report_path }}/lockdown-compliance-{{ msp_audit_timestamp }}.json'
+      mode: '0640'
+  - name: MSP | Display completion summary
+    tags:
+    - always
+    - summary
+    ansible.builtin.debug:
+      msg:
+      - ✅ MSP ansible-lockdown Integration Complete
+      - 'Client: {{ client_name }}'
+      - 'Framework: {{ client_compliance_framework | upper }}'
+      - 'Report: {{ msp_compliance_report_path }}/lockdown-compliance-{{ msp_audit_timestamp }}.json'
+      - 'Applied roles: {{ ansible_play_role_names | default([]) | join('', '') }}'

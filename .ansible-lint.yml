@@ -19,10 +19,6 @@ skip_list:
   - no-changed-when
   - command-instead-of-module
   - run-once[task]
-  - key-order[task]  # Cosmetic issue, not breaking
-  - ignore-errors  # Best practice but not breaking
-  - risky-shell-pipe  # Best practice but not breaking
-  - jinja[spacing]  # Cosmetic issue
 
 warn_list:
   - experimental

@@ -1,97 +1,113 @@
----
 - name: Create initial inventory file
   ansible.builtin.template:
     src: inventory.ini.j2
-    dest: "{{ client_inventory_dir }}/inventory.ini"
+    dest: '{{ client_inventory_dir }}/inventory.ini'
     mode: '0644'
-  tags: [inventory, setup]
-
+  tags:
+  - inventory
+  - setup
 - name: Create YAML inventory file
   ansible.builtin.template:
     src: inventory.yml.j2
-    dest: "{{ client_inventory_dir }}/inventory.yml"
+    dest: '{{ client_inventory_dir }}/inventory.yml'
     mode: '0644'
-  tags: [inventory, setup]
-
+  tags:
+  - inventory
+  - setup
 - name: Create dynamic inventory script
   ansible.builtin.template:
     src: dynamic_inventory.py.j2
-    dest: "{{ client_inventory_dir }}/dynamic_inventory.py"
+    dest: '{{ client_inventory_dir }}/dynamic_inventory.py'
     mode: '0755'
-  tags: [inventory, dynamic]
-
+  tags:
+  - inventory
+  - dynamic
 - name: Create inventory management scripts
   ansible.builtin.template:
-    src: "{{ item }}.j2"
-    dest: "{{ client_inventory_dir }}/{{ item }}"
+    src: '{{ item }}.j2'
+    dest: '{{ client_inventory_dir }}/{{ item }}'
     mode: '0755'
   loop:
-    - add_host.sh
-    - remove_host.sh
-    - list_hosts.sh
-    - validate_inventory.sh
-  tags: [inventory, management]
-
+  - add_host.sh
+  - remove_host.sh
+  - list_hosts.sh
+  - validate_inventory.sh
+  tags:
+  - inventory
+  - management
 - name: Create host group templates
   ansible.builtin.copy:
-    content: |
-      # {{ item | title }} Group Configuration
+    content: '# {{ item | title }} Group Configuration
+
       # Add hosts for {{ item }} role below
+
       [{{ item }}]
+
       # example-{{ item }}-01.{{ client_domain }}
-      
+
+
       [{{ item }}:vars]
+
       # Group-specific variables for {{ item }}
-      
-    dest: "{{ client_inventory_dir }}/groups/{{ item }}.ini"
+
+      '
+    dest: '{{ client_inventory_dir }}/groups/{{ item }}.ini'
     mode: '0644'
   loop:
-    - web
-    - database
-    - application
-    - monitoring
-    - backup
-  tags: [inventory, groups]
-
+  - web
+  - database
+  - application
+  - monitoring
+  - backup
+  tags:
+  - inventory
+  - groups
 - name: Create groups directory
   ansible.builtin.file:
-    path: "{{ client_inventory_dir }}/groups"
+    path: '{{ client_inventory_dir }}/groups'
     state: directory
     mode: '0755'
-  tags: [inventory, setup]
-
+  tags:
+  - inventory
+  - setup
 - name: Create inventory validation configuration
   ansible.builtin.template:
     src: inventory_validation.yml.j2
-    dest: "{{ client_inventory_dir }}/validation.yml"
+    dest: '{{ client_inventory_dir }}/validation.yml'
     mode: '0644'
-  tags: [inventory, validation]
-
+  tags:
+  - inventory
+  - validation
 - name: Create host discovery script
   ansible.builtin.template:
     src: discover_hosts.py.j2
-    dest: "{{ client_inventory_dir }}/discover_hosts.py"
+    dest: '{{ client_inventory_dir }}/discover_hosts.py'
     mode: '0755'
-  tags: [inventory, discovery]
-
+  tags:
+  - inventory
+  - discovery
 - name: Create inventory backup script
   ansible.builtin.template:
     src: backup_inventory.sh.j2
-    dest: "{{ client_inventory_dir }}/backup_inventory.sh"
+    dest: '{{ client_inventory_dir }}/backup_inventory.sh'
     mode: '0755'
-  tags: [inventory, backup]
-
+  tags:
+  - inventory
+  - backup
 - name: Initialize inventory with MSP management host
   ansible.builtin.lineinfile:
-    path: "{{ client_inventory_dir }}/inventory.ini"
-    line: "{{ ansible_default_ipv4.address }} ansible_host={{ ansible_default_ipv4.address }} role=msp_controller"
-    insertafter: "\\[msp_infrastructure\\]"
+    path: '{{ client_inventory_dir }}/inventory.ini'
+    line: '{{ ansible_default_ipv4.address }} ansible_host={{ ansible_default_ipv4.address }} role=msp_controller'
+    insertafter: \[msp_infrastructure\]
     create: true
-  tags: [inventory, msp]
-
+  tags:
+  - inventory
+  - msp
 - name: Create inventory documentation
   ansible.builtin.template:
     src: inventory_documentation.md.j2
-    dest: "{{ client_docs_dir }}/Inventory_Management.md"
+    dest: '{{ client_docs_dir }}/Inventory_Management.md'
     mode: '0644'
-  tags: [inventory, documentation]
+  tags:
+  - inventory
+  - documentation

@@ -1,54 +1,60 @@
----
-# Reverse Tunnel Infrastructure Role - Main Tasks
-# Configures Alpine Linux systems for SSH reverse tunnel connectivity
-
 - name: Validate reverse tunnel deployment parameters
   ansible.builtin.assert:
     that:
-      - client_name is defined
-      - msp_jump_host is defined
-      - tunnel_port is defined
-    fail_msg: "Required variables missing for reverse tunnel deployment"
-  tags: [validation]
-
+    - client_name is defined
+    - msp_jump_host is defined
+    - tunnel_port is defined
+    fail_msg: Required variables missing for reverse tunnel deployment
+  tags:
+  - validation
 - name: Verify Alpine Linux system
   ansible.builtin.fail:
-    msg: "This role requires Alpine Linux"
+    msg: This role requires Alpine Linux
   when: ansible_os_family != "Alpine"
-  tags: [validation]
-
+  tags:
+  - validation
 - name: Include tunnel packages installation
   ansible.builtin.include_tasks: install_tunnel_packages.yml
-  tags: [installation, packages]
-
+  tags:
+  - installation
+  - packages
 - name: Include SSH key generation
   ansible.builtin.include_tasks: generate_ssh_keys.yml
-  tags: [ssh-keys, security]
-
+  tags:
+  - ssh-keys
+  - security
 - name: Include tunnel user creation
   ansible.builtin.include_tasks: create_tunnel_user.yml
-  tags: [users, security]
-
+  tags:
+  - users
+  - security
 - name: Include autossh configuration
   ansible.builtin.include_tasks: configure_autossh.yml
-  tags: [autossh, tunnel]
-
+  tags:
+  - autossh
+  - tunnel
 - name: Include local SSH configuration
   ansible.builtin.include_tasks: configure_local_ssh.yml
-  tags: [ssh, security]
-
+  tags:
+  - ssh
+  - security
 - name: Include maximum security firewall
   ansible.builtin.include_tasks: configure_max_security_firewall.yml
-  tags: [firewall, security, maximum-security]
-
+  tags:
+  - firewall
+  - security
+  - maximum-security
 - name: Include monitoring setup
   ansible.builtin.include_tasks: setup_monitoring.yml
-  tags: [monitoring, health-checks]
-
+  tags:
+  - monitoring
+  - health-checks
 - name: Include service configuration
   ansible.builtin.include_tasks: configure_services.yml
-  tags: [services, startup]
-
+  tags:
+  - services
+  - startup
 - name: Include tunnel verification
   ansible.builtin.include_tasks: verify_tunnel.yml
-  tags: [verification]
+  tags:
+  - verification

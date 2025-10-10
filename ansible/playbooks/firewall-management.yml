@@ -1,226 +1,205 @@
----
-# MSP Firewall Management Playbook
-# Centralized firewall configuration with client-specific rules and policies
-# Supports firewalld, ufw, and iptables across different distributions
-
 - name: MSP Firewall Management
-  hosts: "{{ target_hosts | default('all') }}"
+  hosts: '{{ target_hosts | default(''all'') }}'
   become: true
   gather_facts: true
   vars:
-    # Client-specific variables
-    client_name: "{{ client_name | mandatory }}"
-    client_firewall_policy: "{{ client_firewall_policy | default(msp_default_firewall_policy) }}"
-    client_allowed_ports: "{{ client_allowed_ports | default([]) }}"
-    client_blocked_ips: "{{ client_blocked_ips | default([]) }}"
-    client_allowed_networks: "{{ client_allowed_networks | default([]) }}"
-    
-    # MSP defaults
-    msp_default_firewall_policy: "{{ msp_default_firewall_policy | default('restrictive') }}"
-    msp_management_networks: "{{ msp_management_networks | default(['10.0.0.0/8']) }}"
-    msp_syslog_server: "{{ msp_syslog_server | default('') }}"
-    
-    # Runtime variables
-    firewall_session_id: "{{ ansible_date_time.epoch }}-{{ client_name }}-fw"
+    client_name: '{{ client_name | mandatory }}'
+    client_firewall_policy: '{{ client_firewall_policy | default(msp_default_firewall_policy) }}'
+    client_allowed_ports: '{{ client_allowed_ports | default([]) }}'
+    client_blocked_ips: '{{ client_blocked_ips | default([]) }}'
+    client_allowed_networks: '{{ client_allowed_networks | default([]) }}'
+    msp_default_firewall_policy: '{{ msp_default_firewall_policy | default(''restrictive'') }}'
+    msp_management_networks: '{{ msp_management_networks | default([''10.0.0.0/8'']) }}'
+    msp_syslog_server: '{{ msp_syslog_server | default('''') }}'
+    firewall_session_id: '{{ ansible_date_time.epoch }}-{{ client_name }}-fw'
     firewall_changes: []
-
   pre_tasks:
-    - name: Validate firewall management context
-      ansible.builtin.assert:
-        that:
-          - client_name is defined
-          - client_firewall_policy in ['restrictive', 'standard', 'permissive']
-        fail_msg: "Invalid firewall management parameters"
-      tags: [validation]
-
-    - name: Create client firewall log directory
-      ansible.builtin.file:
-        path: "/var/log/msp/{{ client_name }}/firewall"
-        state: directory
-        mode: '0750'
-        owner: root
-        group: root
-      tags: [logging]
-
-    - name: Detect firewall service
-      ansible.builtin.set_fact:
-        firewall_service: "{{ 'firewalld' if ansible_os_family == 'RedHat' else 'ufw' if ansible_os_family == 'Debian' else 'iptables' }}"
-      tags: [detection]
-
+  - name: Validate firewall management context
+    tags:
+    - validation
+    ansible.builtin.assert:
+      that:
+      - client_name is defined
+      - client_firewall_policy in ['restrictive', 'standard', 'permissive']
+      fail_msg: Invalid firewall management parameters
+  register: firewalld_default_zone
+  - name: Create client firewall log directory
+    tags:
+    - logging
+    ansible.builtin.file:
+      path: /var/log/msp/{{ client_name }}/firewall
+      state: directory
+      mode: '0750'
+      owner: root
+      group: root
+  - name: Detect firewall service
+    tags:
+    - detection
+    ansible.builtin.set_fact:
+      firewall_service: '{{ ''firewalld'' if ansible_os_family == ''RedHat'' else ''ufw'' if ansible_os_family == ''Debian'' else ''iptables'' }}'
   tasks:
-    # FirewallD Configuration (RHEL/CentOS/Rocky)
-    - name: Configure FirewallD
-      block:
-        - name: Ensure firewalld is installed and running
-          ansible.builtin.package:
-            name: firewalld
-            state: present
-          
-        - name: Start and enable firewalld
-          ansible.builtin.service:
-            name: firewalld
-            state: started
-            enabled: true
+  - name: Configure FirewallD
+    when: firewall_service == "firewalld"
+    tags:
+    - firewalld
+    - rhel
+    block:
+    - name: Ensure firewalld is installed and running
+      ansible.builtin.package:
+        name: firewalld
+        state: present
+    - name: Start and enable firewalld
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: true
+    - name: Set default zone based on client policy
+      ansible.posix.firewalld:
+        zone: '{{ ''drop'' if client_firewall_policy == ''restrictive'' else ''public'' if client_firewall_policy == ''standard'' else ''trusted'' }}'
+        state: enabled
+        permanent: true
+        immediate: true
 
-        - name: Set default zone based on client policy
-          ansible.posix.firewalld:
-            zone: "{{ 'drop' if client_firewall_policy == 'restrictive' else 'public' if client_firewall_policy == 'standard' else 'trusted' }}"
-            state: enabled
-            permanent: true
-            immediate: true
-          register: firewalld_default_zone
-
-        - name: Configure MSP management access
-          ansible.posix.firewalld:
-            zone: public
-            source: "{{ item }}"
-            state: enabled
-            permanent: true
-            immediate: true
-          loop: "{{ msp_management_networks }}"
-          register: firewalld_msp_access
-
-        - name: Configure client-specific allowed ports
-          ansible.posix.firewalld:
-            zone: public
-            port: "{{ item.port }}/{{ item.protocol | default('tcp') }}"
-            state: enabled
-            permanent: true
-            immediate: true
-          loop: "{{ client_allowed_ports }}"
-          register: firewalld_client_ports
-
-        - name: Block client-specified IP addresses
-          ansible.posix.firewalld:
-            zone: drop
-            source: "{{ item }}"
-            state: enabled
-            permanent: true
-            immediate: true
-          loop: "{{ client_blocked_ips }}"
-          register: firewalld_blocked_ips
-
-        - name: Configure client-allowed networks
-          ansible.posix.firewalld:
-            zone: trusted
-            source: "{{ item }}"
-            state: enabled
-            permanent: true
-            immediate: true
-          loop: "{{ client_allowed_networks }}"
-          register: firewalld_allowed_networks
-
-        - name: Configure logging for dropped packets
-          ansible.posix.firewalld:
-            zone: drop
-            state: enabled
-            permanent: true
-            immediate: true
-          when: client_firewall_policy == 'restrictive'
-      when: firewall_service == "firewalld"
-      tags: [firewalld, rhel]
-
-    # UFW Configuration (Ubuntu/Debian)
-    - name: Configure UFW
-      block:
-        - name: Ensure ufw is installed
-          ansible.builtin.package:
-            name: ufw
-            state: present
-
-        - name: Reset UFW to defaults
-          community.general.ufw:
-            state: reset
-          when: reset_firewall | default(false)
-
-        - name: Set UFW default policies
-          community.general.ufw:
-            direction: "{{ item.direction }}"
-            policy: "{{ item.policy }}"
-          loop:
-            - { direction: 'incoming', policy: "{{ 'deny' if client_firewall_policy in ['restrictive', 'standard'] else 'allow' }}" }
-            - { direction: 'outgoing', policy: 'allow' }
-            - { direction: 'routed', policy: 'deny' }
-          register: ufw_defaults
-
-        - name: Allow MSP management networks
-          community.general.ufw:
-            rule: allow
-            from_ip: "{{ item }}"
-          loop: "{{ msp_management_networks }}"
-          register: ufw_msp_access
-
-        - name: Configure client-specific allowed ports
-          community.general.ufw:
-            rule: allow
-            port: "{{ item.port }}"
-            proto: "{{ item.protocol | default('tcp') }}"
-            comment: "Client {{ client_name }} - {{ item.description | default('') }}"
-          loop: "{{ client_allowed_ports }}"
-          register: ufw_client_ports
-
-        - name: Block client-specified IP addresses
-          community.general.ufw:
-            rule: deny
-            from_ip: "{{ item }}"
-            comment: "Client {{ client_name }} blocked IP"
-          loop: "{{ client_blocked_ips }}"
-          register: ufw_blocked_ips
-
-        - name: Allow client-specified networks
-          community.general.ufw:
-            rule: allow
-            from_ip: "{{ item }}"
-            comment: "Client {{ client_name }} allowed network"
-          loop: "{{ client_allowed_networks }}"
-          register: ufw_allowed_networks
-
-        - name: Enable UFW
-          community.general.ufw:
-            state: enabled
-          register: ufw_enable
-
-        - name: Configure UFW logging
-          community.general.ufw:
-            logging: "{{ 'medium' if client_firewall_policy == 'restrictive' else 'low' }}"
-          register: ufw_logging
-      when: firewall_service == "ufw"
-      tags: [ufw, debian, ubuntu]
-
-  post_tasks:
-    - name: Collect firewall configuration changes
-      ansible.builtin.set_fact:
-        firewall_changes: "{{ firewall_changes + [item] }}"
+    - name: Configure MSP management access
+      ansible.posix.firewalld:
+        zone: public
+        source: '{{ item }}'
+        state: enabled
+        permanent: true
+        immediate: true
+      loop: '{{ msp_management_networks }}'
+      register: firewalld_msp_access
+    - name: Configure client-specific allowed ports
+      ansible.posix.firewalld:
+        zone: public
+        port: '{{ item.port }}/{{ item.protocol | default(''tcp'') }}'
+        state: enabled
+        permanent: true
+        immediate: true
+      loop: '{{ client_allowed_ports }}'
+      register: firewalld_client_ports
+    - name: Block client-specified IP addresses
+      ansible.posix.firewalld:
+        zone: drop
+        source: '{{ item }}'
+        state: enabled
+        permanent: true
+        immediate: true
+      loop: '{{ client_blocked_ips }}'
+      register: firewalld_blocked_ips
+    - name: Configure client-allowed networks
+      ansible.posix.firewalld:
+        zone: trusted
+        source: '{{ item }}'
+        state: enabled
+        permanent: true
+        immediate: true
+      loop: '{{ client_allowed_networks }}'
+      register: firewalld_allowed_networks
+    - name: Configure logging for dropped packets
+      ansible.posix.firewalld:
+        zone: drop
+        state: enabled
+        permanent: true
+        immediate: true
+      when: client_firewall_policy == 'restrictive'
+  - name: Configure UFW
+    when: firewall_service == "ufw"
+    tags:
+      register: ufw_defaults
+    - ufw
+    - debian
+    - ubuntu
+    block:
+    - name: Ensure ufw is installed
+      ansible.builtin.package:
+        name: ufw
+        state: present
+    - name: Reset UFW to defaults
+      community.general.ufw:
+        state: reset
+      when: reset_firewall | default(false)
+    - name: Set UFW default policies
+      community.general.ufw:
+        direction: '{{ item.direction }}'
+        policy: '{{ item.policy }}'
       loop:
-        - service: "{{ firewall_service }}"
-          policy: "{{ client_firewall_policy }}"
-          ports_configured: "{{ client_allowed_ports | length }}"
-          blocked_ips: "{{ client_blocked_ips | length }}"
-      tags: [reporting]
+      - direction: incoming
+        policy: '{{ ''deny'' if client_firewall_policy in [''restrictive'', ''standard''] else ''allow'' }}'
+      - direction: outgoing
+        policy: allow
+      - direction: routed
+        policy: deny
 
-    - name: Generate firewall management report
-      ansible.builtin.template:
-        src: firewall_report.j2
-        dest: "/var/log/msp/{{ client_name }}/firewall/firewall-report-{{ firewall_session_id }}.json"
-        mode: '0640'
-      tags: [reporting]
-
-    - name: Test firewall connectivity
-      ansible.builtin.wait_for:
-        port: 22
-        host: "{{ inventory_hostname }}"
-        timeout: 10
-      delegate_to: localhost
-      ignore_errors: true
-      register: connectivity_test
-      tags: [testing]
-
-    - name: Log firewall management completion
-      ansible.builtin.shell: >-
-        logger -n {{ msp_syslog_server }} -t "MSP-FIREWALL"
-        "Client: {{ client_name }} | Host: {{ inventory_hostname }} |
-        Session: {{ firewall_session_id }} | Service: {{ firewall_service }} |
-        Status: COMPLETED | Connectivity: {{ 'OK' if connectivity_test.failed is false else 'FAILED' }}"
-      when: msp_syslog_server != ""
-      ignore_errors: true
-      tags: [logging]
+    - name: Allow MSP management networks
+      community.general.ufw:
+        rule: allow
+        from_ip: '{{ item }}'
+      loop: '{{ msp_management_networks }}'
+      register: ufw_msp_access
+    - name: Configure client-specific allowed ports
+      community.general.ufw:
+        rule: allow
+        port: '{{ item.port }}'
+        proto: '{{ item.protocol | default(''tcp'') }}'
+        comment: Client {{ client_name }} - {{ item.description | default('') }}
+      loop: '{{ client_allowed_ports }}'
+      register: ufw_client_ports
+    - name: Block client-specified IP addresses
+      community.general.ufw:
+        rule: deny
+        from_ip: '{{ item }}'
+        comment: Client {{ client_name }} blocked IP
+      loop: '{{ client_blocked_ips }}'
+      register: ufw_blocked_ips
+    - name: Allow client-specified networks
+      community.general.ufw:
+        rule: allow
+        from_ip: '{{ item }}'
+        comment: Client {{ client_name }} allowed network
+      loop: '{{ client_allowed_networks }}'
+      register: ufw_allowed_networks
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+      register: ufw_enable
+    - name: Configure UFW logging
+      community.general.ufw:
+        logging: '{{ ''medium'' if client_firewall_policy == ''restrictive'' else ''low'' }}'
+      register: ufw_logging
+  post_tasks:
+  - name: Collect firewall configuration changes
+    tags:
+    - reporting
+    loop:
+    - service: '{{ firewall_service }}'
+      policy: '{{ client_firewall_policy }}'
+      ports_configured: '{{ client_allowed_ports | length }}'
+      blocked_ips: '{{ client_blocked_ips | length }}'
+    ansible.builtin.set_fact:
+      firewall_changes: '{{ firewall_changes + [item] }}'
+  - name: Generate firewall management report
+    tags:
+    - reporting
+    ansible.builtin.template:
+      src: firewall_report.j2
+      dest: /var/log/msp/{{ client_name }}/firewall/firewall-report-{{ firewall_session_id }}.json
+      mode: '0640'
+  - name: Test firewall connectivity
+    tags:
+    - testing
+    register: connectivity_test
+    failed_when: false
+    ansible.builtin.wait_for:
+      port: 22
+      host: '{{ inventory_hostname }}'
+      timeout: 10
+    delegate_to: localhost
+  - name: Log firewall management completion
+    when: msp_syslog_server != ""
+    tags:
+    - logging
+    failed_when: false
+    ansible.builtin.shell: |
+      set -o pipefail
+      'logger -n {{ msp_syslog_server }} -t "MSP-FIREWALL" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ firewall_session_id }} | Service: {{ firewall_service }} | Status: COMPLETED | Connectivity: {{ ''OK'' if connectivity_test.failed is false else ''FAILED'' }}"'

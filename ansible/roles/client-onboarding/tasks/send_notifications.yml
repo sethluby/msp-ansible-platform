@@ -1,7 +1,3 @@
----
-# Send notifications for client onboarding
-# TODO: Implement notification sending
-
 - name: Send onboarding notifications placeholder
   ansible.builtin.debug:
-    msg: "Notification sending to be implemented for {{ client_name | default('client') }}"
+    msg: Notification sending to be implemented for {{ client_name | default('client') }}

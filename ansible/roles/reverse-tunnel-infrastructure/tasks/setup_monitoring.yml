@@ -1,7 +1,3 @@
----
-# Placeholder infrastructure task file - to be implemented
-# TODO: Implement infrastructure functionality
-
 - name: Infrastructure placeholder task
   ansible.builtin.debug:
-    msg: "Infrastructure task to be implemented"
+    msg: Infrastructure task to be implemented

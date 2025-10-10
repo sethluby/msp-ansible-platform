@@ -1,38 +1,26 @@
----
-# Backup and Recovery Playbook
-# Comprehensive data protection with client-specific policies and recovery procedures
-# Supports multiple backup strategies with automated scheduling and verification
-
 - name: Backup and Recovery Implementation
-  hosts: "{{ target_hosts | default('all') }}"
+  hosts: '{{ target_hosts | default(''all'') }}'
   become: true
   gather_facts: true
   vars:
-    # Client-specific variables
-    client_name: "{{ client_name | mandatory }}"
-    backup_operation: "{{ backup_operation | default('backup') }}"  # backup, restore, verify, cleanup
-    backup_strategy: "{{ backup_strategy | default(client_backup_strategy) }}"
-    client_backup_strategy: "{{ client_backup_strategy | default(msp_default_backup_strategy) }}"
-    client_backup_schedule: "{{ client_backup_schedule | default(msp_default_backup_schedule) }}"
-    client_retention_policy: "{{ client_retention_policy | default(msp_default_retention_policy) }}"
-    client_backup_destinations: "{{ client_backup_destinations | default([]) }}"
-    
-    # MSP defaults
-    msp_default_backup_strategy: "{{ msp_default_backup_strategy | default('incremental') }}"
-    msp_default_backup_schedule: "{{ msp_default_backup_schedule | default('daily') }}"
+    client_name: '{{ client_name | mandatory }}'
+    backup_operation: '{{ backup_operation | default(''backup'') }}'
+    backup_strategy: '{{ backup_strategy | default(client_backup_strategy) }}'
+    client_backup_strategy: '{{ client_backup_strategy | default(msp_default_backup_strategy) }}'
+    client_backup_schedule: '{{ client_backup_schedule | default(msp_default_backup_schedule) }}'
+    client_retention_policy: '{{ client_retention_policy | default(msp_default_retention_policy) }}'
+    client_backup_destinations: '{{ client_backup_destinations | default([]) }}'
+    msp_default_backup_strategy: '{{ msp_default_backup_strategy | default(''incremental'') }}'
+    msp_default_backup_schedule: '{{ msp_default_backup_schedule | default(''daily'') }}'
     msp_default_retention_policy:
       daily_retention: 7
       weekly_retention: 4
       monthly_retention: 12
       yearly_retention: 2
-    msp_backup_server: "{{ msp_backup_server | default('') }}"
-    msp_syslog_server: "{{ msp_syslog_server | default('') }}"
-    
-    # Runtime variables
-    backup_session_id: "{{ ansible_date_time.epoch }}-{{ client_name }}-backup"
+    msp_backup_server: '{{ msp_backup_server | default('''') }}'
+    msp_syslog_server: '{{ msp_syslog_server | default('''') }}'
+    backup_session_id: '{{ ansible_date_time.epoch }}-{{ client_name }}-backup'
     backup_results: []
-    
-    # Backup strategies configuration
     backup_strategies:
       basic:
         system_config: true
@@ -57,297 +45,287 @@
         encryption: true
         verification: true
         offsite_replication: true
-
   pre_tasks:
-    - name: Validate backup operation context
-      ansible.builtin.assert:
-        that:
-          - client_name is defined
-          - backup_operation in ['backup', 'restore', 'verify', 'cleanup', 'list']
-          - backup_strategy in ['basic', 'standard', 'comprehensive']
-        fail_msg: "Invalid backup operation parameters"
-      tags: [validation]
+  - name: Validate backup operation context
+    tags:
+    - validation
+    ansible.builtin.assert:
+      that:
+      - client_name is defined
+      - backup_operation in ['backup', 'restore', 'verify', 'cleanup', 'list']
+      - backup_strategy in ['basic', 'standard', 'comprehensive']
+      fail_msg: Invalid backup operation parameters
+  register: backup_packages_install
+  - name: Create client backup directories
+    tags:
+    - setup
+    loop:
+    - /var/backups/msp/{{ client_name }}
+    - /var/log/msp/{{ client_name }}/backup
+    - /opt/msp-backup/{{ client_name }}
+    - /etc/msp-backup/{{ client_name }}
+    ansible.builtin.file:
+      path: '{{ item }}'
+      state: directory
+      mode: '0750'
+      owner: root
+      group: root
+  - name: Log backup operation initiation
+    tags:
+    - logging
+    - skip_ansible_lint
+    vars:
+      msp_log_server: '{{ msp_syslog_server | default('''') }}'
+      msp_log_tag: BACKUP-OPERATION
+      msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ backup_session_id }} | Operation: {{ backup_operation }} | Strategy: {{ backup_strategy }} | Status: STARTED'
+    ansible.builtin.include_role:
+      name: msp-logging
+  tasks:
+  - name: Install backup utilities
+    when: backup_operation in ['backup', 'restore']
+    tags:
+    - backup
+    - installation
+    block:
+    - name: Install backup packages
+      ansible.builtin.package:
+        name: '{{ item }}'
+        state: present
+      loop:
+      - rsync
+      - tar
+      - gzip
+      - bzip2
+      - pigz
+      - pv
+      - duplicity
+      - borgbackup
+      failed_when: false
 
-    - name: Create client backup directories
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: directory
-        mode: '0750'
+    - name: Install additional utilities (RHEL)
+      ansible.builtin.package:
+        name: '{{ item }}'
+        state: present
+      loop:
+      - lvm2
+      - cryptsetup
+      when: ansible_os_family == "RedHat"
+      failed_when: false
+    - name: Install additional utilities (Debian)
+      ansible.builtin.package:
+        name: '{{ item }}'
+        state: present
+      loop:
+      - lvm2
+      - cryptsetup-bin
+      when: ansible_os_family == "Debian"
+      failed_when: false
+  - name: System configuration backup
+    when:
+    - backup_operation == "backup"
+    - backup_strategies[backup_strategy].system_config
+    tags:
+      register: system_config_backup
+    - backup
+    - system_config
+    block:
+    - name: Create system configuration backup
+      community.general.archive:
+        path:
+        - /etc
+        - /boot/grub*
+        - /var/spool/cron*
+        - /usr/local/etc
+        dest: /var/backups/msp/{{ client_name }}/system-config-{{ backup_session_id }}.tar.gz
+        format: gz
         owner: root
         group: root
-      loop:
-        - "/var/backups/msp/{{ client_name }}"
-        - "/var/log/msp/{{ client_name }}/backup"
-        - "/opt/msp-backup/{{ client_name }}"
-        - "/etc/msp-backup/{{ client_name }}"
-      tags: [setup]
+        mode: '0600'
+        exclude_path:
+        - /etc/shadow*
+        - /etc/gshadow*
+        - /etc/ssh/*key*
+        - /etc/ssl/private
 
-    - name: Log backup operation initiation
-      ansible.builtin.include_role:
-        name: msp-logging
-      vars:
-        msp_log_server: "{{ msp_syslog_server | default('') }}"
-        msp_log_tag: "BACKUP-OPERATION"
-        msp_log_message: >-
-          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
-          Session: {{ backup_session_id }} | Operation: {{ backup_operation }} |
-          Strategy: {{ backup_strategy }} | Status: STARTED
-      tags: [logging, skip_ansible_lint]
+    - name: Create package list backup
+      ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nif command -v dpkg >/dev/null 2>&1; then\n  dpkg --get-selections > \"/var/backups/msp/{{ client_name }}/packages-{{ backup_session_id }}.list\"\nelif command -v rpm >/dev/null 2>&1; then\n  rpm -qa > \"/var/backups/msp/{{ client_name }}/packages-{{ backup_session_id }}.list\"\nfi\n"
+      register: package_list_backup
+      changed_when: package_list_backup.rc == 0
+    - name: Create filesystem layout backup
+      ansible.builtin.shell: 'set -o pipefail
 
-  tasks:
-    # Install backup utilities
-    - name: Install backup utilities
-      block:
-        - name: Install backup packages
-          ansible.builtin.package:
-            name: "{{ item }}"
-            state: present
-          loop:
-            - rsync
-            - tar
-            - gzip
-            - bzip2
-            - pigz
-            - pv
-            - duplicity
-            - borgbackup
-          ignore_errors: true
-          register: backup_packages_install
-          
-        - name: Install additional utilities (RHEL)
-          ansible.builtin.package:
-            name: "{{ item }}"
-            state: present
-          loop:
-            - lvm2
-            - cryptsetup
-          when: ansible_os_family == "RedHat"
-          ignore_errors: true
-          
-        - name: Install additional utilities (Debian)
-          ansible.builtin.package:
-            name: "{{ item }}"
-            state: present
-          loop:
-            - lvm2
-            - cryptsetup-bin
-          when: ansible_os_family == "Debian"
-          ignore_errors: true
-      when: backup_operation in ['backup', 'restore']
-      tags: [backup, installation]
+        |
 
-    # System Configuration Backup
-    - name: System configuration backup
-      block:
-        - name: Create system configuration backup
-          community.general.archive:
-            path:
-              - /etc
-              - /boot/grub*
-              - /var/spool/cron*
-              - /usr/local/etc
-            dest: "/var/backups/msp/{{ client_name }}/system-config-{{ backup_session_id }}.tar.gz"
-            format: gz
-            owner: root
-            group: root
-            mode: '0600'
-            exclude_path:
-              - /etc/shadow*
-              - /etc/gshadow*
-              - /etc/ssh/*key*
-              - /etc/ssl/private
-          register: system_config_backup
-          
-        - name: Create package list backup
-          ansible.builtin.shell: |
-            if command -v dpkg >/dev/null 2>&1; then
-              dpkg --get-selections > "/var/backups/msp/{{ client_name }}/packages-{{ backup_session_id }}.list"
-            elif command -v rpm >/dev/null 2>&1; then
-              rpm -qa > "/var/backups/msp/{{ client_name }}/packages-{{ backup_session_id }}.list"
-            fi
-          register: package_list_backup
-          changed_when: package_list_backup.rc == 0
-          
-        - name: Create filesystem layout backup
-          ansible.builtin.shell: |
-            lsblk -f > "/var/backups/msp/{{ client_name }}/filesystem-layout-{{ backup_session_id }}.txt"
-            df -h >> "/var/backups/msp/{{ client_name }}/filesystem-layout-{{ backup_session_id }}.txt"
-            mount >> "/var/backups/msp/{{ client_name }}/filesystem-layout-{{ backup_session_id }}.txt"
-          register: filesystem_backup
-          changed_when: true
-      when:
-        - backup_operation == "backup"
-        - backup_strategies[backup_strategy].system_config
-      tags: [backup, system_config]
+        set -o pipefail
 
-    # User Data Backup
-    - name: User data backup
-      block:
-        - name: Create user home directories backup
-          ansible.builtin.shell: |
-            tar -czf "/var/backups/msp/{{ client_name }}/user-homes-{{ backup_session_id }}.tar.gz" \
-              --exclude='*/.*cache*' \
-              --exclude='*/.mozilla/firefox/*/Cache*' \
-              --exclude='*/.cache' \
-              --exclude='*/Downloads' \
-              --exclude='*/.local/share/Trash' \
-              /home/ 2>/dev/null || true
-          register: user_homes_backup
-          changed_when: user_homes_backup.rc == 0
-          
-        - name: Create user accounts backup
-          ansible.builtin.copy:
-            content: |
-              # User Accounts Backup for {{ client_name }}
-              # Generated: {{ ansible_date_time.iso8601 }}
-              
-              # /etc/passwd entries
-              {{ ansible_facts.getent_passwd | default({}) | to_nice_yaml }}
-              
-              # /etc/group entries  
-              {{ ansible_facts.getent_group | default({}) | to_nice_yaml }}
-            dest: "/var/backups/msp/{{ client_name }}/user-accounts-{{ backup_session_id }}.yml"
-            mode: '0600'
-          register: user_accounts_backup
-      when:
-        - backup_operation == "backup"
-        - backup_strategies[backup_strategy].user_data
-      tags: [backup, user_data]
+        lsblk -f > "/var/backups/msp/{{ client_name }}/filesystem-layout-{{ backup_session_id }}.txt"
 
-    # Database Backup
-    - name: Database backup
-      block:
-        - name: Detect running databases
-          ansible.builtin.service_facts:
-          register: database_services
-          
-        - name: Backup MySQL/MariaDB databases
-          ansible.builtin.shell: |
-            set -o pipefail
-            if systemctl is-active mysql >/dev/null 2>&1 || systemctl is-active mariadb >/dev/null 2>&1; then
-              mysqldump --all-databases --single-transaction --routines --triggers | \
-                gzip > "/var/backups/msp/{{ client_name }}/mysql-all-{{ backup_session_id }}.sql.gz"
-            fi
-          register: mysql_backup
-          changed_when: mysql_backup.rc == 0
-          failed_when: false
-          
-        - name: Backup PostgreSQL databases
-          ansible.builtin.shell: |
-            set -o pipefail
-            if systemctl is-active postgresql >/dev/null 2>&1; then
-              sudo -u postgres pg_dumpall | \
-                gzip > "/var/backups/msp/{{ client_name }}/postgresql-all-{{ backup_session_id }}.sql.gz"
-            fi
-          register: postgresql_backup
-          changed_when: postgresql_backup.rc == 0
-          failed_when: false
-          
-        - name: Backup MongoDB databases
-          ansible.builtin.shell: |
-            set -o pipefail
-            if systemctl is-active mongod >/dev/null 2>&1; then
-              mongodump --archive="/var/backups/msp/{{ client_name }}/mongodb-{{ backup_session_id }}.archive" --gzip
-            fi
-          register: mongodb_backup
-          changed_when: mongodb_backup.rc == 0
-          failed_when: false
-      when:
-        - backup_operation == "backup"
-        - backup_strategies[backup_strategy].databases
-      tags: [backup, databases]
+        df -h >> "/var/backups/msp/{{ client_name }}/filesystem-layout-{{ backup_session_id }}.txt"
 
-    # Backup Verification
-    - name: Verify backup integrity
-      block:
-        - name: Generate backup checksums
-          ansible.builtin.shell: |
-            set -o pipefail
-            cd "/var/backups/msp/{{ client_name }}"
-            find . -name "*-{{ backup_session_id }}*" -type f -exec sha256sum {} \; > "backup-checksums-{{ backup_session_id }}.txt"
-          register: backup_checksums
-          changed_when: backup_checksums.rc == 0
-          
-        - name: Test backup archives
-          ansible.builtin.shell: |
-            cd "/var/backups/msp/{{ client_name }}"
-            for file in *-{{ backup_session_id }}.tar.gz; do
-              if [ -f "$file" ]; then
-                tar -tzf "$file" >/dev/null
-                echo "Verified: $file"
-              fi
-            done
-          register: backup_verification
-          changed_when: false
-          failed_when: backup_verification.rc != 0
-      when:
-        - backup_operation in ["backup", "verify"]
-        - backup_strategies[backup_strategy].verification | default(false)
-      tags: [backup, verification]
+        mount >> "/var/backups/msp/{{ client_name }}/filesystem-layout-{{ backup_session_id }}.txt"
 
-    # Backup Cleanup
-    - name: Cleanup old backups
-      block:
-        - name: Remove old daily backups
-          ansible.builtin.find:
-            paths: "/var/backups/msp/{{ client_name }}"
-            patterns: "*-*-backup*"
-            age: "{{ client_retention_policy.daily_retention | default(7) }}d"
-            file_type: file
-          register: old_backups
-          
-        - name: Delete old backup files
-          ansible.builtin.file:
-            path: "{{ item.path }}"
-            state: absent
-          loop: "{{ old_backups.files }}"
-          register: backup_cleanup
-      when: backup_operation in ["backup", "cleanup"]
-      tags: [backup, cleanup]
+        '
+      register: filesystem_backup
+      changed_when: true
+  - name: User data backup
+    when:
+    - backup_operation == "backup"
+    - backup_strategies[backup_strategy].user_data
+    tags:
+      register: user_homes_backup
+    - backup
+    - user_data
+    block:
+    - name: Create user home directories backup
+      ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\ntar -czf \"/var/backups/msp/{{ client_name }}/user-homes-{{ backup_session_id }}.tar.gz\" \\\n  --exclude='*/.*cache*' \\\n  --exclude='*/.mozilla/firefox/*/Cache*' \\\n  --exclude='*/.cache' \\\n  --exclude='*/Downloads' \\\n  --exclude='*/.local/share/Trash' \\\n  /home/ 2>/dev/null || true\n"
 
-  post_tasks:
-    - name: Collect backup operation results
-      ansible.builtin.set_fact:
-        backup_results: "{{ backup_results + [item] }}"
-      loop:
-        - { component: "System Configuration", status: "{{ 'BACKED_UP' if system_config_backup.changed else 'SKIPPED' }}", size: "Available" }
-        - { component: "User Data", status: "{{ 'BACKED_UP' if user_homes_backup.changed else 'SKIPPED' }}", size: "Available" }
-        - { component: "Databases", status: "{{ 'BACKED_UP' if (mysql_backup.changed or postgresql_backup.changed or mongodb_backup.changed) else 'SKIPPED' }}", size: "Available" }
-        - { component: "Verification", status: "{{ 'VERIFIED' if backup_verification.rc == 0 else 'SKIPPED' }}", size: "N/A" }
-      when: backup_operation == "backup"
-      tags: [reporting]
-
-    - name: Generate backup operation report
+      changed_when: user_homes_backup.rc == 0
+    - name: Create user accounts backup
       ansible.builtin.copy:
-        content: |
-          Backup Operation Report for {{ client_name }}
-          ============================================
-          Operation: {{ backup_operation }}
-          Strategy: {{ backup_strategy }}
-          Host: {{ inventory_hostname }}
-          Session ID: {{ backup_session_id }}
-          
-          Backup Components:
-          {% for result in backup_results %}
-          - {{ result.component }}: {{ result.status }} ({{ result.size }})
-          {% endfor %}
-          
-          Backup Location: /var/backups/msp/{{ client_name }}/
-          
-          Report Generated: {{ ansible_date_time.iso8601 }}
-        dest: "/var/log/msp/{{ client_name }}/backup/backup-report-{{ backup_session_id }}.txt"
-        mode: '0640'
-      tags: [reporting]
+        content: "# User Accounts Backup for {{ client_name }}\n# Generated: {{ ansible_date_time.iso8601 }}\n\n# /etc/passwd entries\n{{ ansible_facts.getent_passwd | default({}) | to_nice_yaml }}\n\n# /etc/group entries  \n{{ ansible_facts.getent_group | default({}) | to_nice_yaml }}\n"
+        dest: /var/backups/msp/{{ client_name }}/user-accounts-{{ backup_session_id }}.yml
+        mode: '0600'
+      register: user_accounts_backup
+  - name: Database backup
+    when:
+    - backup_operation == "backup"
+    - backup_strategies[backup_strategy].databases
+    tags:
 
-    - name: Log backup operation completion
-      ansible.builtin.include_role:
-        name: msp-logging
-      vars:
-        msp_log_server: "{{ msp_syslog_server | default('') }}"
-        msp_log_tag: "BACKUP-OPERATION"
-        msp_log_message: >-
-          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
-          Session: {{ backup_session_id }} | Operation: {{ backup_operation }} |
-          Strategy: {{ backup_strategy }} | Status: COMPLETED |
-          Components: {{ backup_results | length }}
-      tags: [logging, skip_ansible_lint]
+      register: database_services
+    - backup
+    - databases
+    block:
+    - name: Detect running databases
+      ansible.builtin.service_facts: null
+
+    - name: Backup MySQL/MariaDB databases
+      ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nset -o pipefail\nif systemctl is-active mysql >/dev/null 2>&1 || systemctl is-active mariadb >/dev/null 2>&1; then\n  mysqldump --all-databases --single-transaction --routines --triggers | \\\n    gzip > \"/var/backups/msp/{{ client_name }}/mysql-all-{{ backup_session_id }}.sql.gz\"\nfi\n"
+      register: mysql_backup
+      changed_when: mysql_backup.rc == 0
+      failed_when: false
+    - name: Backup PostgreSQL databases
+      ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nset -o pipefail\nif systemctl is-active postgresql >/dev/null 2>&1; then\n  sudo -u postgres pg_dumpall | \\\n    gzip > \"/var/backups/msp/{{ client_name }}/postgresql-all-{{ backup_session_id }}.sql.gz\"\nfi\n"
+      register: postgresql_backup
+      changed_when: postgresql_backup.rc == 0
+      failed_when: false
+    - name: Backup MongoDB databases
+      ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nset -o pipefail\nif systemctl is-active mongod >/dev/null 2>&1; then\n  mongodump --archive=\"/var/backups/msp/{{ client_name }}/mongodb-{{ backup_session_id }}.archive\" --gzip\nfi\n"
+      register: mongodb_backup
+      changed_when: mongodb_backup.rc == 0
+      failed_when: false
+  - name: Verify backup integrity
+    when:
+    - backup_operation in ["backup", "verify"]
+    - backup_strategies[backup_strategy].verification | default(false)
+    tags:
+      register: backup_checksums
+    - backup
+    - verification
+    block:
+    - name: Generate backup checksums
+      ansible.builtin.shell: 'set -o pipefail
+
+        |
+
+        set -o pipefail
+
+        set -o pipefail
+
+        cd "/var/backups/msp/{{ client_name }}"
+
+        find . -name "*-{{ backup_session_id }}*" -type f -exec sha256sum {} \; > "backup-checksums-{{ backup_session_id }}.txt"
+
+        '
+
+      changed_when: backup_checksums.rc == 0
+    - name: Test backup archives
+      ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\ncd \"/var/backups/msp/{{ client_name }}\"\nfor file in *-{{ backup_session_id }}.tar.gz; do\n  if [ -f \"$file\" ]; then\n    tar -tzf \"$file\" >/dev/null\n    echo \"Verified: $file\"\n  fi\ndone\n"
+      register: backup_verification
+      changed_when: false
+      failed_when: backup_verification.rc != 0
+  - name: Cleanup old backups
+    when: backup_operation in ["backup", "cleanup"]
+    tags:
+
+      register: old_backups
+    - backup
+    - cleanup
+    block:
+    - name: Remove old daily backups
+      ansible.builtin.find:
+        paths: /var/backups/msp/{{ client_name }}
+        patterns: '*-*-backup*'
+        age: '{{ client_retention_policy.daily_retention | default(7) }}d'
+        file_type: file
+
+    - name: Delete old backup files
+      ansible.builtin.file:
+        path: '{{ item.path }}'
+        state: absent
+      loop: '{{ old_backups.files }}'
+      register: backup_cleanup
+  post_tasks:
+  - name: Collect backup operation results
+    when: backup_operation == "backup"
+    tags:
+    - reporting
+    loop:
+    - component: System Configuration
+      status: '{{ ''BACKED_UP'' if system_config_backup.changed else ''SKIPPED'' }}'
+      size: Available
+    - component: User Data
+      status: '{{ ''BACKED_UP'' if user_homes_backup.changed else ''SKIPPED'' }}'
+      size: Available
+    - component: Databases
+      status: '{{ ''BACKED_UP'' if (mysql_backup.changed or postgresql_backup.changed or mongodb_backup.changed) else ''SKIPPED'' }}'
+      size: Available
+    - component: Verification
+      status: '{{ ''VERIFIED'' if backup_verification.rc == 0 else ''SKIPPED'' }}'
+      size: N/A
+    ansible.builtin.set_fact:
+      backup_results: '{{ backup_results + [item] }}'
+  - name: Generate backup operation report
+    tags:
+    - reporting
+    ansible.builtin.copy:
+      content: 'Backup Operation Report for {{ client_name }}
+
+        ============================================
+
+        Operation: {{ backup_operation }}
+
+        Strategy: {{ backup_strategy }}
+
+        Host: {{ inventory_hostname }}
+
+        Session ID: {{ backup_session_id }}
+
+
+        Backup Components:
+
+        {% for result in backup_results %}
+
+        - {{ result.component }}: {{ result.status }} ({{ result.size }})
+
+        {% endfor %}
+
+
+        Backup Location: /var/backups/msp/{{ client_name }}/
+
+
+        Report Generated: {{ ansible_date_time.iso8601 }}
+
+        '
+      dest: /var/log/msp/{{ client_name }}/backup/backup-report-{{ backup_session_id }}.txt
+      mode: '0640'
+  - name: Log backup operation completion
+    tags:
+    - logging
+    - skip_ansible_lint
+    vars:
+      msp_log_server: '{{ msp_syslog_server | default('''') }}'
+      msp_log_tag: BACKUP-OPERATION
+      msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ backup_session_id }} | Operation: {{ backup_operation }} | Strategy: {{ backup_strategy }} | Status: COMPLETED | Components: {{ backup_results | length }}'
+    ansible.builtin.include_role:
+      name: msp-logging

@@ -1,29 +1,17 @@
----
-# Service Management Playbook
-# Comprehensive systemd service management with client-specific policies
-# Supports service monitoring, configuration, and lifecycle management
-
 - name: Service Management Operations
-  hosts: "{{ target_hosts | default('all') }}"
+  hosts: '{{ target_hosts | default(''all'') }}'
   become: true
   gather_facts: true
   vars:
-    # Client-specific variables
-    client_name: "{{ client_name | mandatory }}"
-    service_operation: "{{ service_operation | mandatory }}"  # start, stop, restart, reload, enable, disable, status, monitor
-    target_services: "{{ target_services | default([]) }}"
-    client_service_policy: "{{ client_service_policy | default(msp_default_service_policy) }}"
-    client_critical_services: "{{ client_critical_services | default([]) }}"
-    
-    # MSP defaults
-    msp_default_service_policy: "{{ msp_default_service_policy | default('conservative') }}"
-    msp_syslog_server: "{{ msp_syslog_server | default('') }}"
-    
-    # Runtime variables
-    service_session_id: "{{ ansible_date_time.epoch }}-{{ client_name }}-service"
+    client_name: '{{ client_name | mandatory }}'
+    service_operation: '{{ service_operation | mandatory }}'
+    target_services: '{{ target_services | default([]) }}'
+    client_service_policy: '{{ client_service_policy | default(msp_default_service_policy) }}'
+    client_critical_services: '{{ client_critical_services | default([]) }}'
+    msp_default_service_policy: '{{ msp_default_service_policy | default(''conservative'') }}'
+    msp_syslog_server: '{{ msp_syslog_server | default('''') }}'
+    service_session_id: '{{ ansible_date_time.epoch }}-{{ client_name }}-service'
     service_results: []
-    
-    # Service policies
     service_policies:
       conservative:
         auto_restart_failed: false
@@ -40,441 +28,464 @@
         dependency_checking: false
         rollback_on_failure: false
         notification_required: false
-
   pre_tasks:
-    - name: Validate service management context
-      ansible.builtin.assert:
-        that:
-          - client_name is defined
-          - service_operation in ['start', 'stop', 'restart', 'reload', 'enable', 'disable', 'status', 'monitor', 'audit']
-          - target_services is defined or service_operation in ['status', 'monitor', 'audit']
-        fail_msg: "Invalid service management parameters"
-      tags: [validation]
+  - name: Validate service management context
+    tags:
+    - validation
+    ansible.builtin.assert:
+      that:
+      - client_name is defined
+      - service_operation in ['start', 'stop', 'restart', 'reload', 'enable', 'disable', 'status', 'monitor', 'audit']
+      - target_services is defined or service_operation in ['status', 'monitor', 'audit']
+      fail_msg: Invalid service management parameters
+  register: all_services
+  - name: Create client service management log directory
+    tags:
+    - setup
+    ansible.builtin.file:
+      path: /var/log/msp/{{ client_name }}/service-management
+      state: directory
+      mode: '0750'
+      owner: root
+      group: root
+  - name: Log service management initiation
+    tags:
+    - logging
+    - skip_ansible_lint
+    vars:
+      msp_log_server: '{{ msp_syslog_server | default('''') }}'
+      msp_log_tag: SERVICE-MGMT
+      msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ service_session_id }} | Operation: {{ service_operation }} | Services: {{ target_services | length if target_services is defined else 0 }} | Status: STARTED'
+    ansible.builtin.include_role:
+      name: msp-logging
+  tasks:
+  - name: Check service status
+    when: service_operation in ['status', 'monitor', 'audit']
+    tags:
+    - service
+    - status
+    block:
+    - name: Get all systemd services
+      ansible.builtin.service_facts: null
 
-    - name: Create client service management log directory
-      ansible.builtin.file:
-        path: "/var/log/msp/{{ client_name }}/service-management"
-        state: directory
-        mode: '0750'
+    - name: Filter client-managed services
+      ansible.builtin.set_fact:
+        filtered_services: "{{ all_services.ansible_facts.services | dict2items\n   | selectattr('key', 'match', '.*(' + (client_critical_services | join('|')) + ').*')\n   | list if client_critical_services | length > 0\n   else all_services.ansible_facts.services | dict2items }}"
+      when: service_operation in ['status', 'monitor', 'audit']
+    - name: Display service status
+      ansible.builtin.debug:
+        msg: 'Service: {{ item.key }}
+
+          State: {{ item.value.state }}
+
+          Status: {{ item.value.status }}
+
+          Source: {{ item.value.source | default(''unknown'') }}
+
+          '
+      loop: '{{ (target_services | length > 0) | ternary(all_services.ansible_facts.services | dict2items | selectattr(''key'', ''in'', target_services), filtered_services) }}'
+      when: service_operation == 'status'
+  - name: Start services
+    when: service_operation == 'start'
+    tags:
+      register: service_dependencies
+    - service
+    - start
+    block:
+    - name: Check service dependencies
+      ansible.builtin.shell: 'set -o pipefail
+
+        |
+
+        set -o pipefail
+
+        set -o pipefail
+
+        systemctl list-dependencies {{ item }} --before | grep -v "{{ item }}"
+
+        '
+      loop: '{{ target_services }}'
+
+      changed_when: false
+      when: service_policies[client_service_policy].dependency_checking
+    - name: Start target services
+      ansible.builtin.systemd:
+        name: '{{ item }}'
+        state: started
+      loop: '{{ target_services }}'
+      register: service_start_results
+    - name: Verify services started successfully
+      ansible.builtin.systemd:
+        name: '{{ item }}'
+        state: started
+      loop: '{{ target_services }}'
+      register: service_verification
+      delay: 5
+      retries: 3
+      until: service_verification is succeeded
+  - name: Stop services
+    when: service_operation == 'stop'
+    tags:
+
+      register: dependent_services
+    - service
+    - stop
+    block:
+    - name: Check for dependent services
+      ansible.builtin.shell: 'set -o pipefail
+
+        |
+
+        set -o pipefail
+
+        set -o pipefail
+
+        systemctl list-dependencies {{ item }} --reverse | grep -v "{{ item }}"
+
+        '
+      loop: '{{ target_services }}'
+
+      changed_when: false
+      when: service_policies[client_service_policy].dependency_checking
+    - name: Stop target services
+      ansible.builtin.systemd:
+        name: '{{ item }}'
+        state: stopped
+      loop: '{{ target_services }}'
+      register: service_stop_results
+    - name: Verify services stopped successfully
+      ansible.builtin.systemd:
+        name: '{{ item }}'
+        state: stopped
+      loop: '{{ target_services }}'
+      register: service_stop_verification
+      delay: 5
+      retries: 3
+      until: service_stop_verification is succeeded
+  - name: Restart services
+    when: service_operation == 'restart'
+    tags:
+
+      register: pre_restart_state
+    - service
+    - restart
+    block:
+    - name: Record current service state before restart
+      ansible.builtin.service_facts: null
+
+    - name: Restart target services
+      ansible.builtin.systemd:
+        name: '{{ item }}'
+        state: restarted
+      loop: '{{ target_services }}'
+      register: service_restart_results
+    - name: Wait for services to stabilize
+      ansible.builtin.pause:
+        seconds: 10
+    - name: Verify services are running after restart
+      ansible.builtin.systemd:
+        name: '{{ item }}'
+        state: started
+      loop: '{{ target_services }}'
+      register: restart_verification
+      delay: 5
+      retries: 5
+      until: restart_verification is succeeded
+    - name: Rollback on failure
+      ansible.builtin.systemd:
+        name: '{{ item.0 }}'
+        state: '{{ ''started'' if item.1.value.state == ''running'' else ''stopped'' }}'
+      loop: '{{ target_services | zip(pre_restart_state.ansible_facts.services | dict2items | selectattr(''key'', ''in'', target_services)) | list }}'
+      when:
+      - restart_verification is failed
+      - service_policies[client_service_policy].rollback_on_failure
+      failed_when: false
+  - name: Reload services
+    when: service_operation == 'reload'
+    tags:
+      register: reload_support_check
+    - service
+    - reload
+    block:
+    - name: Check if service supports reload
+      ansible.builtin.shell: 'set -o pipefail
+
+        |
+
+        set -o pipefail
+
+        systemctl show {{ item }} --property=CanReload --value
+
+        '
+      loop: '{{ target_services }}'
+
+      changed_when: false
+    - name: Reload services that support it
+      ansible.builtin.systemd:
+        name: '{{ item.item }}'
+        state: reloaded
+      loop: '{{ reload_support_check.results }}'
+      when: item.stdout == "yes"
+      register: service_reload_results
+    - name: Restart services that don't support reload
+      ansible.builtin.systemd:
+        name: '{{ item.item }}'
+        state: restarted
+      loop: '{{ reload_support_check.results }}'
+      when: item.stdout == "no"
+      register: service_restart_fallback
+  - name: Enable services
+    when: service_operation == 'enable'
+    tags:
+
+      register: service_enable_results
+    - service
+    - enable
+    block:
+    - name: Enable target services
+      ansible.builtin.systemd:
+        name: '{{ item }}'
+        enabled: true
+      loop: '{{ target_services }}'
+
+    - name: Verify services are enabled
+      ansible.builtin.shell: 'set -o pipefail
+
+        |
+
+        set -o pipefail
+
+        systemctl is-enabled {{ item }}
+
+        '
+      loop: '{{ target_services }}'
+      register: enable_verification
+      changed_when: false
+  - name: Disable services
+    when: service_operation == 'disable'
+    tags:
+      register: service_disable_results
+    - service
+    - disable
+    block:
+    - name: Disable target services
+      ansible.builtin.systemd:
+        name: '{{ item }}'
+        enabled: false
+      loop: '{{ target_services }}'
+
+    - name: Verify services are disabled
+      ansible.builtin.shell: 'set -o pipefail
+
+        |
+
+        set -o pipefail
+
+        systemctl is-enabled {{ item }}
+
+        '
+      loop: '{{ target_services }}'
+      register: disable_verification
+      changed_when: false
+      failed_when: false
+  - name: Service monitoring operations
+    when: service_operation == 'monitor'
+    tags:
+      register: monitoring_script
+    - service
+    - monitoring
+    block:
+    - name: Create service monitoring script
+      ansible.builtin.copy:
+        content: "#!/bin/bash\n# Service monitoring for {{ client_name }}\n\nCLIENT_NAME=\"{{ client_name }}\"\nLOGFILE=\"/var/log/msp/{{ client_name }}/service-management/monitoring.log\"\nCRITICAL_SERVICES=({{ client_critical_services | join(' ') }})\n\necho \"$(date): Starting service monitoring for $CLIENT_NAME\" >> \"$LOGFILE\"\n\nfor service in \"${CRITICAL_SERVICES[@]}\"; do\n    if systemctl is-active \"$service\" >/dev/null 2>&1; then\n        echo \"$(date): $service is running\" >> \"$LOGFILE\"\n    else\n        echo \"$(date): CRITICAL - $service is not running\" >> \"$LOGFILE\"\n        logger -t \"SERVICE-ALERT\" \"Client: $CLIENT_NAME | Host: $(hostname) | CRITICAL - Service $service is down\"\n        \n        # Auto-restart if policy allows\n        {% if service_policies[client_service_policy].auto_restart_failed %}\n        echo \"$(date): Attempting to restart $service\" >> \"$LOGFILE\"\n        if systemctl start \"$service\"; then\n            echo \"$(date): Successfully\
+          \ restarted $service\" >> \"$LOGFILE\"\n            logger -t \"SERVICE-RECOVERY\" \"Client: $CLIENT_NAME | Host: $(hostname) | Service $service auto-restarted successfully\"\n        else\n            echo \"$(date): Failed to restart $service\" >> \"$LOGFILE\"\n            logger -t \"SERVICE-FAILURE\" \"Client: $CLIENT_NAME | Host: $(hostname) | CRITICAL - Failed to restart $service\"\n        fi\n        {% endif %}\n    fi\ndone\n\necho \"$(date): Service monitoring completed for $CLIENT_NAME\" >> \"$LOGFILE\"\n"
+        dest: /opt/msp-monitoring/{{ client_name }}/service_monitoring.sh
+        mode: '0755'
         owner: root
         group: root
-      tags: [setup]
 
-    - name: Log service management initiation
-      ansible.builtin.include_role:
-        name: msp-logging
-      vars:
-        msp_log_server: "{{ msp_syslog_server | default('') }}"
-        msp_log_tag: "SERVICE-MGMT"
-        msp_log_message: >-
-          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
-          Session: {{ service_session_id }} | Operation: {{ service_operation }} |
-          Services: {{ target_services | length if target_services is defined else 0 }} |
-          Status: STARTED
-      tags: [logging, skip_ansible_lint]
+    - name: Schedule service monitoring
+      ansible.builtin.cron:
+        name: Service monitoring for {{ client_name }}
+        minute: '*/5'
+        job: /opt/msp-monitoring/{{ client_name }}/service_monitoring.sh
+        user: root
+      register: monitoring_schedule
+  - name: Service audit operations
+    when: service_operation == 'audit'
+    tags:
+      register: service_audit_data
+    - service
+    - audit
+    block:
+    - name: Collect comprehensive service information
+      ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\n{\n  echo \"=== Service Status ===\"\n  systemctl list-units --type=service --all --no-pager\n  echo \"\"\n  echo \"=== Failed Services ===\"\n  systemctl list-units --failed --no-pager\n  echo \"\"\n  echo \"=== Enabled Services ===\"\n  systemctl list-unit-files --type=service --state=enabled --no-pager\n  echo \"\"\n  echo \"=== Service Dependencies ===\"\n  {% for service in client_critical_services %}\n  echo \"Dependencies for {{ service }}:\"\n  systemctl list-dependencies {{ service }} --no-pager 2>/dev/null || echo \"Service not found\"\n  echo \"\"\n  {% endfor %}\n}\n"
 
-  tasks:
-    # Service Status Operations
-    - name: Check service status
-      block:
-        - name: Get all systemd services
-          ansible.builtin.service_facts:
-          register: all_services
-          
-        - name: Filter client-managed services
-          ansible.builtin.set_fact:
-            filtered_services: >-
-              {{ all_services.ansible_facts.services | dict2items
-                 | selectattr('key', 'match', '.*(' + (client_critical_services | join('|')) + ').*')
-                 | list if client_critical_services | length > 0
-                 else all_services.ansible_facts.services | dict2items }}
-          when: service_operation in ['status', 'monitor', 'audit']
-          
-        - name: Display service status
-          ansible.builtin.debug:
-            msg: |
-              Service: {{ item.key }}
-              State: {{ item.value.state }}
-              Status: {{ item.value.status }}
-              Source: {{ item.value.source | default('unknown') }}
-          loop: "{{ (target_services | length > 0) | ternary(all_services.ansible_facts.services | dict2items | selectattr('key', 'in', target_services), filtered_services) }}"
-          when: service_operation == 'status'
-      when: service_operation in ['status', 'monitor', 'audit']
-      tags: [service, status]
-
-    # Service Start Operations
-    - name: Start services
-      block:
-        - name: Check service dependencies
-          ansible.builtin.shell: |
-            set -o pipefail
-            systemctl list-dependencies {{ item }} --before | grep -v "{{ item }}"
-          loop: "{{ target_services }}"
-          register: service_dependencies
-          changed_when: false
-          when: service_policies[client_service_policy].dependency_checking
-          
-        - name: Start target services
-          ansible.builtin.systemd:
-            name: "{{ item }}"
-            state: started
-          loop: "{{ target_services }}"
-          register: service_start_results
-          
-        - name: Verify services started successfully
-          ansible.builtin.systemd:
-            name: "{{ item }}"
-            state: started
-          loop: "{{ target_services }}"
-          register: service_verification
-          delay: 5
-          retries: 3
-          until: service_verification is succeeded
-      when: service_operation == 'start'
-      tags: [service, start]
-
-    # Service Stop Operations  
-    - name: Stop services
-      block:
-        - name: Check for dependent services
-          ansible.builtin.shell: |
-            set -o pipefail
-            systemctl list-dependencies {{ item }} --reverse | grep -v "{{ item }}"
-          loop: "{{ target_services }}"
-          register: dependent_services
-          changed_when: false
-          when: service_policies[client_service_policy].dependency_checking
-          
-        - name: Stop target services
-          ansible.builtin.systemd:
-            name: "{{ item }}"
-            state: stopped
-          loop: "{{ target_services }}"
-          register: service_stop_results
-          
-        - name: Verify services stopped successfully
-          ansible.builtin.systemd:
-            name: "{{ item }}"
-            state: stopped
-          loop: "{{ target_services }}"
-          register: service_stop_verification
-          delay: 5
-          retries: 3
-          until: service_stop_verification is succeeded
-      when: service_operation == 'stop'
-      tags: [service, stop]
-
-    # Service Restart Operations
-    - name: Restart services
-      block:
-        - name: Record current service state before restart
-          ansible.builtin.service_facts:
-          register: pre_restart_state
-          
-        - name: Restart target services
-          ansible.builtin.systemd:
-            name: "{{ item }}"
-            state: restarted
-          loop: "{{ target_services }}"
-          register: service_restart_results
-          
-        - name: Wait for services to stabilize
-          ansible.builtin.pause:
-            seconds: 10
-            
-        - name: Verify services are running after restart
-          ansible.builtin.systemd:
-            name: "{{ item }}"
-            state: started
-          loop: "{{ target_services }}"
-          register: restart_verification
-          delay: 5
-          retries: 5
-          until: restart_verification is succeeded
-          
-        - name: Rollback on failure
-          ansible.builtin.systemd:
-            name: "{{ item.0 }}"
-            state: "{{ 'started' if item.1.value.state == 'running' else 'stopped' }}"
-          loop: "{{ target_services | zip(pre_restart_state.ansible_facts.services | dict2items | selectattr('key', 'in', target_services)) | list }}"
-          when: 
-            - restart_verification is failed
-            - service_policies[client_service_policy].rollback_on_failure
-          ignore_errors: true
-      when: service_operation == 'restart'
-      tags: [service, restart]
-
-    # Service Reload Operations
-    - name: Reload services
-      block:
-        - name: Check if service supports reload
-          ansible.builtin.shell: |
-            systemctl show {{ item }} --property=CanReload --value
-          loop: "{{ target_services }}"
-          register: reload_support_check
-          changed_when: false
-          
-        - name: Reload services that support it
-          ansible.builtin.systemd:
-            name: "{{ item.item }}"
-            state: reloaded
-          loop: "{{ reload_support_check.results }}"
-          when: item.stdout == "yes"
-          register: service_reload_results
-          
-        - name: Restart services that don't support reload
-          ansible.builtin.systemd:
-            name: "{{ item.item }}"
-            state: restarted
-          loop: "{{ reload_support_check.results }}"
-          when: item.stdout == "no"
-          register: service_restart_fallback
-      when: service_operation == 'reload'
-      tags: [service, reload]
-
-    # Service Enable/Disable Operations
-    - name: Enable services
-      block:
-        - name: Enable target services
-          ansible.builtin.systemd:
-            name: "{{ item }}"
-            enabled: true
-          loop: "{{ target_services }}"
-          register: service_enable_results
-          
-        - name: Verify services are enabled
-          ansible.builtin.shell: |
-            systemctl is-enabled {{ item }}
-          loop: "{{ target_services }}"
-          register: enable_verification
-          changed_when: false
-      when: service_operation == 'enable'
-      tags: [service, enable]
-
-    - name: Disable services
-      block:
-        - name: Disable target services
-          ansible.builtin.systemd:
-            name: "{{ item }}"
-            enabled: false
-          loop: "{{ target_services }}"
-          register: service_disable_results
-          
-        - name: Verify services are disabled
-          ansible.builtin.shell: |
-            systemctl is-enabled {{ item }}
-          loop: "{{ target_services }}"
-          register: disable_verification
-          changed_when: false
-          failed_when: false
-      when: service_operation == 'disable'
-      tags: [service, disable]
-
-    # Service Monitoring
-    - name: Service monitoring operations
-      block:
-        - name: Create service monitoring script
-          ansible.builtin.copy:
-            content: |
-              #!/bin/bash
-              # Service monitoring for {{ client_name }}
-              
-              CLIENT_NAME="{{ client_name }}"
-              LOGFILE="/var/log/msp/{{ client_name }}/service-management/monitoring.log"
-              CRITICAL_SERVICES=({{ client_critical_services | join(' ') }})
-              
-              echo "$(date): Starting service monitoring for $CLIENT_NAME" >> "$LOGFILE"
-              
-              for service in "${CRITICAL_SERVICES[@]}"; do
-                  if systemctl is-active "$service" >/dev/null 2>&1; then
-                      echo "$(date): $service is running" >> "$LOGFILE"
-                  else
-                      echo "$(date): CRITICAL - $service is not running" >> "$LOGFILE"
-                      logger -t "SERVICE-ALERT" "Client: $CLIENT_NAME | Host: $(hostname) | CRITICAL - Service $service is down"
-                      
-                      # Auto-restart if policy allows
-                      {% if service_policies[client_service_policy].auto_restart_failed %}
-                      echo "$(date): Attempting to restart $service" >> "$LOGFILE"
-                      if systemctl start "$service"; then
-                          echo "$(date): Successfully restarted $service" >> "$LOGFILE"
-                          logger -t "SERVICE-RECOVERY" "Client: $CLIENT_NAME | Host: $(hostname) | Service $service auto-restarted successfully"
-                      else
-                          echo "$(date): Failed to restart $service" >> "$LOGFILE"
-                          logger -t "SERVICE-FAILURE" "Client: $CLIENT_NAME | Host: $(hostname) | CRITICAL - Failed to restart $service"
-                      fi
-                      {% endif %}
-                  fi
-              done
-              
-              echo "$(date): Service monitoring completed for $CLIENT_NAME" >> "$LOGFILE"
-            dest: "/opt/msp-monitoring/{{ client_name }}/service_monitoring.sh"
-            mode: '0755'
-            owner: root
-            group: root
-          register: monitoring_script
-          
-        - name: Schedule service monitoring
-          ansible.builtin.cron:
-            name: "Service monitoring for {{ client_name }}"
-            minute: "*/5"
-            job: "/opt/msp-monitoring/{{ client_name }}/service_monitoring.sh"
-            user: root
-          register: monitoring_schedule
-      when: service_operation == 'monitor'
-      tags: [service, monitoring]
-
-    # Service Audit
-    - name: Service audit operations
-      block:
-        - name: Collect comprehensive service information
-          ansible.builtin.shell: |
-            {
-              echo "=== Service Status ==="
-              systemctl list-units --type=service --all --no-pager
-              echo ""
-              echo "=== Failed Services ==="
-              systemctl list-units --failed --no-pager
-              echo ""
-              echo "=== Enabled Services ==="
-              systemctl list-unit-files --type=service --state=enabled --no-pager
-              echo ""
-              echo "=== Service Dependencies ==="
-              {% for service in client_critical_services %}
-              echo "Dependencies for {{ service }}:"
-              systemctl list-dependencies {{ service }} --no-pager 2>/dev/null || echo "Service not found"
-              echo ""
-              {% endfor %}
-            }
-          register: service_audit_data
-          changed_when: false
-          
-        - name: Generate service audit report
-          ansible.builtin.copy:
-            content: |
-              Service Audit Report for {{ client_name }}
-              =========================================
-              Host: {{ inventory_hostname }}
-              Audit Date: {{ ansible_date_time.iso8601 }}
-              Session ID: {{ service_session_id }}
-              
-              {{ service_audit_data.stdout }}
-              
-              Critical Services Status:
-              {% for service in client_critical_services %}
-              {% set service_info = all_services.ansible_facts.services[service + '.service'] | default({'state': 'not found', 'status': 'not found'}) %}
-              - {{ service }}: {{ service_info.state }} ({{ service_info.status }})
-              {% endfor %}
-              
-              Service Policy: {{ client_service_policy }}
-              Auto-restart Failed Services: {{ service_policies[client_service_policy].auto_restart_failed }}
-              Dependency Checking: {{ service_policies[client_service_policy].dependency_checking }}
-              Rollback on Failure: {{ service_policies[client_service_policy].rollback_on_failure }}
-            dest: "/var/log/msp/{{ client_name }}/service-management/audit-{{ service_session_id }}.txt"
-            mode: '0640'
-          register: audit_report
-      when: service_operation == 'audit'
-      tags: [service, audit]
-
-    # Service Configuration Management
-    - name: Manage service configurations
-      block:
-        - name: Backup current service configurations
-          ansible.builtin.shell: |
-            mkdir -p "/var/backups/msp/{{ client_name }}/service-configs"
-            for service in {{ target_services | join(' ') }}; do
-              if [ -f "/etc/systemd/system/$service.service" ]; then
-                cp "/etc/systemd/system/$service.service" "/var/backups/msp/{{ client_name }}/service-configs/$service.service.backup.{{ service_session_id }}"
-              elif [ -f "/lib/systemd/system/$service.service" ]; then
-                cp "/lib/systemd/system/$service.service" "/var/backups/msp/{{ client_name }}/service-configs/$service.service.backup.{{ service_session_id }}"
-              fi
-            done
-          register: config_backup
-          changed_when: config_backup.rc == 0
-          when: backup_configs | default(false)
-          
-        - name: Reload systemd daemon after configuration changes
-          ansible.builtin.systemd:
-            daemon_reload: true
-          when: config_backup.changed
-      when: service_operation in ['start', 'restart', 'enable']
-      tags: [service, configuration]
-
-  post_tasks:
-    - name: Collect service operation results
-      ansible.builtin.set_fact:
-        service_results: "{{ service_results + [item] }}"
-      loop:
-        - { operation: "{{ service_operation }}", services_affected: "{{ target_services | length if target_services is defined else 0 }}", status: "completed" }
-      tags: [reporting]
-
-    - name: Generate service management report
+      changed_when: false
+    - name: Generate service audit report
       ansible.builtin.copy:
-        content: |
-          Service Management Report for {{ client_name }}
-          ==============================================
-          Operation: {{ service_operation }}
+        content: 'Service Audit Report for {{ client_name }}
+
+          =========================================
+
           Host: {{ inventory_hostname }}
+
+          Audit Date: {{ ansible_date_time.iso8601 }}
+
           Session ID: {{ service_session_id }}
-          
-          Services Operated On:
-          {% for service in target_services | default([]) %}
-          - {{ service }}
-          {% endfor %}
-          
-          Critical Services for Client:
+
+
+          {{ service_audit_data.stdout }}
+
+
+          Critical Services Status:
+
           {% for service in client_critical_services %}
-          - {{ service }}
+
+          {% set service_info = all_services.ansible_facts.services[service + ''.service''] | default({''state'': ''not found'', ''status'': ''not found''}) %}
+
+          - {{ service }}: {{ service_info.state }} ({{ service_info.status }})
+
           {% endfor %}
-          
+
+
           Service Policy: {{ client_service_policy }}
-          Policy Settings:
-          - Auto-restart Failed: {{ service_policies[client_service_policy].auto_restart_failed }}
-          - Dependency Checking: {{ service_policies[client_service_policy].dependency_checking }}
-          - Rollback on Failure: {{ service_policies[client_service_policy].rollback_on_failure }}
-          - Notification Required: {{ service_policies[client_service_policy].notification_required }}
-          
-          Results:
-          {% for result in service_results %}
-          - Operation: {{ result.operation }} | Services: {{ result.services_affected }} | Status: {{ result.status }}
-          {% endfor %}
-          
-          Report Generated: {{ ansible_date_time.iso8601 }}
-        dest: "/var/log/msp/{{ client_name }}/service-management/service-report-{{ service_session_id }}.txt"
+
+          Auto-restart Failed Services: {{ service_policies[client_service_policy].auto_restart_failed }}
+
+          Dependency Checking: {{ service_policies[client_service_policy].dependency_checking }}
+
+          Rollback on Failure: {{ service_policies[client_service_policy].rollback_on_failure }}
+
+          '
+        dest: /var/log/msp/{{ client_name }}/service-management/audit-{{ service_session_id }}.txt
         mode: '0640'
-      tags: [reporting]
+      register: audit_report
+  - name: Manage service configurations
+    when: service_operation in ['start', 'restart', 'enable']
+    tags:
 
-    - name: Send notification for critical operations
-      community.general.mail:
-        to: "{{ client_notification_email }}"
-        subject: "Service Management Alert - {{ client_name }} - {{ service_operation }}"
-        body: |
-          Service management operation completed:
-          
-          Client: {{ client_name }}
-          Host: {{ inventory_hostname }}
-          Operation: {{ service_operation }}
-          Services: {{ target_services | join(', ') if target_services is defined else 'N/A' }}
-          Session: {{ service_session_id }}
-          
-          Please review the detailed report at:
-          /var/log/msp/{{ client_name }}/service-management/service-report-{{ service_session_id }}.txt
-      when:
-        - service_policies[client_service_policy].notification_required
-        - service_operation in ['stop', 'restart', 'disable']
-        - client_notification_email is defined
-        - client_notification_email != ""
-      failed_when: false
-      tags: [notification]
+      register: config_backup
+    - service
+    - configuration
+    block:
+    - name: Backup current service configurations
+      ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nmkdir -p \"/var/backups/msp/{{ client_name }}/service-configs\"\nfor service in {{ target_services | join(' ') }}; do\n  if [ -f \"/etc/systemd/system/$service.service\" ]; then\n    cp \"/etc/systemd/system/$service.service\" \"/var/backups/msp/{{ client_name }}/service-configs/$service.service.backup.{{ service_session_id }}\"\n  elif [ -f \"/lib/systemd/system/$service.service\" ]; then\n    cp \"/lib/systemd/system/$service.service\" \"/var/backups/msp/{{ client_name }}/service-configs/$service.service.backup.{{ service_session_id }}\"\n  fi\ndone\n"
 
-    - name: Log service management completion
-      ansible.builtin.include_role:
-        name: msp-logging
-      vars:
-        msp_log_server: "{{ msp_syslog_server | default('') }}"
-        msp_log_tag: "SERVICE-MGMT"
-        msp_log_message: >-
-          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
-          Session: {{ service_session_id }} | Operation: {{ service_operation }} |
-          Services: {{ target_services | length if target_services is defined else 0 }} |
-          Status: COMPLETED
-      tags: [logging, skip_ansible_lint]
+      changed_when: config_backup.rc == 0
+      when: backup_configs | default(false)
+    - name: Reload systemd daemon after configuration changes
+      ansible.builtin.systemd:
+        daemon_reload: true
+      when: config_backup.changed
+  post_tasks:
+  - name: Collect service operation results
+    tags:
+    - reporting
+    loop:
+    - operation: '{{ service_operation }}'
+      services_affected: '{{ target_services | length if target_services is defined else 0 }}'
+      status: completed
+    ansible.builtin.set_fact:
+      service_results: '{{ service_results + [item] }}'
+  - name: Generate service management report
+    tags:
+    - reporting
+    ansible.builtin.copy:
+      content: 'Service Management Report for {{ client_name }}
+
+        ==============================================
+
+        Operation: {{ service_operation }}
+
+        Host: {{ inventory_hostname }}
+
+        Session ID: {{ service_session_id }}
+
+
+        Services Operated On:
+
+        {% for service in target_services | default([]) %}
+
+        - {{ service }}
+
+        {% endfor %}
+
+
+        Critical Services for Client:
+
+        {% for service in client_critical_services %}
+
+        - {{ service }}
+
+        {% endfor %}
+
+
+        Service Policy: {{ client_service_policy }}
+
+        Policy Settings:
+
+        - Auto-restart Failed: {{ service_policies[client_service_policy].auto_restart_failed }}
+
+        - Dependency Checking: {{ service_policies[client_service_policy].dependency_checking }}
+
+        - Rollback on Failure: {{ service_policies[client_service_policy].rollback_on_failure }}
+
+        - Notification Required: {{ service_policies[client_service_policy].notification_required }}
+
+
+        Results:
+
+        {% for result in service_results %}
+
+        - Operation: {{ result.operation }} | Services: {{ result.services_affected }} | Status: {{ result.status }}
+
+        {% endfor %}
+
+
+        Report Generated: {{ ansible_date_time.iso8601 }}
+
+        '
+      dest: /var/log/msp/{{ client_name }}/service-management/service-report-{{ service_session_id }}.txt
+      mode: '0640'
+  - name: Send notification for critical operations
+    when:
+    - service_policies[client_service_policy].notification_required
+    - service_operation in ['stop', 'restart', 'disable']
+    - client_notification_email is defined
+    - client_notification_email != ""
+    tags:
+    - notification
+    failed_when: false
+    community.general.mail:
+      to: '{{ client_notification_email }}'
+      subject: Service Management Alert - {{ client_name }} - {{ service_operation }}
+      body: 'Service management operation completed:
+
+
+        Client: {{ client_name }}
+
+        Host: {{ inventory_hostname }}
+
+        Operation: {{ service_operation }}
+
+        Services: {{ target_services | join('', '') if target_services is defined else ''N/A'' }}
+
+        Session: {{ service_session_id }}
+
+
+        Please review the detailed report at:
+
+        /var/log/msp/{{ client_name }}/service-management/service-report-{{ service_session_id }}.txt
+
+        '
+  - name: Log service management completion
+    tags:
+    - logging
+    - skip_ansible_lint
+    vars:
+      msp_log_server: '{{ msp_syslog_server | default('''') }}'
+      msp_log_tag: SERVICE-MGMT
+      msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ service_session_id }} | Operation: {{ service_operation }} | Services: {{ target_services | length if target_services is defined else 0 }} | Status: COMPLETED'
+    ansible.builtin.include_role:
+      name: msp-logging

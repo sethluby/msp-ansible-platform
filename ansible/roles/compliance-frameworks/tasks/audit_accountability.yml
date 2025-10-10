@@ -146,6 +146,9 @@
     - name: "AU.1.012 | Enable audit for privileged commands"
       ansible.builtin.shell: |
         set -o pipefail
+        |
+        set -o pipefail
+        set -o pipefail
         find /usr/bin /usr/sbin /bin /sbin -perm -4000 -o -perm -2000 2>/dev/null | \
         awk '{print "-a always,exit -F path=" $1 " -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged"}' >> /etc/audit/rules.d/cmmc.rules
       args:
@@ -286,6 +289,9 @@
 
     - name: "AU Controls | Verify audit event was logged"
       ansible.builtin.shell: |
+        set -o pipefail
+        |
+        set -o pipefail
         set -o pipefail
         ausearch -f "{{ cmmc_validation_dir }}/audit_test_file" -i | grep -c "type=PATH"
       register: audit_test_result
