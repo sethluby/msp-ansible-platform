@@ -33,29 +33,17 @@ roles:
   # ansible-lockdown security hardening roles - integrated into MSP platform
   # CIS Benchmarks for comprehensive system hardening
   - name: ansible-lockdown.RHEL8-CIS
-    src: https://github.com/ansible-lockdown/RHEL8-CIS
-    version: main
     
   - name: ansible-lockdown.RHEL9-CIS
-    src: https://github.com/ansible-lockdown/RHEL9-CIS
-    version: main
     
   - name: ansible-lockdown.UBUNTU20-CIS
-    src: https://github.com/ansible-lockdown/UBUNTU20-CIS
-    version: main
     
   - name: ansible-lockdown.UBUNTU22-CIS
-    src: https://github.com/ansible-lockdown/UBUNTU22-CIS
-    version: main
 
   # DISA STIG compliance for defense contractors and federal agencies
   - name: ansible-lockdown.RHEL8-STIG
-    src: https://github.com/ansible-lockdown/RHEL8-STIG
-    version: main
     
   - name: ansible-lockdown.RHEL9-STIG
-    src: https://github.com/ansible-lockdown/RHEL9-STIG
-    version: main
 
   - name: dev-sec.ssh-hardening
     # Use latest release from Ansible Galaxy to avoid branch mismatches
@@ -65,74 +53,42 @@ roles:
 
   # Monitoring and observability
   - name: cloudalchemy.prometheus
-    src: https://github.com/cloudalchemy/ansible-prometheus
-    version: main
 
   - name: cloudalchemy.alertmanager
-    src: https://github.com/cloudalchemy/ansible-alertmanager
-    version: main
 
   - name: cloudalchemy.grafana
-    src: https://github.com/cloudalchemy/ansible-grafana
-    version: main
 
   - name: cloudalchemy.node_exporter
-    src: https://github.com/cloudalchemy/ansible-node-exporter
-    version: main
 
   # Audit and logging
   - name: willshersystems.sshd
-    src: https://github.com/willshersystems/ansible-sshd
-    version: main
 
   - name: willshersystems.auditd
-    src: https://github.com/willshersystems/ansible-auditd
-    version: main
 
   # User management
   - name: debops.users
-    src: https://github.com/debops/ansible-users
-    version: main
 
   # Backup solutions
   - name: geerlingguy.repo-epel
-    src: https://github.com/geerlingguy/ansible-role-repo-epel
-    version: main
 
   - name: geerlingguy.repo-remi
-    src: https://github.com/geerlingguy/ansible-role-repo-remi
-    version: main
 
   # Container and orchestration
   - name: geerlingguy.docker
-    src: https://github.com/geerlingguy/ansible-role-docker
-    version: main
 
   - name: geerlingguy.pip
-    src: https://github.com/geerlingguy/ansible-role-pip
-    version: main
 
   # Network and VPN
   - name: githubixx.wireguard
-    src: https://github.com/githubixx/ansible-role-wireguard
-    version: main
 
   # Database roles (for backup testing)
   - name: geerlingguy.mysql
-    src: https://github.com/geerlingguy/ansible-role-mysql
-    version: main
 
   - name: geerlingguy.postgresql
-    src: https://github.com/geerlingguy/ansible-role-postgresql
-    version: main
 
   # Testing and development
   - name: geerlingguy.git
-    src: https://github.com/geerlingguy/ansible-role-git
-    version: main
 
   - name: geerlingguy.ansible
-    src: https://github.com/geerlingguy/ansible-role-ansible
-    version: main
 
   # Note: molecule is installed via pip in CI/CD pipeline
