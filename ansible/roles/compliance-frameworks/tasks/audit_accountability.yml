@@ -4,7 +4,7 @@
 # Purpose: Implement AU.1.006-012 controls for comprehensive audit logging and accountability
 
 - name: "AU Controls | Display audit and accountability implementation start"
-  debug:
+  ansible.builtin.debug:
     msg:
       - "Implementing CMMC Audit and Accountability (AU) controls"
       - "AU.1.006: Create and retain system audit records"
@@ -15,16 +15,19 @@
 
 # AU.1.006 - Create and retain information system audit records
 - name: "AU.1.006 | Configure comprehensive audit logging"
+  tags:
+    - cmmc_au_006
+    - cmmc_audit_config
   block:
     - name: "AU.1.006 | Install auditd package"
-      package:
+      ansible.builtin.package:
         name: "{{ audit_package_name }}"
         state: present
       # Install audit daemon for comprehensive system logging
       # Package name varies by distribution (auditd/audit)
 
     - name: "AU.1.006 | Backup original audit configuration"
-      copy:
+      ansible.builtin.copy:
         src: /etc/audit/auditd.conf
         dest: "{{ cmmc_backup_dir }}/auditd.conf.backup.{{ ansible_date_time.epoch }}"
         remote_src: true
@@ -34,7 +37,7 @@
       # Create timestamped backup for rollback capability
 
     - name: "AU.1.006 | Configure audit daemon settings"
-      template:
+      ansible.builtin.template:
         src: auditd.conf.j2
         dest: /etc/audit/auditd.conf
         owner: root
@@ -46,7 +49,7 @@
       # Includes log rotation, retention, and storage settings
 
     - name: "AU.1.006 | Configure audit rules for CMMC compliance"
-      template:
+      ansible.builtin.template:
         src: audit.rules.j2
         dest: /etc/audit/rules.d/cmmc.rules
         owner: root
@@ -62,7 +65,7 @@
       # - Network connections
 
     - name: "AU.1.006 | Set audit log directory permissions"
-      file:
+      ansible.builtin.file:
         path: /var/log/audit
         state: directory
         owner: root
@@ -71,7 +74,7 @@
       # Secure audit log directory with restricted permissions
 
     - name: "AU.1.006 | Configure audit log retention policy"
-      blockinfile:
+      ansible.builtin.blockinfile:
         path: /etc/logrotate.d/audit
         create: true
         owner: root
@@ -92,15 +95,16 @@
           }
       # Configure automatic log rotation with CMMC-compliant retention
 
-  tags:
-    - cmmc_au_006
-    - cmmc_audit_config
+# tags moved above as recommended by ansible-lint
 
 # AU.1.012 - Provide audit record generation capability for events
 - name: "AU.1.012 | Configure system audit event monitoring"
+  tags:
+    - cmmc_au_012
+    - cmmc_audit_events
   block:
     - name: "AU.1.012 | Enable audit for authentication events"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/audit/rules.d/cmmc.rules
         line: "{{ item }}"
         create: true
@@ -120,7 +124,7 @@
       # Monitor critical authentication and authorization files
 
     - name: "AU.1.012 | Enable audit for system configuration changes"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/audit/rules.d/cmmc.rules
         line: "{{ item }}"
         owner: root
@@ -140,16 +144,18 @@
       # Monitor system configuration file changes
 
     - name: "AU.1.012 | Enable audit for privileged commands"
-      shell: |
+      ansible.builtin.shell: |
+        set -o pipefail
         find /usr/bin /usr/sbin /bin /sbin -perm -4000 -o -perm -2000 2>/dev/null | \
         awk '{print "-a always,exit -F path=" $1 " -F perm=x -F auid>=1000 -F auid!=4294967295 -k privileged"}' >> /etc/audit/rules.d/cmmc.rules
       args:
         creates: /etc/audit/rules.d/.privileged_commands_added
+        executable: /bin/bash
       notify: restart auditd
       # Automatically discover and monitor all setuid/setgid executables
 
     - name: "AU.1.012 | Mark privileged commands audit rules as configured"
-      file:
+      ansible.builtin.file:
         path: /etc/audit/rules.d/.privileged_commands_added
         state: touch
         owner: root
@@ -158,7 +164,7 @@
       # Create marker file to prevent duplicate rule addition
 
     - name: "AU.1.012 | Enable audit for file system mount operations"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/audit/rules.d/cmmc.rules
         line: "{{ item }}"
         owner: root
@@ -175,7 +181,7 @@
       # Monitor file system mount/unmount operations
 
     - name: "AU.1.012 | Enable audit for network configuration changes"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/audit/rules.d/cmmc.rules
         line: "{{ item }}"
         owner: root
@@ -193,21 +199,22 @@
       # Monitor network and hostname configuration changes
 
     - name: "AU.1.012 | Configure audit daemon startup"
-      systemd:
+      ansible.builtin.systemd:
         name: auditd
         state: started
         enabled: true
       # Ensure audit daemon starts on boot and is currently running
 
-  tags:
-    - cmmc_au_012
-    - cmmc_audit_events
+# tags moved above as recommended by ansible-lint
 
 # Additional Audit Configuration
 - name: "AU Controls | Configure audit log monitoring and alerting"
+  tags:
+    - cmmc_au_monitoring
+    - cmmc_audit_analysis
   block:
     - name: "AU Controls | Create audit log analysis script"
-      template:
+      ansible.builtin.template:
         src: analyze_audit_logs.sh.j2
         dest: "{{ local_bin_dir }}/analyze_audit_logs.sh"
         owner: root
@@ -216,7 +223,7 @@
       # Deploy script for automated audit log analysis and alerting
 
     - name: "AU Controls | Configure audit log monitoring cron job"
-      cron:
+      ansible.builtin.cron:
         name: "CMMC audit log monitoring"
         minute: "{{ cmmc_au_monitoring_minute }}"
         hour: "{{ cmmc_au_monitoring_hour }}"
@@ -226,7 +233,7 @@
       # Schedule regular audit log analysis for anomaly detection
 
     - name: "AU Controls | Create audit report generation script"
-      template:
+      ansible.builtin.template:
         src: generate_audit_report.py.j2
         dest: "{{ local_bin_dir }}/generate_audit_report.py"
         owner: root
@@ -235,29 +242,30 @@
       # Deploy Python script for generating comprehensive audit reports
 
     - name: "AU Controls | Configure SELinux for audit daemon (if enabled)"
-      command: setsebool -P auditd_enable_home_dirs_auditing on
+      ansible.builtin.command: setsebool -P auditd_enable_home_dirs_auditing on
       when: 
         - ansible_selinux.status == "enabled"
         - cmmc_au_selinux_enable | bool
       failed_when: false
       # Configure SELinux to allow comprehensive auditing when enabled
 
-  tags:
-    - cmmc_au_monitoring
-    - cmmc_audit_analysis
+# tags moved above as recommended by ansible-lint
 
 # Validation and Testing
 - name: "AU Controls | Validate audit daemon configuration"
-  command: auditctl -s
+  ansible.builtin.command: auditctl -s
   register: audit_status
   changed_when: false
   failed_when: "'enabled' not in audit_status.stdout"
   # Verify audit daemon is properly configured and running
 
 - name: "AU Controls | Test audit rule functionality"
+  tags:
+    - cmmc_au_validation
+    - cmmc_audit_test
   block:
     - name: "AU Controls | Create test file for audit verification"
-      file:
+      ansible.builtin.file:
         path: "{{ cmmc_validation_dir }}/audit_test_file"
         state: touch
         owner: root
@@ -266,35 +274,37 @@
       # Create test file to verify audit rules are working
 
     - name: "AU Controls | Modify test file to trigger audit event"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: "{{ cmmc_validation_dir }}/audit_test_file"
         line: "CMMC audit test - {{ ansible_date_time.iso8601 }}"
       # Modify file to generate audit events for testing
 
     - name: "AU Controls | Wait for audit event processing"
-      pause:
+      ansible.builtin.pause:
         seconds: 2
       # Allow time for audit event to be processed and logged
 
     - name: "AU Controls | Verify audit event was logged"
-      shell: ausearch -f "{{ cmmc_validation_dir }}/audit_test_file" -i | grep -c "type=PATH"
+      ansible.builtin.shell: |
+        set -o pipefail
+        ausearch -f "{{ cmmc_validation_dir }}/audit_test_file" -i | grep -c "type=PATH"
       register: audit_test_result
       changed_when: false
       failed_when: audit_test_result.stdout | int == 0
+      args:
+        executable: /bin/bash
       # Verify that file modifications are being properly audited
 
     - name: "AU Controls | Clean up audit test file"
-      file:
+      ansible.builtin.file:
         path: "{{ cmmc_validation_dir }}/audit_test_file"
         state: absent
       # Remove test file after verification
 
-  tags:
-    - cmmc_au_validation
-    - cmmc_audit_test
+# tags moved above as recommended by ansible-lint
 
 - name: "AU Controls | Create audit accountability validation script"
-  template:
+  ansible.builtin.template:
     src: validate_audit_accountability.sh.j2
     dest: "{{ cmmc_validation_dir }}/validate_audit_accountability.sh"
     owner: root
@@ -304,7 +314,7 @@
   # Enables independent validation during graceful disconnection
 
 - name: "AU Controls | Log audit accountability implementation completion"
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: "{{ cmmc_implementation_log_dir }}/implementation.log"
     line: "{{ ansible_date_time.iso8601 }} - Audit and Accountability (AU) controls implemented successfully"
     create: true

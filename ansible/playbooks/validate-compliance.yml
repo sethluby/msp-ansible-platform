@@ -40,7 +40,7 @@
     - name: "CMMC Validation | Test SSH configuration"
       block:
         - name: "CMMC Validation | Verify SSH daemon configuration"
-          command: sshd -t
+          ansible.builtin.command: sshd -t
           register: ssh_test
           changed_when: false
           when: not ansible_check_mode

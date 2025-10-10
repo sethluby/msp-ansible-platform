@@ -4,7 +4,7 @@
 # Purpose: Implement AC.1.001-003 controls for authorized access management
 
 - name: "AC Controls | Display access control implementation start"
-  debug:
+  ansible.builtin.debug:
     msg:
       - "Implementing CMMC Access Control (AC) controls"
       - "AC.1.001: Limit system access to authorized users"
@@ -16,9 +16,12 @@
 
 # AC.1.001 - Limit information system access to authorized users
 - name: "AC.1.001 | Configure SSH for authorized access only"
+  tags:
+    - cmmc_ac_001
+    - cmmc_ssh_config
   block:
     - name: "AC.1.001 | Backup original SSH configuration"
-      copy:
+      ansible.builtin.copy:
         src: "{{ ssh_config_file }}"
         dest: "{{ ssh_config_backup_dir }}/sshd_config.backup.{{ ansible_date_time.epoch }}"
         remote_src: true
@@ -29,7 +32,7 @@
       # Essential for graceful disconnection and emergency recovery
 
     - name: "AC.1.001 | Generate SSH configuration from template"
-      template:
+      ansible.builtin.template:
         src: sshd_config.j2
         dest: "{{ ssh_config_file }}"
         owner: "{{ cmmc_default_owner }}"
@@ -42,7 +45,7 @@
       # Validation ensures configuration is syntactically correct before application
 
     - name: "AC.1.001 | Disable password authentication"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: "{{ ssh_config_file }}"
         regexp: '^#?PasswordAuthentication'
         line: 'PasswordAuthentication no'
@@ -52,7 +55,7 @@
       # Enforces key-based authentication for enhanced security
 
     - name: "AC.1.001 | Enable and require public key authentication"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: "{{ ssh_config_file }}"
         regexp: '^#?PubkeyAuthentication'
         line: 'PubkeyAuthentication yes'
@@ -61,7 +64,7 @@
       # Ensure public key authentication is enabled and required
 
     - name: "AC.1.001 | Configure SSH port (if non-standard)"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: "{{ ssh_config_file }}"
         regexp: '^#?Port'
         line: "Port {{ cmmc_ac_ssh_port }}"
@@ -72,7 +75,7 @@
       # Only applied when different from default port 22
 
     - name: "AC.1.001 | Restrict SSH access to authorized users"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: "{{ ssh_config_file }}"
         regexp: '^#?AllowUsers'
         line: "AllowUsers {{ cmmc_ac_allowed_users | join(' ') }}"
@@ -83,7 +86,7 @@
       # Implements principle of least privilege access
 
     - name: "AC.1.001 | Set authentication attempt limits"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: "{{ ssh_config_file }}"
         regexp: '^#?MaxAuthTries'
         line: "MaxAuthTries {{ cmmc_ac_max_auth_tries }}"
@@ -92,7 +95,7 @@
       # Limit authentication attempts to prevent brute force attacks
 
     - name: "AC.1.001 | Configure login grace time"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: "{{ ssh_config_file }}"
         regexp: '^#?LoginGraceTime'
         line: "LoginGraceTime {{ cmmc_ac_login_grace_time }}"
@@ -100,15 +103,16 @@
       notify: restart sshd
       # Set timeout for login attempts to prevent resource exhaustion
 
-  tags:
-    - cmmc_ac_001
-    - cmmc_ssh_config
+# tags moved above as recommended by ansible-lint
 
 # AC.1.002 - Limit information system access to authorized transactions
 - name: "AC.1.002 | Configure sudo restrictions for authorized transactions"
+  tags:
+    - cmmc_ac_002
+    - cmmc_sudo_config
   block:
     - name: "AC.1.002 | Create CMMC sudo configuration"
-      template:
+      ansible.builtin.template:
         src: sudoers_cmmc.j2
         dest: /etc/sudoers.d/10-cmmc-restrictions
         owner: root
@@ -119,7 +123,7 @@
       # Validation ensures sudoers syntax is correct before application
 
     - name: "AC.1.002 | Enable sudo logging for transaction tracking"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/sudoers
         regexp: '^Defaults.*logfile'
         line: 'Defaults logfile=/var/log/sudo.log'
@@ -129,7 +133,7 @@
       # Tracks all privileged command execution
 
     - name: "AC.1.002 | Configure sudo session timeout"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/sudoers
         regexp: '^Defaults.*timestamp_timeout'
         line: 'Defaults timestamp_timeout=5'
@@ -139,7 +143,7 @@
       # Requires re-authentication every 5 minutes
 
     - name: "AC.1.002 | Enable sudo command logging"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/sudoers
         regexp: '^Defaults.*log_output'
         line: 'Defaults log_output'
@@ -147,15 +151,16 @@
         validate: 'visudo -cf %s'
       # Log all sudo command output for comprehensive audit trail
 
-  tags:
-    - cmmc_ac_002
-    - cmmc_sudo_config
+# tags moved above as recommended by ansible-lint
 
 # AC.1.003 - Control information posted or processed on publicly accessible systems
 - name: "AC.1.003 | Configure system information disclosure controls"
+  tags:
+    - cmmc_ac_003
+    - cmmc_system_disclosure
   block:
     - name: "AC.1.003 | Remove system information from login banners"
-      copy:
+      ansible.builtin.copy:
         content: |
           WARNING: This system is for authorized use only.
           
@@ -173,7 +178,7 @@
       # Removes potentially useful information for attackers
 
     - name: "AC.1.003 | Configure network login banner"
-      copy:
+      ansible.builtin.copy:
         content: |
           WARNING: This system is for authorized use only.
           
@@ -190,7 +195,7 @@
       # Deploy network login banner for remote access warnings
 
     - name: "AC.1.003 | Hide system information in SSH banner"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^#?Banner'
         line: 'Banner /etc/issue.net'
@@ -199,7 +204,7 @@
       # Configure SSH to display warning banner instead of system information
 
     - name: "AC.1.003 | Disable SSH version disclosure"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^#?DebianBanner'
         line: 'DebianBanner no'
@@ -209,7 +214,7 @@
       # Disable version information disclosure in SSH on Debian systems
 
     - name: "AC.1.003 | Configure secure SSH protocol settings"
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
         regexp: '^#?{{ item.setting }}'
         line: "{{ item.setting }} {{ item.value }}"
@@ -226,13 +231,11 @@
       # Configure SSH security settings to minimize attack surface
       # Disables potentially dangerous features and root access
 
-  tags:
-    - cmmc_ac_003
-    - cmmc_system_disclosure
+# tags moved above as recommended by ansible-lint
 
 # Validation and Verification
 - name: "AC Controls | Validate SSH service configuration"
-  command: sshd -t
+  ansible.builtin.command: sshd -t
   register: sshd_test
   changed_when: false
   failed_when: sshd_test.rc != 0
@@ -240,7 +243,7 @@
   # Ensures service will start successfully after configuration changes
 
 - name: "AC Controls | Verify SSH service is running"
-  systemd:
+  ansible.builtin.systemd:
     name: sshd
     state: started
     enabled: true
@@ -248,7 +251,7 @@
   # Critical for maintaining remote access after configuration changes
 
 - name: "AC Controls | Create access control validation script"
-  template:
+  ansible.builtin.template:
     src: validate_access_control.sh.j2
     dest: /var/lib/cmmc/validation/validate_access_control.sh
     owner: root
@@ -258,7 +261,7 @@
   # Enables independent validation during graceful disconnection
 
 - name: "AC Controls | Log access control implementation completion"
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /var/log/cmmc/implementation.log
     line: "{{ ansible_date_time.iso8601 }} - Access Control (AC) controls implemented successfully"
     create: true

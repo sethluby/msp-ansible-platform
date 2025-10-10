@@ -41,7 +41,7 @@
     - cmmc_prerequisites
 
 - name: "CMMC Compliance | Create compliance directory structure"
-  file:
+  ansible.builtin.file:
     path: "{{ item.path }}"
     state: directory
     owner: "{{ item.owner | default(cmmc_default_owner) }}"
@@ -85,7 +85,7 @@
     - cmmc_directories
 
 - name: "CMMC Compliance | Install compliance validation tools"
-  copy:
+  ansible.builtin.copy:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
     owner: "{{ cmmc_default_owner }}"
@@ -106,7 +106,7 @@
 
 # Access Control (AC) Implementation
 - name: "CMMC Compliance | Implement Access Control (AC) controls"
-  include_tasks: access_control.yml
+  ansible.builtin.include_tasks: access_control.yml
   when: cmmc_enable_access_control | bool
   # Implements AC.1.001-003 controls for user access management
   # Configures SSH, user restrictions, and access monitoring
@@ -116,7 +116,7 @@
 
 # Audit and Accountability (AU) Implementation  
 - name: "CMMC Compliance | Implement Audit and Accountability (AU) controls"
-  include_tasks: audit_accountability.yml
+  ansible.builtin.include_tasks: audit_accountability.yml
   when: cmmc_enable_audit_accountability | bool
   # Implements AU.1.006-012 controls for comprehensive audit logging
   # Configures auditd, log retention, and audit event monitoring
@@ -126,7 +126,7 @@
 
 # Configuration Management (CM) Implementation
 - name: "CMMC Compliance | Implement Configuration Management (CM) controls"
-  include_tasks: config_management.yml
+  ansible.builtin.include_tasks: config_management.yml
   when: cmmc_enable_config_management | bool
   # Implements CM.1.073 controls for baseline configuration management
   # Establishes system baselines and change tracking mechanisms
@@ -136,7 +136,7 @@
 
 # Identification and Authentication (IA) Implementation
 - name: "CMMC Compliance | Implement Identification and Authentication (IA) controls"
-  include_tasks: identification_auth.yml
+  ansible.builtin.include_tasks: identification_auth.yml
   when: cmmc_enable_identification_auth | bool
   # Implements IA.1.076-077 controls for strong authentication
   # Configures multi-factor authentication and identity management
@@ -146,7 +146,7 @@
 
 # System and Communications Protection (SC) Implementation
 - name: "CMMC Compliance | Implement System and Communications Protection (SC) controls"
-  include_tasks: system_protection.yml
+  ansible.builtin.include_tasks: system_protection.yml
   when: cmmc_enable_system_protection | bool
   # Implements SC.1.175-178 controls for data protection and encryption
   # Configures encryption, secure communications, and system hardening
@@ -156,7 +156,7 @@
 
 # System and Information Integrity (SI) Implementation
 - name: "CMMC Compliance | Implement System and Information Integrity (SI) controls"
-  include_tasks: system_integrity.yml
+  ansible.builtin.include_tasks: system_integrity.yml
   when: cmmc_enable_system_integrity | bool
   # Implements SI.1.210-214 controls for system integrity monitoring
   # Configures file integrity monitoring and security alert systems
@@ -166,7 +166,7 @@
 
 # Post-Implementation Validation
 - name: "CMMC Compliance | Run comprehensive compliance validation"
-  include_tasks: validation.yml
+  ansible.builtin.include_tasks: validation.yml
   vars:
     validation_mode: "post_implementation"
   # Validates all implemented controls are functioning correctly
@@ -177,7 +177,7 @@
 
 # Compliance Reporting
 - name: "CMMC Compliance | Generate compliance reports"
-  include_tasks: reporting.yml
+  ansible.builtin.include_tasks: reporting.yml
   when: cmmc_reporting_enabled | bool
   # Generates detailed compliance reports in specified formats
   # Supports both local storage and MSP integration endpoints
@@ -186,7 +186,7 @@
     - cmmc_reports
 
 - name: "CMMC Compliance | Display completion summary"
-  debug:
+  ansible.builtin.debug:
     msg:
       - "CMMC {{ cmmc_level }} compliance implementation completed"
       - "Client: {{ cmmc_client_id }}"
