@@ -6,7 +6,7 @@
 # Copyright (c) 2025 Seth Luby
 # Licensed under the MIT License - see LICENSE file for details
 
-- name: "MSP Platform: Master Orchestration"
+- name: "MSP Platform: Master Orchestration Setup"
   hosts: localhost
   connection: local
   gather_facts: true
@@ -15,12 +15,12 @@
     # Platform configuration
     msp_platform_version: "2.0.0"
     operation_timestamp: "{{ ansible_date_time.iso8601 }}"
-    
+
     # Default operation modes
     operation_mode: "{{ operation | default('status') }}"  # status, deploy, update, compliance, backup, monitor
     target_clients: "{{ clients | default('all') }}"       # all, specific client name, or comma-separated list
     service_tier_filter: "{{ tier | default('all') }}"     # all, foundation, professional, enterprise
-    
+
     # Logging and reporting
     enable_detailed_logging: true
     generate_operation_report: true
@@ -85,18 +85,6 @@
       when: operation_mode == 'status'
       tags: [status, monitoring]
 
-    # Client Onboarding
-    - name: Execute client onboarding
-      ansible.builtin.include: onboard-client.yml
-      when: operation_mode == 'onboard'
-      tags: [onboarding, setup, skip_ansible_lint]
-
-    # Client Disconnection
-    - name: Execute graceful disconnection
-      ansible.builtin.include: prepare-disconnection.yml
-      when: operation_mode == 'disconnect'
-      tags: [disconnection, cleanup, skip_ansible_lint]
-
     # Infrastructure Deployment
     - name: Execute infrastructure deployment
       ansible.builtin.include_tasks: tasks/deployment_operations.yml
@@ -104,46 +92,6 @@
         target_client_list: "{{ filtered_clients }}"
       when: operation_mode == 'deploy'
       tags: [deployment, infrastructure]
-
-    # System Updates
-    - name: Execute system updates
-      ansible.builtin.include: system-update.yml
-      vars:
-        target_clients: "{{ filtered_clients | join(',') }}"
-      when: operation_mode == 'update'
-      tags: [updates, maintenance, skip_ansible_lint]
-
-    # Compliance Operations
-    - name: Execute compliance validation
-      ansible.builtin.include: validate-compliance.yml
-      vars:
-        target_clients: "{{ filtered_clients | join(',') }}"
-      when: operation_mode == 'compliance'
-      tags: [compliance, validation, skip_ansible_lint]
-
-    # Backup Operations
-    - name: Execute backup operations
-      ansible.builtin.include: backup-recovery.yml
-      vars:
-        target_clients: "{{ filtered_clients | join(',') }}"
-      when: operation_mode == 'backup'
-      tags: [backup, recovery, skip_ansible_lint]
-
-    # Monitoring Operations
-    - name: Execute monitoring operations
-      ansible.builtin.include: monitoring-alerting.yml
-      vars:
-        target_clients: "{{ filtered_clients | join(',') }}"
-      when: operation_mode == 'monitor'
-      tags: [monitoring, alerting, skip_ansible_lint]
-
-    # Security Hardening
-    - name: Execute security hardening
-      ansible.builtin.include: security-hardening.yml
-      vars:
-        target_clients: "{{ filtered_clients | join(',') }}"
-      when: operation_mode == 'harden'
-      tags: [security, hardening, skip_ansible_lint]
 
   post_tasks:
     - name: Generate operation report
@@ -166,7 +114,7 @@
           Clients Affected: {{ filtered_clients | length }}
           Status: SUCCESS
           Duration: {{ ansible_date_time.iso8601 }}
-          
+
           Affected Clients:
           {{ filtered_clients | join('\n') if filtered_clients | length > 0 else 'None' }}
 
@@ -188,6 +136,37 @@
           timestamp: "{{ operation_timestamp }}"
       when: send_notifications | bool
       tags: [notification, communication]
+
+# Import playbooks based on operation mode
+# These must be at play level, not within tasks
+
+- name: Import client onboarding playbook
+  ansible.builtin.import_playbook: onboard-client.yml
+  when: operation_mode is defined and operation_mode == 'onboard'
+
+- name: Import graceful disconnection playbook
+  ansible.builtin.import_playbook: prepare-disconnection.yml
+  when: operation_mode is defined and operation_mode == 'disconnect'
+
+- name: Import system update playbook
+  ansible.builtin.import_playbook: system-update.yml
+  when: operation_mode is defined and operation_mode == 'update'
+
+- name: Import compliance validation playbook
+  ansible.builtin.import_playbook: validate-compliance.yml
+  when: operation_mode is defined and operation_mode == 'compliance'
+
+- name: Import backup operations playbook
+  ansible.builtin.import_playbook: backup-recovery.yml
+  when: operation_mode is defined and operation_mode == 'backup'
+
+- name: Import monitoring operations playbook
+  ansible.builtin.import_playbook: monitoring-alerting.yml
+  when: operation_mode is defined and operation_mode == 'monitor'
+
+- name: Import security hardening playbook
+  ansible.builtin.import_playbook: security-hardening.yml
+  when: operation_mode is defined and operation_mode == 'harden'
 
 # Additional plays for specific infrastructure components
 - name: "MSP Infrastructure Health Check"
@@ -220,6 +199,7 @@
 
     - name: Check available resources
       ansible.builtin.shell: |
+        set -o pipefail
         echo "Disk: $(df -h /opt/msp-platform | tail -1 | awk '{print $4}') available"
         echo "Memory: $(free -h | grep '^Mem:' | awk '{print $7}') available"
         echo "Load: $(uptime | awk -F'load average:' '{print $2}')"

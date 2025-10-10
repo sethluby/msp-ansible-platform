@@ -1,0 +1,7 @@
+---
+# Placeholder for Prometheus installation tasks
+# TODO: Implement Prometheus server setup and configuration
+
+- name: Prometheus installation placeholder
+  ansible.builtin.debug:
+    msg: "Prometheus installation tasks to be implemented"

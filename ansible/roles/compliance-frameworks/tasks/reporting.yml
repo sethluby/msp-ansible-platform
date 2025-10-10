@@ -1,0 +1,7 @@
+---
+# Placeholder compliance task file - to be implemented
+# TODO: Implement compliance framework functionality
+
+- name: Compliance placeholder task
+  ansible.builtin.debug:
+    msg: "Compliance task to be implemented"

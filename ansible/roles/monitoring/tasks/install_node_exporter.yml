@@ -1,0 +1,7 @@
+---
+# Placeholder for Node Exporter installation tasks
+# TODO: Implement Node Exporter setup for system metrics
+
+- name: Node Exporter installation placeholder
+  ansible.builtin.debug:
+    msg: "Node Exporter installation tasks to be implemented"

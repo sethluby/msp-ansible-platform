@@ -1,0 +1,7 @@
+---
+# Placeholder for alert configuration tasks
+# TODO: Implement alerting rules and notification channels
+
+- name: Alert configuration placeholder
+  ansible.builtin.debug:
+    msg: "Alert configuration tasks to be implemented"

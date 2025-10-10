@@ -1,0 +1,7 @@
+---
+# Deploy monitoring for client infrastructure
+# TODO: Implement monitoring deployment
+
+- name: Deploy monitoring placeholder
+  ansible.builtin.debug:
+    msg: "Monitoring deployment to be implemented"

@@ -1,0 +1,7 @@
+---
+# Placeholder backup task file - to be implemented
+# TODO: Implement backup functionality
+
+- name: Backup placeholder task
+  ansible.builtin.debug:
+    msg: "Backup task to be implemented"

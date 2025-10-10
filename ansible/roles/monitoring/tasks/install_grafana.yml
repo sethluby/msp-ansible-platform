@@ -1,0 +1,7 @@
+---
+# Placeholder for Grafana installation tasks
+# TODO: Implement Grafana installation and configuration
+
+- name: Grafana installation placeholder
+  ansible.builtin.debug:
+    msg: "Grafana installation tasks to be implemented"

@@ -1,0 +1,7 @@
+---
+# Placeholder playbook task file - to be implemented
+# TODO: Implement playbook task functionality
+
+- name: Playbook task placeholder
+  ansible.builtin.debug:
+    msg: "Playbook task to be implemented"
