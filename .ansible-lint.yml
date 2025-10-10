@@ -24,4 +24,4 @@ warn_list:
   - experimental
   - yaml[line-length]
 
-offline: false
+offline: true

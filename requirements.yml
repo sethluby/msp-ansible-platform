@@ -33,17 +33,29 @@ roles:
   # ansible-lockdown security hardening roles - integrated into MSP platform
   # CIS Benchmarks for comprehensive system hardening
   - name: ansible-lockdown.RHEL8-CIS
+    src: https://github.com/ansible-lockdown/RHEL8-CIS
+    version: main
     
   - name: ansible-lockdown.RHEL9-CIS
+    src: https://github.com/ansible-lockdown/RHEL9-CIS
+    version: main
     
   - name: ansible-lockdown.UBUNTU20-CIS
+    src: https://github.com/ansible-lockdown/UBUNTU20-CIS
+    version: main
     
   - name: ansible-lockdown.UBUNTU22-CIS
+    src: https://github.com/ansible-lockdown/UBUNTU22-CIS
+    version: main
 
   # DISA STIG compliance for defense contractors and federal agencies
   - name: ansible-lockdown.RHEL8-STIG
+    src: https://github.com/ansible-lockdown/RHEL8-STIG
+    version: main
     
   - name: ansible-lockdown.RHEL9-STIG
+    src: https://github.com/ansible-lockdown/RHEL9-STIG
+    version: main
 
   - name: dev-sec.ssh-hardening
     # Use latest release from Ansible Galaxy to avoid branch mismatches
