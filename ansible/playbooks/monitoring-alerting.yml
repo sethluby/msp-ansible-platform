@@ -47,61 +47,61 @@
         alerting: true
         security_monitoring: true
   pre_tasks:
-    - name: Validate monitoring configuration context
-      tags:
-        - validation
-      ansible.builtin.assert:
-        that:
-          - client_name is defined
-          - client_monitoring_profile in ['basic', 'standard', 'advanced']
-        fail_msg: Invalid monitoring configuration parameters
-    - name: Create client monitoring directories
-      tags:
-        - setup
-      loop:
-        - /var/log/msp/{{ client_name }}/monitoring
-        - /opt/msp-monitoring/{{ client_name }}
-        - /etc/prometheus/{{ client_name }}
-      ansible.builtin.file:
-        path: '{{ item }}'
-        state: directory
-        mode: '0755'
-        owner: root
-        group: root
-    - name: Log monitoring setup initiation
-      tags:
-        - logging
-        - skip_ansible_lint
-      vars:
-        msp_log_server: '{{ msp_syslog_server | default('''') }}'
-        msp_log_tag: MONITORING-SETUP
-        msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ monitoring_session_id }} | Profile: {{ client_monitoring_profile }} | Status: STARTED'
-      ansible.builtin.include_role:
-        name: msp-logging
+  - name: Validate monitoring configuration context
+    tags:
+    - validation
+    ansible.builtin.assert:
+      that:
+      - client_name is defined
+      - client_monitoring_profile in ['basic', 'standard', 'advanced']
+      fail_msg: Invalid monitoring configuration parameters
+  - name: Create client monitoring directories
+    tags:
+    - setup
+    loop:
+    - /var/log/msp/{{ client_name }}/monitoring
+    - /opt/msp-monitoring/{{ client_name }}
+    - /etc/prometheus/{{ client_name }}
+    ansible.builtin.file:
+      path: '{{ item }}'
+      state: directory
+      mode: '0755'
+      owner: root
+      group: root
+  - name: Log monitoring setup initiation
+    tags:
+    - logging
+    - skip_ansible_lint
+    vars:
+      msp_log_server: '{{ msp_syslog_server | default('''') }}'
+      msp_log_tag: MONITORING-SETUP
+      msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ monitoring_session_id }} | Profile: {{ client_monitoring_profile }} | Status: STARTED'
+    ansible.builtin.include_role:
+      name: msp-logging
   tasks:
-    - name: Install and configure Prometheus Node Exporter
-      when: monitoring_profiles[client_monitoring_profile].node_exporter
-      tags:
-        - monitoring
-        - node_exporter
-      block:
-        - name: Create prometheus user
-          ansible.builtin.user:
-            name: prometheus
-            system: true
-            shell: /bin/false
-            home: /var/lib/prometheus
-            create_home: false
-        - name: Download Node Exporter
-          ansible.builtin.get_url:
-            url: https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}.tar.gz
-            dest: /tmp/node_exporter.tar.gz
-            mode: '0644'
-        - name: Extract Node Exporter
-          ansible.builtin.unarchive:
-            src: /tmp/node_exporter.tar.gz
-            dest: /tmp
-            remote_src: true
+  - name: Install and configure Prometheus Node Exporter
+    when: monitoring_profiles[client_monitoring_profile].node_exporter
+    tags:
+    - monitoring
+    - node_exporter
+    block:
+    - name: Create prometheus user
+      ansible.builtin.user:
+        name: prometheus
+        system: true
+        shell: /bin/false
+        home: /var/lib/prometheus
+        create_home: false
+    - name: Download Node Exporter
+      ansible.builtin.get_url:
+        url: https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}.tar.gz
+        dest: /tmp/node_exporter.tar.gz
+        mode: '0644'
+    - name: Extract Node Exporter
+      ansible.builtin.unarchive:
+        src: /tmp/node_exporter.tar.gz
+        dest: /tmp
+        remote_src: true
     - name: Install Node Exporter binary
       ansible.builtin.copy:
         src: /tmp/node_exporter-1.6.1.linux-{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}/node_exporter
@@ -115,7 +115,6 @@
         content: "[Unit]\nDescription=Prometheus Node Exporter ({{ client_name }})\nWants=network-online.target\nAfter=network-online.target\n\n[Service]\nUser=prometheus\nGroup=prometheus\nType=simple\nExecStart=/usr/local/bin/node_exporter \\\n  --web.listen-address=:9100 \\\n  --path.procfs=/proc \\\n  --path.sysfs=/sys \\\n  --collector.filesystem.mount-points-exclude=\"^/(sys|proc|dev|host|etc)($$|/)\" \\\n  --collector.textfile.directory=/var/lib/prometheus/textfile_collector \\\n  --web.telemetry-path=/metrics/{{ client_name }}\nRestart=on-failure\nRestartSec=5s\n\n[Install]\nWantedBy=multi-user.target\n"
         dest: /etc/systemd/system/node_exporter.service
         mode: '0644'
-
     - name: Create textfile collector directory
       ansible.builtin.file:
         path: /var/lib/prometheus/textfile_collector
@@ -133,7 +132,6 @@
   - name: Deploy custom monitoring scripts
     when: monitoring_profiles[client_monitoring_profile].custom_metrics
     tags:
-      register: health_check_script
     - monitoring
     - custom_metrics
     block:
@@ -146,7 +144,7 @@
         mode: '0755'
         owner: root
         group: root
-
+      register: health_check_script
     - name: Schedule system health checks
       ansible.builtin.cron:
         name: System health check for {{ client_name }}
@@ -159,7 +157,6 @@
     - monitoring_profiles[client_monitoring_profile].log_monitoring
     - msp_monitoring_server != ""
     tags:
-      register: rsyslog_config
     - monitoring
     - logging
     block:
@@ -183,7 +180,7 @@
         marker: '# {mark} {{ client_name }} LOG FORWARDING'
         backup: true
       notify: restart rsyslog
-
+      register: rsyslog_config
     - name: Configure logrotate for client logs
       ansible.builtin.copy:
         content: "/var/log/msp/{{ client_name }}/*.log {\n    daily\n    rotate {{ client_retention_days }}\n    compress\n    delaycompress\n    missingok\n    notifempty\n    create 644 root root\n    postrotate\n        systemctl reload rsyslog > /dev/null 2>&1 || true\n    endscript\n}\n"
@@ -193,7 +190,6 @@
   - name: Configure process monitoring
     when: monitoring_profiles[client_monitoring_profile].process_monitoring
     tags:
-      register: process_monitoring_script
     - monitoring
     - processes
     block:
@@ -205,7 +201,7 @@
         mode: '0755'
         owner: root
         group: root
-
+      register: process_monitoring_script
     - name: Schedule process monitoring
       ansible.builtin.cron:
         name: Process monitoring for {{ client_name }}
@@ -216,7 +212,6 @@
   - name: Configure security monitoring
     when: monitoring_profiles[client_monitoring_profile].security_monitoring | default(false)
     tags:
-      register: security_monitoring_script
     - monitoring
     - security
     block:
@@ -228,7 +223,7 @@
         mode: '0755'
         owner: root
         group: root
-
+      register: security_monitoring_script
     - name: Schedule security monitoring
       ansible.builtin.cron:
         name: Security monitoring for {{ client_name }}
@@ -239,7 +234,6 @@
   - name: Configure client-specific alerting
     when: monitoring_profiles[client_monitoring_profile].alerting
     tags:
-      register: alerting_rules
     - monitoring
     - alerting
     block:
@@ -251,13 +245,11 @@
           \ %} failed SSH attempts detected on {% raw %}{{ $labels.host }}{% endraw %} for client {{ client_name }}\"\n"
         dest: /etc/prometheus/{{ client_name }}/alerting_rules.yml
         mode: '0644'
-
+      register: alerting_rules
   - name: Install monitoring dependencies
     tags:
     - monitoring
     - dependencies
-    register: monitoring_packages
-    failed_when: false
     loop:
     - curl
     - wget
@@ -268,6 +260,8 @@
     ansible.builtin.package:
       name: '{{ item }}'
       state: present
+    register: monitoring_packages
+    failed_when: false
   post_tasks:
   - name: Collect monitoring setup results
     tags:

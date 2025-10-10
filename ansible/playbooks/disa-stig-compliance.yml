@@ -115,81 +115,69 @@
         regexp: ^#?HostbasedAuthentication
         line: HostbasedAuthentication no
         backup: true
-  - name: STIG V-230225 - Disable SSH environment option setting
-    tags:
-    - stig
-    - ssh
-    - environment
-    - V-230225
-    register: stig_ssh_userenv
-    notify: restart sshd
-    ansible.builtin.lineinfile:
-      path: /etc/ssh/sshd_config
-      regexp: ^#?PermitUserEnvironment
-      line: PermitUserEnvironment no
-      backup: true
-  - name: STIG V-230235 - Configure system crypto policy
-    when:
-    - ansible_os_family == "RedHat"
-    - ansible_distribution_major_version | int >= 8
-    tags:
-    - stig
-    - crypto
-    - fips
-    - V-230235
-    register: stig_crypto_policy
-    changed_when: '''already using policy'' not in stig_crypto_policy.stderr'
-    ansible.builtin.shell: 'set -o pipefail
-
-      |
-
-      set -o pipefail
-
-      update-crypto-policies --set FIPS
-
-      '
-  - name: STIG V-230264 - Enable ASLR
-    tags:
-    - stig
-    - kernel
-    - aslr
-    - V-230264
-    register: stig_aslr
-    ansible.posix.sysctl:
-      name: kernel.randomize_va_space
-      value: '2'
-      state: present
-      reload: true
-      sysctl_file: /etc/sysctl.d/99-stig.conf
-  - name: STIG V-230265 - Configure NX bit support check
-    tags:
-    - stig
-    - kernel
-    - dep
-    - V-230265
-    register: stig_nx_check
-    changed_when: false
-    ansible.builtin.shell: 'set -o pipefail
-
-      |
-
-      set -o pipefail
-
-      dmesg | grep -i "nx protection" || echo "NX_NOT_FOUND"
-
-      '
-  - name: STIG V-230320 - Configure audit rules for account management
-    tags:
-    - stig
-    - audit
-    - account
-    - V-230320
-    register: stig_audit_rules
-    notify: reload auditd
-    ansible.builtin.blockinfile:
-      path: /etc/audit/rules.d/50-msp-stig.rules
-      create: true
-      block: '# Account management events (STIG V-230320)
+    - name: STIG V-230225 - Disable SSH environment option setting
+      tags:
+        - stig
+        - ssh
+        - environment
+        - V-230225
+      register: stig_ssh_userenv
+      notify: restart sshd
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: ^#?PermitUserEnvironment
+        line: PermitUserEnvironment no
+        backup: true
+    - name: STIG V-230235 - Configure system crypto policy
+      when:
+        - ansible_os_family == "RedHat"
+        - ansible_distribution_major_version | int >= 8
+      tags:
+        - stig
+        - crypto
+        - fips
+        - V-230235
+      register: stig_crypto_policy
+      changed_when: '''already using policy'' not in stig_crypto_policy.stderr'
+      ansible.builtin.shell: |
+        set -o pipefail
+        update-crypto-policies --set FIPS
+    - name: STIG V-230264 - Enable ASLR
+      tags:
+        - stig
+        - kernel
+        - aslr
+        - V-230264
+      register: stig_aslr
+      ansible.posix.sysctl:
+        name: kernel.randomize_va_space
+        value: '2'
+        state: present
+        reload: true
+        sysctl_file: /etc/sysctl.d/99-stig.conf
+    - name: STIG V-230265 - Configure NX bit support check
+      tags:
+        - stig
+        - kernel
+        - dep
+        - V-230265
+      register: stig_nx_check
+      changed_when: false
+      ansible.builtin.shell: |
+        set -o pipefail
+        dmesg | grep -i "nx protection" || echo "NX_NOT_FOUND"
+    - name: STIG V-230320 - Configure audit rules for account management
+      tags:
+        - stig
+        - audit
+        - account
+        - V-230320
+      register: stig_audit_rules
+      notify: reload auditd
+      ansible.builtin.blockinfile:
+        path: /etc/audit/rules.d/50-msp-stig.rules
+        create: true
+        block: '# Account management events (STIG V-230320)
 
         -w /etc/passwd -p wa -k identity
 
@@ -221,116 +209,116 @@
 
         '
       marker: '# {mark} MSP STIG AUDIT RULES'
-  - name: STIG V-230469 - Ensure no blank passwords
-    tags:
-    - stig
-    - pam
-    - passwords
-    - V-230469
-    register: stig_no_blank_passwords
-    ansible.builtin.replace:
-      path: /etc/pam.d/system-auth
-      regexp: nullok
-      replace: ''
-      backup: true
-  - name: STIG V-230470 - Configure password complexity
-    when: stig_profiles[client_stig_profile].password_complexity
-    tags:
-    - stig
-    - passwords
-    - complexity
-    - V-230470
-    register: stig_password_complexity
-    loop:
-    - regexp: ^#?minlen
-      line: minlen = 15
-    - regexp: ^#?minclass
-      line: minclass = 4
-    - regexp: ^#?maxrepeat
-      line: maxrepeat = 3
-    - regexp: ^#?maxclassrepeat
-      line: maxclassrepeat = 4
-    - regexp: ^#?dcredit
-      line: dcredit = -1
-    - regexp: ^#?ucredit
-      line: ucredit = -1
-    - regexp: ^#?lcredit
-      line: lcredit = -1
-    - regexp: ^#?ocredit
-      line: ocredit = -1
-    ansible.builtin.lineinfile:
-      path: /etc/security/pwquality.conf
-      regexp: '{{ item.regexp }}'
-      line: '{{ item.line }}'
-      backup: true
-  - name: Apply client-specific STIG exceptions
-    when: client_stig_exceptions | length > 0
-    tags:
-    - stig
-    - exceptions
-    loop: '{{ client_stig_exceptions }}'
-    ansible.builtin.debug:
-      msg: Skipping STIG rule {{ item }} per client exception
+    - name: STIG V-230469 - Ensure no blank passwords
+      tags:
+        - stig
+        - pam
+        - passwords
+        - V-230469
+      register: stig_no_blank_passwords
+      ansible.builtin.replace:
+        path: /etc/pam.d/system-auth
+        regexp: nullok
+        replace: ''
+        backup: true
+    - name: STIG V-230470 - Configure password complexity
+      when: stig_profiles[client_stig_profile].password_complexity
+      tags:
+        - stig
+        - passwords
+        - complexity
+        - V-230470
+      register: stig_password_complexity
+      loop:
+        - regexp: ^#?minlen
+          line: minlen = 15
+        - regexp: ^#?minclass
+          line: minclass = 4
+        - regexp: ^#?maxrepeat
+          line: maxrepeat = 3
+        - regexp: ^#?maxclassrepeat
+          line: maxclassrepeat = 4
+        - regexp: ^#?dcredit
+          line: dcredit = -1
+        - regexp: ^#?ucredit
+          line: ucredit = -1
+        - regexp: ^#?lcredit
+          line: lcredit = -1
+        - regexp: ^#?ocredit
+          line: ocredit = -1
+      ansible.builtin.lineinfile:
+        path: /etc/security/pwquality.conf
+        regexp: '{{ item.regexp }}'
+        line: '{{ item.line }}'
+        backup: true
+    - name: Apply client-specific STIG exceptions
+      when: client_stig_exceptions | length > 0
+      tags:
+        - stig
+        - exceptions
+      loop: '{{ client_stig_exceptions }}'
+      ansible.builtin.debug:
+        msg: Skipping STIG rule {{ item }} per client exception
   post_tasks:
-  - name: Collect STIG compliance findings
-    tags:
-    - reporting
-    loop:
-    - rule: V-230221
-      status: '{{ ''FIXED'' if stig_banner_result.changed else ''COMPLIANT'' }}'
-      description: DoD logon banner configured
-    - rule: V-230222
-      status: '{{ ''FIXED'' if stig_ssh_banner.changed else ''COMPLIANT'' }}'
-      description: SSH banner configured
-    - rule: V-230223
-      status: '{{ ''FIXED'' if stig_ssh_timeout.changed else ''COMPLIANT'' }}'
-      description: SSH timeout configured
-    - rule: V-230224
-      status: '{{ ''FIXED'' if stig_ssh_hostauth.changed else ''COMPLIANT'' }}'
-      description: Host-based auth disabled
-    - rule: V-230225
-      status: '{{ ''FIXED'' if stig_ssh_userenv.changed else ''COMPLIANT'' }}'
-      description: SSH user environment disabled
-    - rule: V-230235
-      status: '{{ ''FIXED'' if stig_crypto_policy.changed else ''COMPLIANT'' }}'
-      description: FIPS crypto policy enabled
-    - rule: V-230264
-      status: '{{ ''FIXED'' if stig_aslr.changed else ''COMPLIANT'' }}'
-      description: ASLR enabled
-    - rule: V-230320
-      status: '{{ ''FIXED'' if stig_audit_rules.changed else ''COMPLIANT'' }}'
-      description: Audit rules configured
-    - rule: V-230469
-      status: '{{ ''FIXED'' if stig_no_blank_passwords.changed else ''COMPLIANT'' }}'
-      description: Blank passwords disabled
-    - rule: V-230470
-      status: '{{ ''FIXED'' if stig_password_complexity.changed else ''COMPLIANT'' }}'
-      description: Password complexity enforced
-    ansible.builtin.set_fact:
-      compliance_findings: '{{ compliance_findings + [item] }}'
-  - name: Generate STIG compliance report
-    tags:
-    - reporting
-    ansible.builtin.template:
-      src: stig_compliance_report.j2
-      dest: /var/log/msp/{{ client_name }}/stig-compliance/stig-report-{{ stig_session_id }}.json
-      mode: '0640'
-  - name: Log STIG compliance completion
-    tags:
-    - logging
-    - skip_ansible_lint
-    vars:
-      msp_log_server: '{{ msp_syslog_server | default('''') }}'
-      msp_log_tag: MSP-STIG
-      msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ stig_session_id }} | Status: COMPLETED | Findings: {{ compliance_findings | length }}'
-    ansible.builtin.include_role:
-      name: msp-logging
+    - name: Collect STIG compliance findings
+      tags:
+        - reporting
+      loop:
+        - rule: V-230221
+          status: '{{ ''FIXED'' if stig_banner_result.changed else ''COMPLIANT'' }}'
+          description: DoD logon banner configured
+        - rule: V-230222
+          status: '{{ ''FIXED'' if stig_ssh_banner.changed else ''COMPLIANT'' }}'
+          description: SSH banner configured
+        - rule: V-230223
+          status: '{{ ''FIXED'' if stig_ssh_timeout.changed else ''COMPLIANT'' }}'
+          description: SSH timeout configured
+        - rule: V-230224
+          status: '{{ ''FIXED'' if stig_ssh_hostauth.changed else ''COMPLIANT'' }}'
+          description: Host-based auth disabled
+        - rule: V-230225
+          status: '{{ ''FIXED'' if stig_ssh_userenv.changed else ''COMPLIANT'' }}'
+          description: SSH user environment disabled
+        - rule: V-230235
+          status: '{{ ''FIXED'' if stig_crypto_policy.changed else ''COMPLIANT'' }}'
+          description: FIPS crypto policy enabled
+        - rule: V-230264
+          status: '{{ ''FIXED'' if stig_aslr.changed else ''COMPLIANT'' }}'
+          description: ASLR enabled
+        - rule: V-230320
+          status: '{{ ''FIXED'' if stig_audit_rules.changed else ''COMPLIANT'' }}'
+          description: Audit rules configured
+        - rule: V-230469
+          status: '{{ ''FIXED'' if stig_no_blank_passwords.changed else ''COMPLIANT'' }}'
+          description: Blank passwords disabled
+        - rule: V-230470
+          status: '{{ ''FIXED'' if stig_password_complexity.changed else ''COMPLIANT'' }}'
+          description: Password complexity enforced
+      ansible.builtin.set_fact:
+        compliance_findings: '{{ compliance_findings + [item] }}'
+    - name: Generate STIG compliance report
+      tags:
+        - reporting
+      ansible.builtin.template:
+        src: stig_compliance_report.j2
+        dest: /var/log/msp/{{ client_name }}/stig-compliance/stig-report-{{ stig_session_id }}.json
+        mode: '0640'
+    - name: Log STIG compliance completion
+      tags:
+        - logging
+        - skip_ansible_lint
+      vars:
+        msp_log_server: '{{ msp_syslog_server | default('''') }}'
+        msp_log_tag: MSP-STIG
+        msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ stig_session_id }} | Status: COMPLETED | Findings: {{ compliance_findings | length }}'
+      ansible.builtin.include_role:
+        name: msp-logging
   handlers:
-  - name: Restart sshd
-    ansible.builtin.service:
-      name: sshd
-      state: restarted
-  - name: Reload auditd
-    ansible.builtin.service:
-      name: '{{ stig_profiles[client_stig_profile].audit_service }}'
-      state: reloaded
+    - name: Restart sshd
+      ansible.builtin.service:
+        name: sshd
+        state: restarted
+    - name: Reload auditd
+      ansible.builtin.service:
+        name: '{{ stig_profiles[client_stig_profile].audit_service }}'
+        state: reloaded

@@ -1,3 +1,4 @@
+---
 - name: MSP System Update and Patch Management
   hosts: '{{ target_hosts | default(''all'') }}'
   become: true
@@ -24,7 +25,6 @@
       - client_name is defined
       - client_name != ""
       fail_msg: client_name must be defined for MSP operations
-  register: rhel_security_updates
   - name: Check maintenance window (if defined)
     when:
     - client_maintenance_window != ""
@@ -52,16 +52,20 @@
     tags:
     - snapshot
     - pre-update
-    ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nif command -v lvcreate >/dev/null 2>&1; then\n  lvcreate -L1G -s -n {{ client_name }}-pre-update-{{ update_session_id }} /dev/mapper/{{ ansible_lvm.vgs.keys() | first }}-root || true\nfi\n"
+    ansible.builtin.shell: |
+        set -o pipefail
+        if command -v lvcreate >/dev/null 2>&1; then
+          lvcreate -L1G -s -n {{ client_name }}-pre-update-{{ update_session_id }} /dev/mapper/{{ ansible_lvm.vgs.keys() | first }}-root || true
+        fi
   - name: Record system state before updates
     tags:
     - pre-update
-    register: pre_update_facts
     ansible.builtin.setup:
       gather_subset:
       - hardware
       - network
       - virtual
+    register: pre_update_facts
   - name: Log update initiation to MSP syslog
     tags:
     - logging
@@ -97,7 +101,7 @@
       when:
       - ansible_pkg_mgr == "dnf"
       - update_mode == "security"
-
+      register: rhel_security_updates
       async: '{{ max_update_time }}'
       poll: 30
       tags:
@@ -115,8 +119,6 @@
       async: '{{ max_update_time }}'
       poll: 30
       tags:
-
-      register: ubuntu_security_updates
       - updates
       - skip_ansible_lint
     - name: Check if reboot required (RHEL)
@@ -145,7 +147,7 @@
         autoremove: true
         autoclean: true
       when: update_mode == "security"
-
+      register: ubuntu_security_updates
       async: '{{ max_update_time }}'
       poll: 30
     - name: Install all available updates (Ubuntu)
@@ -169,8 +171,6 @@
   - name: Update SUSE systems
     when: ansible_os_family == "Suse"
     tags:
-
-      register: suse_security_updates
     - suse
     - sles
     - updates
@@ -185,7 +185,7 @@
         type: patch
         category: security
       when: update_mode == "security"
-
+      register: suse_security_updates
       async: '{{ max_update_time }}'
       poll: 30
       tags:

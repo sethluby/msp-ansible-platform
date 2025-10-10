@@ -1,3 +1,4 @@
+---
 - name: Validate CMMC Compliance Implementation
   hosts: all
   become: true
@@ -18,7 +19,6 @@
       - 'CMMC Level: {{ cmmc_level | default(''level2'') }}'
       - 'Client ID: {{ cmmc_client_id | default(''default_client'') }}'
       - 'Timestamp: {{ ansible_date_time.iso8601 }}'
-  register: ssh_test
   tasks:
   - name: CMMC Validation | Run post-implementation validation
     tags:
@@ -36,7 +36,7 @@
     block:
     - name: CMMC Validation | Verify SSH daemon configuration
       ansible.builtin.command: sshd -t
-
+      register: ssh_test
       changed_when: false
       when: not ansible_check_mode
     - name: CMMC Validation | Check SSH security settings
@@ -57,14 +57,12 @@
   - name: CMMC Validation | Test audit system
     when: cmmc_enable_audit_accountability | default(true) | bool
     tags:
-
-      register: auditd_status
     - audit_validation
     block:
     - name: CMMC Validation | Check auditd service status
       ansible.builtin.systemd:
         name: auditd
-
+      register: auditd_status
       when: not ansible_check_mode
       changed_when: false
     - name: CMMC Validation | Verify audit rules are loaded
@@ -76,10 +74,10 @@
     when: not ansible_check_mode
     tags:
     - validator_test
+    ansible.builtin.command: '{{ local_bin_dir | default(''/usr/local/bin'') }}/cmmc_validator.py --config-dir {{ cmmc_base_dir | default(''/etc/cmmc'') }} --verbose'
     register: validator_output
     changed_when: false
     failed_when: false
-    ansible.builtin.command: '{{ local_bin_dir | default(''/usr/local/bin'') }}/cmmc_validator.py --config-dir {{ cmmc_base_dir | default(''/etc/cmmc'') }} --verbose'
   post_tasks:
   - name: Validation Complete | Generate validation report
     ansible.builtin.set_fact:

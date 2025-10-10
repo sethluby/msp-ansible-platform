@@ -1,3 +1,4 @@
+---
 - name: Security Hardening Implementation
   hosts: '{{ target_hosts | default(''all'') }}'
   become: true
@@ -44,7 +45,6 @@
       - client_security_profile in ['minimal', 'standard', 'strict']
       - client_hardening_level in ['minimal', 'standard', 'strict']
       fail_msg: Invalid security hardening parameters
-  register: cis_1_1_filesystems
   - name: Create client security hardening log directory
     tags:
     - logging
@@ -98,7 +98,7 @@
       - nfs
       - nfsv3
       - gfs2
-
+      register: cis_1_1_filesystems
     - name: Remove existing filesystem modules
       community.general.modprobe:
         name: '{{ item }}'
@@ -116,16 +116,15 @@
   - name: CIS 1.1.22 - Disable automounting
     when: '"CIS-1.1.22" not in client_security_exceptions'
     tags:
-      register: cis_3_network_params
     - cis
     - filesystem
     - CIS-1.1.22
-    register: cis_1_1_22_autofs
-    failed_when: false
     ansible.builtin.service:
       name: autofs
       state: stopped
       enabled: false
+    register: cis_1_1_22_autofs
+    failed_when: false
   - name: CIS 3.1 - Network parameter configuration
     when:
     - security_profiles[client_security_profile].network_hardening
@@ -189,13 +188,12 @@
         value: '0'
       - name: net.ipv6.conf.default.accept_ra
         value: '0'
-
+      register: cis_3_network_params
   - name: CIS 3.3 - Disable IPv6
     when:
     - client_disable_ipv6 | default(false)
     - '"CIS-3.3" not in client_security_exceptions'
     tags:
-    register: cis_3_3_ipv6
     - cis
     - network
     - ipv6
@@ -212,7 +210,7 @@
       - net.ipv6.conf.all.disable_ipv6
       - net.ipv6.conf.default.disable_ipv6
       - net.ipv6.conf.lo.disable_ipv6
-
+      register: cis_3_3_ipv6
     - name: Add IPv6 disable to GRUB
       ansible.builtin.lineinfile:
         path: /etc/default/grub
@@ -224,7 +222,6 @@
   - name: CIS 4.1 - Configure auditd
     when: '"CIS-4.1" not in client_security_exceptions'
     tags:
-      register: cis_4_1_config
     - cis
     - audit
     - CIS-4.1
@@ -250,7 +247,7 @@
         line: admin_space_left_action = halt
       - regexp: ^max_log_file_action\\s*=
         line: max_log_file_action = keep_logs
-
+      register: cis_4_1_config
     - name: Enable and start auditd
       ansible.builtin.service:
         name: auditd
@@ -260,7 +257,6 @@
   - name: CIS 5.1 - Configure cron
     when: '"CIS-5.1" not in client_security_exceptions'
     tags:
-      register: cis_5_1_permissions
     - cis
     - cron
     - CIS-5.1
@@ -284,7 +280,7 @@
       - /etc/cron.monthly
       - /etc/cron.d
       failed_when: false
-
+      register: cis_5_1_permissions
     - name: Remove cron.deny and at.deny
       ansible.builtin.file:
         path: '{{ item }}'
@@ -307,7 +303,6 @@
   - name: CIS 5.2 - SSH server configuration
     when: '"CIS-5.2" not in client_security_exceptions'
     tags:
-      register: cis_5_2_ssh_config
     - cis
     - ssh
     - CIS-5.2
@@ -348,7 +343,7 @@
       - regexp: ^#?Banner
         line: Banner /etc/issue.net
       notify: restart sshd
-
+      register: cis_5_2_ssh_config
     - name: Create SSH banner
       ansible.builtin.copy:
         content: 'Authorized uses only. All activity may be monitored and reported.
@@ -362,7 +357,6 @@
   - name: CIS 5.3 - Configure sudo
     when: '"CIS-5.3" not in client_security_exceptions'
     tags:
-      register: cis_5_3_sudo
     - cis
     - sudo
     - CIS-5.3
@@ -383,11 +377,10 @@
         line: Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
       - regexp: ^Defaults\\s+logfile
         line: Defaults logfile="/var/log/sudo.log"
-
+      register: cis_5_3_sudo
   - name: CIS 6.1 - System file permissions
     when: '"CIS-6.1" not in client_security_exceptions'
     tags:
-    register: cis_6_1_permissions
     - cis
     - permissions
     - CIS-6.1
@@ -432,14 +425,13 @@
         group: shadow
         mode: '0600'
       failed_when: false
-
+      register: cis_6_1_permissions
   - name: Advanced security configurations (strict profile)
     when:
     - client_security_profile == "strict"
     - security_profiles[client_security_profile].mandatory_access_control | default(false)
     - '"CIS-ADVANCED" not in client_security_exceptions'
     tags:
-    register: selinux_config
     - cis
     - advanced
     - strict
@@ -449,7 +441,7 @@
         policy: targeted
         state: enforcing
       when: ansible_os_family == "RedHat"
-
+      register: selinux_config
     - name: Enable AppArmor (Ubuntu)
       ansible.builtin.service:
         name: apparmor
