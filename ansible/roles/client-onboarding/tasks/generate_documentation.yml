@@ -1,0 +1,7 @@
+---
+# Generate documentation for client onboarding
+# TODO: Implement documentation generation
+
+- name: Generate client documentation placeholder
+  ansible.builtin.debug:
+    msg: "Documentation generation to be implemented for {{ client_name | default('client') }}"

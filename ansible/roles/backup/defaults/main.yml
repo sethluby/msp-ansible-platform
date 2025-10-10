@@ -46,24 +46,24 @@ backup_exclude_paths:
 # Database backup configuration
 backup_mysql: false
 backup_postgresql: false
-mysql_databases: []
-postgresql_databases: []
+backup_mysql_databases: []
+backup_postgresql_databases: []
 
 # Backup validation
-verify_backups: true
+backup_verify_backups: true
 backup_integrity_check: true
 backup_test_restore: false
 
 # Notifications
 backup_notifications: true
-notify_on_success: false
-notify_on_failure: true
-notification_email: "admin@example.com"
+backup_notify_on_success: false
+backup_notify_on_failure: true
+backup_notification_email: "admin@example.com"
 
 # Storage management
-cleanup_old_backups: true
-compress_old_backups: true
-archive_monthly_backups: true
+backup_cleanup_old_backups: true
+backup_compress_old_backups: true
+backup_archive_monthly_backups: true
 
 # Security
 backup_encryption_key: "{{ vault_backup_encryption_key | default('') }}"
