@@ -296,8 +296,11 @@
       tags: [database]
 
     - name: Log inventory collection completion
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "MSP-INVENTORY" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ inventory_session_id }} | Status: COMPLETED | Data_Points: {{ collected_data.keys() | length }}"
+      ansible.builtin.shell: >-
+        logger -n {{ msp_syslog_server }} -t "MSP-INVENTORY"
+        "Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+        Session: {{ inventory_session_id }} | Status: COMPLETED |
+        Data_Points: {{ collected_data.keys() | length }}"
       when: msp_syslog_server != ""
       ignore_errors: true
       tags: [logging]

@@ -72,8 +72,11 @@
       tags: [logging]
 
     - name: Log CMMC compliance initiation
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "CMMC-COMPLIANCE" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ cmmc_session_id }} | Level: {{ client_cmmc_level }} | Status: STARTED"
+      ansible.builtin.shell: >-
+        logger -n {{ msp_syslog_server }} -t "CMMC-COMPLIANCE"
+        "Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+        Session: {{ cmmc_session_id }} | Level: {{ client_cmmc_level }} |
+        Status: STARTED"
       when: msp_syslog_server != ""
       ignore_errors: true
       tags: [logging]
@@ -443,7 +446,10 @@
       vars:
         msp_log_server: "{{ msp_syslog_server | default('') }}"
         msp_log_tag: "CMMC-COMPLIANCE"
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ cmmc_session_id }} | Level: {{ client_cmmc_level }} | Status: COMPLETED | Controls: {{ compliance_findings | length }}"
+        msp_log_message: >-
+          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+          Session: {{ cmmc_session_id }} | Level: {{ client_cmmc_level }} |
+          Status: COMPLETED | Controls: {{ compliance_findings | length }}
       tags: [logging, skip_ansible_lint]
 
   handlers:

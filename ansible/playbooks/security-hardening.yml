@@ -24,7 +24,12 @@
     hardening_results: []
     
     # Auto-detect CIS benchmark based on OS
-    detected_cis_benchmark: "{{ 'rhel8' if (ansible_distribution == 'RedHat' and ansible_distribution_major_version == '8') else 'rhel9' if (ansible_distribution == 'RedHat' and ansible_distribution_major_version == '9') else 'ubuntu20' if (ansible_distribution == 'Ubuntu' and ansible_distribution_version == '20.04') else 'ubuntu22' if (ansible_distribution == 'Ubuntu' and ansible_distribution_version == '22.04') else 'generic' }}"
+    detected_cis_benchmark: >-
+      {{ 'rhel8' if (ansible_distribution == 'RedHat' and ansible_distribution_major_version == '8') else
+         'rhel9' if (ansible_distribution == 'RedHat' and ansible_distribution_major_version == '9') else
+         'ubuntu20' if (ansible_distribution == 'Ubuntu' and ansible_distribution_version == '20.04') else
+         'ubuntu22' if (ansible_distribution == 'Ubuntu' and ansible_distribution_version == '22.04') else
+         'generic' }}
     
     # Security profiles configuration
     security_profiles:
@@ -79,7 +84,10 @@
       vars:
         msp_log_server: "{{ msp_syslog_server | default('') }}"
         msp_log_tag: "SECURITY-HARDENING"
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ hardening_session_id }} | Profile: {{ client_security_profile }} | Benchmark: {{ active_cis_benchmark }} | Status: STARTED"
+        msp_log_message: >-
+          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+          Session: {{ hardening_session_id }} | Profile: {{ client_security_profile }} |
+          Benchmark: {{ active_cis_benchmark }} | Status: STARTED
       tags: [logging, skip_ansible_lint]
 
   tasks:
@@ -445,14 +453,38 @@
       ansible.builtin.set_fact:
         hardening_results: "{{ hardening_results + [item] }}"
       loop:
-        - { control: "CIS-1.1.1", status: "{{ 'IMPLEMENTED' if cis_1_1_filesystems.changed else 'COMPLIANT' }}", description: "Unused filesystems disabled", category: "Filesystem" }
-        - { control: "CIS-1.1.22", status: "{{ 'IMPLEMENTED' if cis_1_1_22_autofs.changed else 'COMPLIANT' }}", description: "Automounting disabled", category: "Filesystem" }
-        - { control: "CIS-3.1", status: "{{ 'IMPLEMENTED' if cis_3_network_params.changed else 'COMPLIANT' }}", description: "Network parameters hardened", category: "Network" }
-        - { control: "CIS-4.1", status: "{{ 'IMPLEMENTED' if cis_4_1_config.changed else 'COMPLIANT' }}", description: "Audit daemon configured", category: "Logging" }
-        - { control: "CIS-5.1", status: "{{ 'IMPLEMENTED' if cis_5_1_permissions.changed else 'COMPLIANT' }}", description: "Cron configured securely", category: "Access Control" }
-        - { control: "CIS-5.2", status: "{{ 'IMPLEMENTED' if cis_5_2_ssh_config.changed else 'COMPLIANT' }}", description: "SSH daemon hardened", category: "Network Services" }
-        - { control: "CIS-5.3", status: "{{ 'IMPLEMENTED' if cis_5_3_sudo.changed else 'COMPLIANT' }}", description: "Sudo configured securely", category: "Access Control" }
-        - { control: "CIS-6.1", status: "{{ 'IMPLEMENTED' if cis_6_1_permissions.changed else 'COMPLIANT' }}", description: "System file permissions set", category: "File Permissions" }
+        - control: "CIS-1.1.1"
+          status: "{{ 'IMPLEMENTED' if cis_1_1_filesystems.changed else 'COMPLIANT' }}"
+          description: "Unused filesystems disabled"
+          category: "Filesystem"
+        - control: "CIS-1.1.22"
+          status: "{{ 'IMPLEMENTED' if cis_1_1_22_autofs.changed else 'COMPLIANT' }}"
+          description: "Automounting disabled"
+          category: "Filesystem"
+        - control: "CIS-3.1"
+          status: "{{ 'IMPLEMENTED' if cis_3_network_params.changed else 'COMPLIANT' }}"
+          description: "Network parameters hardened"
+          category: "Network"
+        - control: "CIS-4.1"
+          status: "{{ 'IMPLEMENTED' if cis_4_1_config.changed else 'COMPLIANT' }}"
+          description: "Audit daemon configured"
+          category: "Logging"
+        - control: "CIS-5.1"
+          status: "{{ 'IMPLEMENTED' if cis_5_1_permissions.changed else 'COMPLIANT' }}"
+          description: "Cron configured securely"
+          category: "Access Control"
+        - control: "CIS-5.2"
+          status: "{{ 'IMPLEMENTED' if cis_5_2_ssh_config.changed else 'COMPLIANT' }}"
+          description: "SSH daemon hardened"
+          category: "Network Services"
+        - control: "CIS-5.3"
+          status: "{{ 'IMPLEMENTED' if cis_5_3_sudo.changed else 'COMPLIANT' }}"
+          description: "Sudo configured securely"
+          category: "Access Control"
+        - control: "CIS-6.1"
+          status: "{{ 'IMPLEMENTED' if cis_6_1_permissions.changed else 'COMPLIANT' }}"
+          description: "System file permissions set"
+          category: "File Permissions"
       tags: [reporting]
 
     - name: Generate security hardening report
@@ -494,7 +526,10 @@
       vars:
         msp_log_server: "{{ msp_syslog_server | default('') }}"
         msp_log_tag: "SECURITY-HARDENING"
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ hardening_session_id }} | Profile: {{ client_security_profile }} | Status: COMPLETED | Controls: {{ hardening_results | length }}"
+        msp_log_message: >-
+          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+          Session: {{ hardening_session_id }} | Profile: {{ client_security_profile }} |
+          Status: COMPLETED | Controls: {{ hardening_results | length }}
       tags: [logging, skip_ansible_lint]
 
   handlers:

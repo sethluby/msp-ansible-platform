@@ -103,7 +103,11 @@
           validator_test:
             exit_code: "{{ validator_output.rc if validator_output is defined else 'SKIPPED' }}"
             status: "{{ 'PASS' if validator_output.rc == 0 else 'FAIL' if validator_output is defined else 'SKIPPED' }}"
-          overall_status: "{{ 'PASS' if (ssh_test.rc | default(1) == 0) and (auditd_status.status.ActiveState | default('inactive') == 'active') and (validator_output.rc | default(1) == 0) else 'FAIL' }}"
+          overall_status: >-
+            {{ 'PASS' if (ssh_test.rc | default(1) == 0)
+               and (auditd_status.status.ActiveState | default('inactive') == 'active')
+               and (validator_output.rc | default(1) == 0)
+               else 'FAIL' }}
 
     - name: "Validation Complete | Save validation report"
       ansible.builtin.copy:

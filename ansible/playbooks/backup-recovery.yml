@@ -88,7 +88,10 @@
       vars:
         msp_log_server: "{{ msp_syslog_server | default('') }}"
         msp_log_tag: "BACKUP-OPERATION"
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ backup_session_id }} | Operation: {{ backup_operation }} | Strategy: {{ backup_strategy }} | Status: STARTED"
+        msp_log_message: >-
+          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+          Session: {{ backup_session_id }} | Operation: {{ backup_operation }} |
+          Strategy: {{ backup_strategy }} | Status: STARTED
       tags: [logging, skip_ansible_lint]
 
   tasks:
@@ -342,5 +345,9 @@
       vars:
         msp_log_server: "{{ msp_syslog_server | default('') }}"
         msp_log_tag: "BACKUP-OPERATION"
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ backup_session_id }} | Operation: {{ backup_operation }} | Strategy: {{ backup_strategy }} | Status: COMPLETED | Components: {{ backup_results | length }}"
+        msp_log_message: >-
+          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+          Session: {{ backup_session_id }} | Operation: {{ backup_operation }} |
+          Strategy: {{ backup_strategy }} | Status: COMPLETED |
+          Components: {{ backup_results | length }}
       tags: [logging, skip_ansible_lint]

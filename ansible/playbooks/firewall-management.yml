@@ -192,7 +192,10 @@
       ansible.builtin.set_fact:
         firewall_changes: "{{ firewall_changes + [item] }}"
       loop:
-        - { service: "{{ firewall_service }}", policy: "{{ client_firewall_policy }}", ports_configured: "{{ client_allowed_ports | length }}", blocked_ips: "{{ client_blocked_ips | length }}" }
+        - service: "{{ firewall_service }}"
+          policy: "{{ client_firewall_policy }}"
+          ports_configured: "{{ client_allowed_ports | length }}"
+          blocked_ips: "{{ client_blocked_ips | length }}"
       tags: [reporting]
 
     - name: Generate firewall management report
@@ -213,8 +216,11 @@
       tags: [testing]
 
     - name: Log firewall management completion
-      ansible.builtin.shell: |
-        logger -n {{ msp_syslog_server }} -t "MSP-FIREWALL" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ firewall_session_id }} | Service: {{ firewall_service }} | Status: COMPLETED | Connectivity: {{ 'OK' if connectivity_test.failed is false else 'FAILED' }}"
+      ansible.builtin.shell: >-
+        logger -n {{ msp_syslog_server }} -t "MSP-FIREWALL"
+        "Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+        Session: {{ firewall_session_id }} | Service: {{ firewall_service }} |
+        Status: COMPLETED | Connectivity: {{ 'OK' if connectivity_test.failed is false else 'FAILED' }}"
       when: msp_syslog_server != ""
       ignore_errors: true
       tags: [logging]

@@ -25,13 +25,33 @@
     
     # DoD Warning Banner
     dod_warning_banner: |
-      You are accessing a U.S. Government (USG) Information System (IS) that is provided for USG-authorized use only.
-      By using this IS (which includes any device attached to this IS), you consent to the following conditions:
-      -The USG routinely intercepts and monitors communications on this IS for purposes including, but not limited to, penetration testing, COMSEC monitoring, network operations and defense, personnel misconduct (PM), law enforcement (LE), and counterintelligence (CI) investigations.
-      -At any time, the USG may inspect and seize data stored on this IS.
-      -Communications using, or data stored on, this IS are not private, are subject to routine monitoring, interception, and search, and may be disclosed or used for any USG-authorized purpose.
-      -This IS includes security measures (e.g., authentication and access controls) to protect USG interests--not for your personal benefit or privacy.
-      -Notwithstanding the above, using this IS does not constitute consent to PM, LE or CI investigative searching or monitoring of the content of privileged communications, or work product, related to personal representation or services by attorneys, psychotherapists, or clergy, and their assistants. Such communications and work product are private and confidential. See User Agreement for details.
+      You are accessing a U.S. Government (USG) Information System (IS) that is
+      provided for USG-authorized use only.
+      
+      By using this IS (which includes any device attached to this IS), you
+      consent to the following conditions:
+      
+      - The USG routinely intercepts and monitors communications on this IS for
+        purposes including, but not limited to, penetration testing, COMSEC
+        monitoring, network operations and defense, personnel misconduct (PM),
+        law enforcement (LE), and counterintelligence (CI) investigations.
+      
+      - At any time, the USG may inspect and seize data stored on this IS.
+      
+      - Communications using, or data stored on, this IS are not private, are
+        subject to routine monitoring, interception, and search, and may be
+        disclosed or used for any USG-authorized purpose.
+      
+      - This IS includes security measures (e.g., authentication and access
+        controls) to protect USG interests -- not for your personal benefit or
+        privacy.
+      
+      - Notwithstanding the above, using this IS does not constitute consent to
+        PM, LE or CI investigative searching or monitoring of the content of
+        privileged communications, or work product, related to personal
+        representation or services by attorneys, psychotherapists, or clergy, and
+        their assistants. Such communications and work product are private and
+        confidential. See User Agreement for details.
 
   pre_tasks:
     - name: Validate STIG compliance prerequisites
@@ -736,7 +756,25 @@
             find -L /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type f ! -perm /2000 -exec chgrp root '{}' \; 2>/dev/null || true
       register: stig_v238337_352
       changed_when: false
-      tags: [stig, permissions, V-238337, V-238338, V-238339, V-238340, V-238341, V-238342, V-238343, V-238344, V-238345, V-238346, V-238347, V-238348, V-238349, V-238350, V-238351, V-238352]
+      tags:
+        - stig
+        - permissions
+        - V-238337
+        - V-238338
+        - V-238339
+        - V-238340
+        - V-238341
+        - V-238342
+        - V-238343
+        - V-238344
+        - V-238345
+        - V-238346
+        - V-238347
+        - V-238348
+        - V-238349
+        - V-238350
+        - V-238351
+        - V-238352
 
     # V-238356: Time synchronization
     - name: V-238356 - Configure time synchronization
@@ -876,16 +914,36 @@
       ansible.builtin.set_fact:
         stig_findings: "{{ stig_findings + [item] }}"
       loop:
-        - { rule: "V-238200", status: "{{ 'FIXED' if stig_v238200.changed else 'COMPLIANT' }}", description: "Session lock capability installed" }
-        - { rule: "V-238371", status: "{{ 'FIXED' if stig_v238371.changed else 'COMPLIANT' }}", description: "AIDE file integrity tool installed" }
-        - { rule: "V-238298", status: "{{ 'FIXED' if (stig_v238298_install.changed or stig_v238298_service.changed) else 'COMPLIANT' }}", description: "Audit daemon installed and enabled" }
-        - { rule: "V-238202", status: "{{ 'FIXED' if stig_v238202.changed else 'COMPLIANT' }}", description: "Minimum password lifetime configured" }
-        - { rule: "V-238203", status: "{{ 'FIXED' if stig_v238203.changed else 'COMPLIANT' }}", description: "Maximum password lifetime configured" }
-        - { rule: "V-238214", status: "{{ 'FIXED' if stig_v238214.changed else 'COMPLIANT' }}", description: "DoD warning banner configured" }
-        - { rule: "V-238299", status: "{{ 'FIXED' if stig_v238299.changed else 'COMPLIANT' }}", description: "Boot audit enabled" }
-        - { rule: "V-238328", status: "{{ 'FIXED' if stig_v238328.changed else 'COMPLIANT' }}", description: "Firewall configured" }
-        - { rule: "V-238329", status: "{{ 'FIXED' if stig_v238329.changed else 'COMPLIANT' }}", description: "Root account locked" }
-        - { rule: "V-238380", status: "{{ 'FIXED' if stig_v238380.changed else 'COMPLIANT' }}", description: "Ctrl-Alt-Delete disabled" }
+        - rule: "V-238200"
+          status: "{{ 'FIXED' if stig_v238200.changed else 'COMPLIANT' }}"
+          description: "Session lock capability installed"
+        - rule: "V-238371"
+          status: "{{ 'FIXED' if stig_v238371.changed else 'COMPLIANT' }}"
+          description: "AIDE file integrity tool installed"
+        - rule: "V-238298"
+          status: "{{ 'FIXED' if (stig_v238298_install.changed or stig_v238298_service.changed) else 'COMPLIANT' }}"
+          description: "Audit daemon installed and enabled"
+        - rule: "V-238202"
+          status: "{{ 'FIXED' if stig_v238202.changed else 'COMPLIANT' }}"
+          description: "Minimum password lifetime configured"
+        - rule: "V-238203"
+          status: "{{ 'FIXED' if stig_v238203.changed else 'COMPLIANT' }}"
+          description: "Maximum password lifetime configured"
+        - rule: "V-238214"
+          status: "{{ 'FIXED' if stig_v238214.changed else 'COMPLIANT' }}"
+          description: "DoD warning banner configured"
+        - rule: "V-238299"
+          status: "{{ 'FIXED' if stig_v238299.changed else 'COMPLIANT' }}"
+          description: "Boot audit enabled"
+        - rule: "V-238328"
+          status: "{{ 'FIXED' if stig_v238328.changed else 'COMPLIANT' }}"
+          description: "Firewall configured"
+        - rule: "V-238329"
+          status: "{{ 'FIXED' if stig_v238329.changed else 'COMPLIANT' }}"
+          description: "Root account locked"
+        - rule: "V-238380"
+          status: "{{ 'FIXED' if stig_v238380.changed else 'COMPLIANT' }}"
+          description: "Ctrl-Alt-Delete disabled"
       tags: [reporting]
 
     - name: Generate comprehensive STIG compliance report

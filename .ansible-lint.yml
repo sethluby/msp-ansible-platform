@@ -10,6 +10,8 @@ exclude_paths:
   - venv/
   - .venv/
   - Reference/
+  # Exclude vendored third-party roles installed by galaxy during CI
+  - ansible/roles/ansible-lockdown.*
 
 skip_list:
   - galaxy[no-changelog]

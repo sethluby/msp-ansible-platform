@@ -55,8 +55,8 @@ jobs:
 
       - name: Install Ansible collections
         run: |
-          ansible-galaxy collection install -r requirements.yml --force || true
-          ansible-galaxy role install -r requirements.yml --force || true
+          ansible-galaxy collection install -r requirements.yml -p ~/.ansible/collections --force || true
+          ansible-galaxy role install -r requirements.yml -p ~/.ansible/roles --force || true
 
       - name: Run yamllint
         run: |
@@ -104,8 +104,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          ansible-galaxy collection install -r requirements.yml --force || true
-          ansible-galaxy role install -r requirements.yml --force || true
+          ansible-galaxy collection install -r requirements.yml -p ~/.ansible/collections --force || true
+          ansible-galaxy role install -r requirements.yml -p ~/.ansible/roles --force || true
+          # Ensure collections also install in the user cache to keep workspace clean
 
       - name: Syntax check - ${{ matrix.playbook }}
         run: |
@@ -147,8 +148,8 @@ jobs:
 
       - name: Install Ansible collections
         run: |
-          ansible-galaxy collection install -r requirements.yml --force || true
-          ansible-galaxy role install -r requirements.yml --force || true
+          ansible-galaxy collection install -r requirements.yml -p ~/.ansible/collections --force || true
+          ansible-galaxy role install -r requirements.yml -p ~/.ansible/roles --force || true
 
       - name: Test role with Molecule - ${{ matrix.role }} on ${{ matrix.os }}
         if: ${{ hashFiles(format('ansible/roles/{0}/molecule/default/molecule.yml', matrix.role)) != '' }}
@@ -178,8 +179,8 @@ jobs:
 
       - name: Install Ansible collections
         run: |
-          ansible-galaxy collection install -r requirements.yml --force || true
-          ansible-galaxy role install -r requirements.yml --force || true
+          ansible-galaxy collection install -r requirements.yml -p ~/.ansible/collections --force || true
+          ansible-galaxy role install -r requirements.yml -p ~/.ansible/roles --force || true
 
       - name: Run full platform integration test
         run: |
@@ -207,8 +208,8 @@ jobs:
 
       - name: Install Ansible collections
         run: |
-          ansible-galaxy collection install -r requirements.yml --force || true
-          ansible-galaxy role install -r requirements.yml --force || true
+          ansible-galaxy collection install -r requirements.yml -p ~/.ansible/collections --force || true
+          ansible-galaxy role install -r requirements.yml -p ~/.ansible/roles --force || true
 
       - name: Molecule check (top-level scenario)
         run: |

@@ -88,7 +88,10 @@
       vars:
         msp_log_server: "{{ msp_syslog_server | default('') }}"
         msp_log_tag: "MONITORING-SETUP"
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ monitoring_session_id }} | Profile: {{ client_monitoring_profile }} | Status: STARTED"
+        msp_log_message: >-
+          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+          Session: {{ monitoring_session_id }} | Profile: {{ client_monitoring_profile }} |
+          Status: STARTED
       tags: [logging, skip_ansible_lint]
 
   tasks:
@@ -105,7 +108,9 @@
             
         - name: Download Node Exporter
           ansible.builtin.get_url:
-            url: "https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}.tar.gz"
+            url: >-
+              https://github.com/prometheus/node_exporter/releases/download/v1.6.1/
+              node_exporter-1.6.1.linux-{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}.tar.gz
             dest: /tmp/node_exporter.tar.gz
             mode: '0644'
             
@@ -535,7 +540,11 @@
       vars:
         msp_log_server: "{{ msp_syslog_server | default('') }}"
         msp_log_tag: "MONITORING-SETUP"
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ monitoring_session_id }} | Profile: {{ client_monitoring_profile }} | Status: COMPLETED | Components: {{ monitoring_components | length }} | Endpoint: {{ 'ACCESSIBLE' if metrics_test.status == 200 else 'FAILED' }}"
+        msp_log_message: >-
+          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+          Session: {{ monitoring_session_id }} | Profile: {{ client_monitoring_profile }} |
+          Status: COMPLETED | Components: {{ monitoring_components | length }} |
+          Endpoint: {{ 'ACCESSIBLE' if metrics_test.status == 200 else 'FAILED' }}
       tags: [logging, skip_ansible_lint]
 
   handlers:

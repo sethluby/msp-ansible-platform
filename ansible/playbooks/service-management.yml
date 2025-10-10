@@ -66,7 +66,11 @@
       vars:
         msp_log_server: "{{ msp_syslog_server | default('') }}"
         msp_log_tag: "SERVICE-MGMT"
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ service_session_id }} | Operation: {{ service_operation }} | Services: {{ target_services | length if target_services is defined else 0 }} | Status: STARTED"
+        msp_log_message: >-
+          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+          Session: {{ service_session_id }} | Operation: {{ service_operation }} |
+          Services: {{ target_services | length if target_services is defined else 0 }} |
+          Status: STARTED
       tags: [logging, skip_ansible_lint]
 
   tasks:
@@ -79,7 +83,11 @@
           
         - name: Filter client-managed services
           ansible.builtin.set_fact:
-            filtered_services: "{{ all_services.ansible_facts.services | dict2items | selectattr('key', 'match', '.*(' + (client_critical_services | join('|')) + ').*') | list if client_critical_services | length > 0 else all_services.ansible_facts.services | dict2items }}"
+            filtered_services: >-
+              {{ all_services.ansible_facts.services | dict2items
+                 | selectattr('key', 'match', '.*(' + (client_critical_services | join('|')) + ').*')
+                 | list if client_critical_services | length > 0
+                 else all_services.ansible_facts.services | dict2items }}
           when: service_operation in ['status', 'monitor', 'audit']
           
         - name: Display service status
@@ -464,5 +472,9 @@
       vars:
         msp_log_server: "{{ msp_syslog_server | default('') }}"
         msp_log_tag: "SERVICE-MGMT"
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ service_session_id }} | Operation: {{ service_operation }} | Services: {{ target_services | length if target_services is defined else 0 }} | Status: COMPLETED"
+        msp_log_message: >-
+          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+          Session: {{ service_session_id }} | Operation: {{ service_operation }} |
+          Services: {{ target_services | length if target_services is defined else 0 }} |
+          Status: COMPLETED
       tags: [logging, skip_ansible_lint]
