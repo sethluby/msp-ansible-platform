@@ -3,13 +3,13 @@
 # Integrated ansible-lockdown patterns for multi-framework support
 
 # Framework Selection (ansible-lockdown integration pattern)
-compliance_framework: "{{ compliance_framework | default('cmmc') }}"  # cmmc, cis, stig, soc2, hipaa
+compliance_framework: "{{ compliance_framework | default('cmmc') }}" # cmmc, cis, stig, soc2, hipaa
 compliance_level: "{{ compliance_level | default('level2') }}"
-compliance_profile: "{{ compliance_profile | default('server') }}"  # server, workstation
+compliance_profile: "{{ compliance_profile | default('server') }}" # server, workstation
 
 # MSP Client Configuration
 client_name: "{{ client_name | mandatory }}"
-client_tier: "{{ client_tier | default('professional') }}"  # foundation, professional, enterprise
+client_tier: "{{ client_tier | default('professional') }}" # foundation, professional, enterprise
 client_environment: "{{ client_environment | default('production') }}"
 
 # ansible-lockdown inspired control variables
@@ -19,9 +19,9 @@ skip_reboot: "{{ skip_reboot | default(true) }}"
 
 # Framework Control Categories (unified across frameworks)
 # Following ansible-lockdown variable naming patterns
-compliance_cat1_patch: "{{ compliance_cat1_patch | default(true) }}"    # High severity
-compliance_cat2_patch: "{{ compliance_cat2_patch | default(true) }}"    # Medium severity  
-compliance_cat3_patch: "{{ compliance_cat3_patch | default(false) }}"   # Low severity
+compliance_cat1_patch: "{{ compliance_cat1_patch | default(true) }}" # High severity
+compliance_cat2_patch: "{{ compliance_cat2_patch | default(true) }}" # Medium severity
+compliance_cat3_patch: "{{ compliance_cat3_patch | default(false) }}" # Low severity
 
 # Control Family Enablement (framework-agnostic)
 enable_access_control: "{{ enable_access_control | default(true) }}"
@@ -45,7 +45,7 @@ cmmc_ac_login_grace_time: 60
 # Audit and Accountability (AU) Configuration
 cmmc_au_enable_auditd: true
 cmmc_au_log_retention_days: 90
-cmmc_au_max_log_file_size: 100  # MB
+cmmc_au_max_log_file_size: 100 # MB
 cmmc_au_space_left_action: "email"
 cmmc_au_admin_space_left_action: "suspend"
 
@@ -58,7 +58,7 @@ cmmc_cm_baseline_config_path: "/etc/cmmc/baseline"
 cmmc_ia_password_min_length: 14
 cmmc_ia_password_complexity: true
 cmmc_ia_account_lockout_attempts: 5
-cmmc_ia_account_lockout_duration: 900  # 15 minutes
+cmmc_ia_account_lockout_duration: 900 # 15 minutes
 
 # System and Communications Protection (SC) Configuration
 cmmc_sc_disable_weak_protocols: true
@@ -68,20 +68,20 @@ cmmc_sc_allowed_services:
   - https
 
 # System and Information Integrity (SI) Configuration
-cmmc_si_enable_antivirus: false  # Most Linux environments use other methods
+cmmc_si_enable_antivirus: false # Most Linux environments use other methods
 cmmc_si_enable_host_intrusion_detection: true
 cmmc_si_enable_file_integrity_monitoring: true
 
 # MSP Reporting Configuration (enhanced)
 compliance_reporting_enabled: true
-compliance_reporting_format: "json"  # json, yaml, html, sarif
+compliance_reporting_format: "json" # json, yaml, html, sarif
 compliance_reporting_destination: "/var/log/msp/{{ client_name }}/compliance"
 compliance_send_reports_to_msp: true
 compliance_msp_reporting_endpoint: "{{ msp_reporting_url | default('') }}"
 compliance_audit_timestamp: "{{ ansible_date_time.iso8601 }}"
 
 # ansible-lockdown inspired audit configuration
-compliance_audit_content: []  # Populated during execution
+compliance_audit_content: [] # Populated during execution
 compliance_audit_only: "{{ compliance_audit_only | default(false) }}"
 
 # Emergency Response Configuration
@@ -93,13 +93,13 @@ cmmc_auto_isolation_enabled: false
 compliance_validation_enabled: true
 compliance_validation_frequency: "daily"
 compliance_validation_on_change: true
-compliance_test_mode: "{{ compliance_test_mode | default(false) }}"  # Dry-run mode
+compliance_test_mode: "{{ compliance_test_mode | default(false) }}" # Dry-run mode
 
 # Configuration Management
 compliance_config_backup_enabled: true
 compliance_config_backup_frequency: "daily"
-compliance_config_backup_retention: 30  # days
-compliance_preserve_original: true  # Keep original configs
+compliance_config_backup_retention: 30 # days
+compliance_preserve_original: true # Keep original configs
 
 # MSP Service Integration
 msp_monitoring_integration: "{{ msp_monitoring_integration | default(true) }}"

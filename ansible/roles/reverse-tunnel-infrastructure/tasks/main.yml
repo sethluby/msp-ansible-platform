@@ -1,3 +1,4 @@
+---
 - name: Validate reverse tunnel deployment parameters
   ansible.builtin.assert:
     that:
@@ -58,3 +59,4 @@
   ansible.builtin.include_tasks: verify_tunnel.yml
   tags:
   - verification
+---

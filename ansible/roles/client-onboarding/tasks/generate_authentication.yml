@@ -1,106 +1,107 @@
+---
 - name: Generate SSH key pair for client
   community.crypto.openssh_keypair:
-    path: '{{ client_config_dir }}/keys/{{ client_name }}_id_{{ ssh_key_type }}'
-    type: '{{ ssh_key_type }}'
-    size: '{{ ssh_key_bits if ssh_key_type == ''rsa'' else omit }}'
+    path: "{{ client_config_dir }}/keys/{{ client_name }}_id_{{ ssh_key_type }}"
+    type: "{{ ssh_key_type }}"
+    size: "{{ ssh_key_bits if ssh_key_type == 'rsa' else omit }}"
     comment: MSP Platform - {{ client_name }} - {{ ansible_date_time.iso8601 }}
     owner: root
     group: root
-    mode: '0600'
+    mode: "0600"
   register: client_ssh_key
   tags:
-  - authentication
-  - ssh
+    - authentication
+    - ssh
 - name: Set public key permissions
   ansible.builtin.file:
-    path: '{{ client_config_dir }}/keys/{{ client_name }}_id_{{ ssh_key_type }}.pub'
-    mode: '0644'
+    path: "{{ client_config_dir }}/keys/{{ client_name }}_id_{{ ssh_key_type }}.pub"
+    mode: "0644"
   tags:
-  - authentication
-  - ssh
+    - authentication
+    - ssh
 - name: Generate client-specific Ansible Vault key
   ansible.builtin.copy:
-    content: '{{ lookup(''ansible.builtin.password'', ''/dev/null chars=ascii_letters,digits,punctuation length=64'') }}'
-    dest: '{{ client_config_dir }}/keys/vault_key'
-    mode: '0600'
+    content: "{{ lookup('ansible.builtin.password', '/dev/null chars=ascii_letters,digits,punctuation length=64') }}"
+    dest: "{{ client_config_dir }}/keys/vault_key"
+    mode: "0600"
     owner: root
     group: root
   no_log: true
   tags:
-  - authentication
-  - vault
+    - authentication
+    - vault
 - name: Create authorized_keys template for client hosts
   ansible.builtin.template:
     src: authorized_keys.j2
-    dest: '{{ client_config_dir }}/keys/authorized_keys'
-    mode: '0644'
+    dest: "{{ client_config_dir }}/keys/authorized_keys"
+    mode: "0644"
   tags:
-  - authentication
-  - ssh
+    - authentication
+    - ssh
 - name: Generate API token for client
   ansible.builtin.set_fact:
-    client_api_token: '{{ lookup(''ansible.builtin.password'', ''/dev/null chars=ascii_letters,digits length=48'') }}'
+    client_api_token: "{{ lookup('ansible.builtin.password', '/dev/null chars=ascii_letters,digits length=48') }}"
   no_log: true
   tags:
-  - authentication
-  - api
+    - authentication
+    - api
 - name: Store API token securely
   ansible.builtin.copy:
-    content: '{{ client_api_token }}'
-    dest: '{{ client_config_dir }}/keys/api_token'
-    mode: '0600'
+    content: "{{ client_api_token }}"
+    dest: "{{ client_config_dir }}/keys/api_token"
+    mode: "0600"
     owner: root
     group: root
   no_log: true
   tags:
-  - authentication
-  - api
+    - authentication
+    - api
 - name: Create client certificate signing request
   community.crypto.openssl_csr:
-    path: '{{ client_config_dir }}/certificates/{{ client_name }}.csr'
-    privatekey_path: '{{ client_config_dir }}/certificates/{{ client_name }}.key'
-    common_name: '{{ client_name }}.{{ client_domain }}'
+    path: "{{ client_config_dir }}/certificates/{{ client_name }}.csr"
+    privatekey_path: "{{ client_config_dir }}/certificates/{{ client_name }}.key"
+    common_name: "{{ client_name }}.{{ client_domain }}"
     subject_alt_name:
-    - DNS:{{ client_name }}.{{ client_domain }}
-    - DNS:*.{{ client_name }}.{{ client_domain }}
-    organization_name: '{{ client_name | title }}'
+      - DNS:{{ client_name }}.{{ client_domain }}
+      - DNS:*.{{ client_name }}.{{ client_domain }}
+    organization_name: "{{ client_name | title }}"
     organizational_unit_name: IT Infrastructure
-    email_address: '{{ client_admin_email }}'
+    email_address: "{{ client_admin_email }}"
     country_name: US
     state_or_province_name: State
     locality_name: City
   tags:
-  - authentication
-  - certificates
+    - authentication
+    - certificates
 - name: Generate private key for certificate
   community.crypto.openssl_privatekey:
-    path: '{{ client_config_dir }}/certificates/{{ client_name }}.key'
+    path: "{{ client_config_dir }}/certificates/{{ client_name }}.key"
     size: 4096
     type: RSA
-    mode: '0600'
+    mode: "0600"
     owner: root
     group: root
   tags:
-  - authentication
-  - certificates
+    - authentication
+    - certificates
 - name: Create client authentication summary
   ansible.builtin.template:
     src: authentication_summary.yml.j2
-    dest: '{{ client_config_dir }}/authentication_summary.yml'
-    mode: '0644'
+    dest: "{{ client_config_dir }}/authentication_summary.yml"
+    mode: "0644"
   tags:
-  - authentication
-  - documentation
+    - authentication
+    - documentation
 - name: Register SSH public key for inventory
   ansible.builtin.slurp:
-    src: '{{ client_config_dir }}/keys/{{ client_name }}_id_{{ ssh_key_type }}.pub'
+    src: "{{ client_config_dir }}/keys/{{ client_name }}_id_{{ ssh_key_type }}.pub"
   register: ssh_public_key_content
   tags:
-  - authentication
-  - ssh
+    - authentication
+    - ssh
 - name: Store SSH public key fact
   ansible.builtin.set_fact:
-    client_ssh_public_key: '{{ ssh_public_key_content.content | b64decode | trim }}'
+    client_ssh_public_key: "{{ ssh_public_key_content.content | b64decode | trim }}"
   tags:
-  - authentication
-  - ssh
+    - authentication
+    - ssh

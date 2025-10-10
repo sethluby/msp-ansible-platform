@@ -1,3 +1,4 @@
+---
 - name: Validate pull-based deployment parameters
   ansible.builtin.assert:
     that:
@@ -36,3 +37,4 @@
   ansible.builtin.include_tasks: verify_pull_setup.yml
   tags:
   - verification
+---

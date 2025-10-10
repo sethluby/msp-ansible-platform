@@ -24,6 +24,9 @@
 - name: "Pre-Implementation | Validate system requirements"
   tags:
     - cmmc_pre_validation
+  when: current_validation_mode == 'pre_implementation'
+
+  # Post-Implementation Control Validation
   block:
     - name: "Pre-Implementation | Check OS compatibility"
       ansible.builtin.assert:
@@ -50,12 +53,11 @@
         success_msg: "Sufficient memory available: {{ ansible_memtotal_mb }}MB"
       # Verify system has adequate memory for compliance tools
 
-  when: current_validation_mode == 'pre_implementation'
-
-# Post-Implementation Control Validation
 - name: "Post-Implementation | Validate CMMC control implementation"
   tags:
     - cmmc_post_validation
+  when: current_validation_mode == 'post_implementation'
+
   block:
     - name: "Post-Implementation | Run compliance validator"
       ansible.builtin.command: "{{ local_bin_dir }}/cmmc_validator.py --config-dir {{ cmmc_base_dir }} --output json"
@@ -75,8 +77,6 @@
         name: auditd
       register: auditd_status
       when: cmmc_enable_audit_accountability | bool
-
-  when: current_validation_mode == 'post_implementation'
 
 - name: "Validation | Display validation results"
   ansible.builtin.debug:

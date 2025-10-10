@@ -3,7 +3,7 @@
 client_name: ""
 client_domain: ""
 client_admin_email: ""
-client_tier: "foundation"  # foundation, professional, enterprise
+client_tier: "foundation" # foundation, professional, enterprise
 
 # Network configuration
 client_network_cidr: "10.100.0.0/24"
@@ -48,22 +48,22 @@ notification_email_smtp: ""
 # Backup settings
 backup_enabled: true
 backup_retention_days: 30
-backup_schedule: "0 2 * * *"  # Daily at 2 AM
+backup_schedule: "0 2 * * *" # Daily at 2 AM
 
 # Client specific settings by tier
 foundation_settings:
-  monitoring_interval: 300  # 5 minutes
+  monitoring_interval: 300 # 5 minutes
   backup_frequency: "daily"
   compliance_scan_frequency: "weekly"
 
 professional_settings:
-  monitoring_interval: 60   # 1 minute
+  monitoring_interval: 60 # 1 minute
   backup_frequency: "daily"
   compliance_scan_frequency: "daily"
   custom_playbooks_enabled: true
 
 enterprise_settings:
-  monitoring_interval: 30   # 30 seconds
+  monitoring_interval: 30 # 30 seconds
   backup_frequency: "hourly"
   compliance_scan_frequency: "continuous"
   custom_playbooks_enabled: true

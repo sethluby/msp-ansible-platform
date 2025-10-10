@@ -1,3 +1,4 @@
+---
 - name: MSP Inventory Collection and Asset Management
   hosts: '{{ target_hosts | default(''all'') }}'
   become: true
@@ -11,29 +12,28 @@
     inventory_session_id: '{{ ansible_date_time.epoch }}-{{ client_name }}-inventory'
     collected_data: {}
   pre_tasks:
-  - name: Validate inventory collection context
-    tags:
-    - validation
+        - name: Validate inventory collection context
+      tags:
+        - validation
     ansible.builtin.assert:
       that:
       - client_name is defined
       - inventory_scope in ['full', 'basic', 'security', 'compliance']
       - collection_format in ['json', 'yaml', 'csv']
       fail_msg: Invalid inventory collection parameters
-  register: system_facts
-  - name: Create client inventory directory
-    tags:
-    - setup
+        - name: Create client inventory directory
+      tags:
+        - setup
     ansible.builtin.file:
       path: /var/log/msp/{{ client_name }}/inventory
       state: directory
       mode: '0750'
       owner: root
       group: root
-  - name: Log inventory collection initiation
-    tags:
-    - logging
-    - skip_ansible_lint
+        - name: Log inventory collection initiation
+      tags:
+        - logging
+        - skip_ansible_lint
     vars:
       msp_log_server: '{{ msp_syslog_server | default('''') }}'
       msp_log_tag: MSP-INVENTORY
@@ -41,49 +41,48 @@
     ansible.builtin.include_role:
       name: msp-logging
   tasks:
-  - name: Collect basic system information
+        - name: Collect basic system information
     when: inventory_scope in ['basic', 'full', 'security', 'compliance']
-    tags:
-    - basic
-    - inventory
+      tags:
+        - basic
+        - inventory
     block:
-    - name: Gather comprehensive system facts
+        - name: Gather comprehensive system facts
       ansible.builtin.setup:
         gather_subset:
         - all
 
-    - name: Collect additional hardware details
+        - name: Collect additional hardware details
       ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\n{\n  echo \"=== CPU Info ===\"\n  lscpu 2>/dev/null || echo \"lscpu not available\"\n  echo \"=== Memory Info ===\"\n  free -h 2>/dev/null || echo \"free not available\"\n  echo \"=== Disk Info ===\"\n  lsblk -f 2>/dev/null || echo \"lsblk not available\"\n  echo \"=== PCI Devices ===\"\n  lspci 2>/dev/null || echo \"lspci not available\"\n  echo \"=== USB Devices ===\"\n  lsusb 2>/dev/null || echo \"lsusb not available\"\n}\n"
       register: hardware_details
       changed_when: false
-    - name: Collect network configuration
+        - name: Collect network configuration
       ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\n{\n  echo \"=== Network Interfaces ===\"\n  ip addr show 2>/dev/null || ifconfig 2>/dev/null || echo \"Network tools not available\"\n  echo \"=== Routing Table ===\"\n  ip route show 2>/dev/null || route -n 2>/dev/null || echo \"Routing tools not available\"\n  echo \"=== DNS Configuration ===\"\n  cat /etc/resolv.conf 2>/dev/null || echo \"DNS config not available\"\n}\n"
       register: network_details
       changed_when: false
-    - name: Set basic inventory data
+        - name: Set basic inventory data
       ansible.builtin.set_fact:
         collected_data: '{{ collected_data | combine({ ''basic_info'': { ''hostname'': ansible_hostname, ''fqdn'': ansible_fqdn, ''os_family'': ansible_os_family, ''distribution'': ansible_distribution, ''distribution_version'': ansible_distribution_version, ''kernel'': ansible_kernel, ''architecture'': ansible_architecture, ''virtualization_type'': ansible_virtualization_type, ''virtualization_role'': ansible_virtualization_role, ''uptime_seconds'': ansible_uptime_seconds, ''last_boot'': ansible_date_time.iso8601, ''client'': client_name, ''collection_timestamp'': ansible_date_time.iso8601 } }) }}'
-  - name: Collect software inventory
+        - name: Collect software inventory
     when: inventory_scope in ['full', 'security', 'compliance']
-    tags:
-      register: rpm_packages
-    - software
-    - inventory
+      tags:
+        - software
+        - inventory
     block:
-    - name: Get installed packages (RPM-based)
+        - name: Get installed packages (RPM-based)
       ansible.builtin.package_facts:
         manager: rpm
       when: ansible_pkg_mgr in ['yum', 'dnf']
 
-    - name: Get installed packages (DEB-based)
+        - name: Get installed packages (DEB-based)
       ansible.builtin.package_facts:
         manager: apt
       when: ansible_pkg_mgr == 'apt'
       register: deb_packages
-    - name: Collect running services
+        - name: Collect running services
       ansible.builtin.service_facts: null
       register: system_services
-    - name: Get process list
+        - name: Get process list
       ansible.builtin.shell: 'set -o pipefail
 
         |
@@ -95,25 +94,25 @@
         '
       register: process_list
       changed_when: false
-    - name: Set software inventory data
+        - name: Set software inventory data
       ansible.builtin.set_fact:
         collected_data: '{{ collected_data | combine({ ''software_info'': { ''package_manager'': ansible_pkg_mgr, ''installed_packages'': ansible_facts.packages | length, ''running_services'': ansible_facts.services | selectattr(''state'', ''equalto'', ''running'') | list | length, ''total_services'': ansible_facts.services | length, ''active_processes'': process_list.stdout_lines | length } }) }}'
-  - name: Collect security configuration
+        - name: Collect security configuration
     when: inventory_scope in ['security', 'full', 'compliance']
-    tags:
+      tags:
       register: firewall_status
-    - security
-    - inventory
+        - security
+        - inventory
     block:
-    - name: Check firewall status
+        - name: Check firewall status
       ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nif command -v firewall-cmd >/dev/null 2>&1; then\n  firewall-cmd --state 2>/dev/null || echo \"inactive\"\nelif command -v ufw >/dev/null 2>&1; then\n  ufw status 2>/dev/null | head -1 || echo \"inactive\"\nelse\n  echo \"no_firewall\"\nfi\n"
 
       changed_when: false
-    - name: Check SELinux status
+        - name: Check SELinux status
       ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nif command -v getenforce >/dev/null 2>&1; then\n  getenforce 2>/dev/null || echo \"not_available\"\nelse\n  echo \"not_available\"\nfi\n"
       register: selinux_status
       changed_when: false
-    - name: Check sudo configuration
+        - name: Check sudo configuration
       ansible.builtin.shell: 'set -o pipefail
 
         |
@@ -125,11 +124,11 @@
         '
       register: sudo_files_count
       changed_when: false
-    - name: Check SSH configuration
+        - name: Check SSH configuration
       ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\n{\n  echo \"=== SSH Config ===\"\n  grep -E \"^(Port|PermitRootLogin|PasswordAuthentication|PubkeyAuthentication)\" /etc/ssh/sshd_config 2>/dev/null || echo \"SSH config not accessible\"\n}\n"
       register: ssh_config
       changed_when: false
-    - name: Check failed login attempts
+        - name: Check failed login attempts
       ansible.builtin.shell: 'set -o pipefail
 
         |
@@ -141,21 +140,21 @@
         '
       register: failed_logins
       changed_when: false
-    - name: Set security inventory data
+        - name: Set security inventory data
       ansible.builtin.set_fact:
         collected_data: '{{ collected_data | combine({ ''security_info'': { ''firewall_status'': firewall_status.stdout.strip(), ''selinux_status'': selinux_status.stdout.strip(), ''sudo_files_count'': sudo_files_count.stdout | int, ''failed_logins_24h'': failed_logins.stdout | int, ''ssh_root_login'': ssh_config.stdout | regex_search(''PermitRootLogin\s+(\w+)'', ''\1'') | default([''unknown'']) | first, ''ssh_password_auth'': ssh_config.stdout | regex_search(''PasswordAuthentication\s+(\w+)'', ''\1'') | default([''unknown'']) | first } }) }}'
-  - name: Collect compliance-specific information
+        - name: Collect compliance-specific information
     when: inventory_scope in ['compliance', 'full']
-    tags:
+      tags:
 
       register: audit_service_check
-    - compliance
-    - inventory
+        - compliance
+        - inventory
     block:
-    - name: Check audit daemon status
+        - name: Check audit daemon status
       ansible.builtin.service_facts: null
 
-    - name: Get audit rules count
+        - name: Get audit rules count
       ansible.builtin.shell: 'set -o pipefail
 
         |
@@ -167,40 +166,40 @@
         '
       register: audit_rules_count
       changed_when: false
-    - name: Check password policy
+        - name: Check password policy
       ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\n{\n  echo \"=== Password Policy ===\"\n  grep -E \"^(minlen|minclass|maxrepeat)\" /etc/security/pwquality.conf 2>/dev/null || echo \"Password policy not configured\"\n}\n"
       register: password_policy
       changed_when: false
-    - name: Check system banners
+        - name: Check system banners
       ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\n{\n  echo \"=== System Banners ===\"\n  echo \"Issue banner:\"\n  cat /etc/issue 2>/dev/null | head -5 || echo \"No issue banner\"\n  echo \"MOTD banner:\"\n  cat /etc/motd 2>/dev/null | head -5 || echo \"No MOTD banner\"\n}\n"
       register: system_banners
       changed_when: false
-    - name: Set compliance inventory data
+        - name: Set compliance inventory data
       ansible.builtin.set_fact:
         collected_data: '{{ collected_data | combine({ ''compliance_info'': { ''audit_service_running'': (ansible_facts.services[''auditd.service''].state | default(''stopped'')) == ''running'', ''audit_rules_count'': audit_rules_count.stdout | int, ''password_policy_configured'': ''minlen'' in password_policy.stdout, ''login_banner_configured'': ''/etc/issue'' | file_exists, ''motd_banner_configured'': ''/etc/motd'' | file_exists } }) }}'
   post_tasks:
-  - name: Generate inventory report (JSON)
+        - name: Generate inventory report (JSON)
     when: collection_format == 'json'
-    tags:
-    - reporting
+      tags:
+        - reporting
     ansible.builtin.copy:
       content: '{{ collected_data | to_nice_json }}'
       dest: /var/log/msp/{{ client_name }}/inventory/inventory-{{ inventory_session_id }}.json
       mode: '0640'
-  - name: Generate inventory report (YAML)
+        - name: Generate inventory report (YAML)
     when: collection_format == 'yaml'
-    tags:
-    - reporting
+      tags:
+        - reporting
     ansible.builtin.copy:
       content: '{{ collected_data | to_nice_yaml }}'
       dest: /var/log/msp/{{ client_name }}/inventory/inventory-{{ inventory_session_id }}.yml
       mode: '0640'
-  - name: Send inventory to MSP asset database
+        - name: Send inventory to MSP asset database
     when:
-    - msp_asset_database != ""
-    - msp_api_token is defined
-    tags:
-    - database
+        - msp_asset_database != ""
+        - msp_api_token is defined
+      tags:
+        - database
     failed_when: false
     ansible.builtin.uri:
       url: '{{ msp_asset_database }}/api/v1/inventory'
@@ -214,10 +213,10 @@
       headers:
         Content-Type: application/json
         Authorization: Bearer {{ msp_api_token }}
-  - name: Log inventory collection completion
+        - name: Log inventory collection completion
     when: msp_syslog_server != ""
-    tags:
-    - logging
+      tags:
+        - logging
     failed_when: false
     ansible.builtin.shell: 'set -o pipefail
 
@@ -232,9 +231,9 @@
       Data_Points: {{ collected_data.keys() | length }}"
 
       '
-  - name: Create inventory summary
-    tags:
-    - summary
+        - name: Create inventory summary
+      tags:
+        - summary
     ansible.builtin.debug:
       msg: 'Inventory Collection Summary for {{ client_name }}:
 

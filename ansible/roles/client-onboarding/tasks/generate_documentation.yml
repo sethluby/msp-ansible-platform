@@ -1,3 +1,4 @@
+---
 - name: Generate client documentation placeholder
   ansible.builtin.debug:
     msg: Documentation generation to be implemented for {{ client_name | default('client') }}

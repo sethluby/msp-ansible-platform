@@ -1,139 +1,142 @@
+---
 - name: Compliance | Display framework and client information
   ansible.builtin.debug:
     msg:
-    - Starting {{ compliance_framework | upper }} {{ compliance_level }} compliance for {{ client_name }}
-    - 'Client Tier: {{ client_tier }}'
-    - 'Environment: {{ client_environment }}'
-    - 'Profile: {{ compliance_profile }}'
-    - 'Control categories enabled: {{ enabled_categories }}'
-    - 'High disruption allowed: {{ disruption_high }}'
+      - Starting {{ compliance_framework | upper }} {{ compliance_level }} compliance for {{ client_name }}
+      - "Client Tier: {{ client_tier }}"
+      - "Environment: {{ client_environment }}"
+      - "Profile: {{ compliance_profile }}"
+      - "Control categories enabled: {{ enabled_categories }}"
+      - "High disruption allowed: {{ disruption_high }}"
   vars:
-    enabled_categories: "{{ \n  (enable_access_control | bool | ternary(['Access Control'], [])) +\n  (enable_audit_accountability | bool | ternary(['Audit & Accountability'], [])) +\n  (enable_config_management | bool | ternary(['Configuration Management'], [])) +\n  (enable_identification_auth | bool | ternary(['Identity & Authentication'], [])) +\n  (enable_system_protection | bool | ternary(['System Protection'], [])) +\n  (enable_system_integrity | bool | ternary(['System Integrity'], []))\n }}"
+    enabled_categories: "{{ \n  (enable_access_control | bool | ternary(['Access Control'], [])) +\n  (enable_audit_accountability | bool | ternary(['Audit & Accountability'], [])) +\n\
+      \  (enable_config_management | bool | ternary(['Configuration Management'], [])) +\n  (enable_identification_auth | bool | ternary(['Identity & Authentication'], [])) +\n  (enable_system_protection
+      | bool | ternary(['System Protection'], [])) +\n  (enable_system_integrity | bool | ternary(['System Integrity'], []))\n }}"
   tags:
-  - always
-  - compliance_info
-  - '{{ compliance_framework }}_info'
+    - always
+    - compliance_info
+    - "{{ compliance_framework }}_info"
 - name: Compliance | Validate system compatibility
   ansible.builtin.include_tasks: validation.yml
   tags:
-  - cmmc_validation
-  - cmmc_prerequisites
+    - cmmc_validation
+    - cmmc_prerequisites
 - name: CMMC Compliance | Create compliance directory structure
   ansible.builtin.file:
-    path: '{{ item.path }}'
+    path: "{{ item.path }}"
     state: directory
-    owner: '{{ item.owner | default(cmmc_default_owner) }}'
-    group: '{{ item.group | default(cmmc_default_group) }}'
-    mode: '{{ item.mode | default(cmmc_dir_mode) }}'
+    owner: "{{ item.owner | default(cmmc_default_owner) }}"
+    group: "{{ item.group | default(cmmc_default_group) }}"
+    mode: "{{ item.mode | default(cmmc_dir_mode) }}"
   loop:
-  - path: '{{ cmmc_base_dir }}'
-    mode: '{{ cmmc_secure_dir_mode }}'
-  - path: '{{ cmmc_config_dir }}'
-    mode: '{{ cmmc_secure_dir_mode }}'
-  - path: '{{ cmmc_baseline_dir }}'
-    mode: '{{ cmmc_secure_dir_mode }}'
-  - path: '{{ cmmc_policies_dir }}'
-    mode: '{{ cmmc_secure_dir_mode }}'
-  - path: '{{ cmmc_certificates_dir }}'
-    mode: '{{ cmmc_private_dir_mode }}'
-  - path: '{{ cmmc_keys_dir }}'
-    mode: '{{ cmmc_private_dir_mode }}'
-  - path: '{{ cmmc_log_base_dir }}'
-    mode: '{{ cmmc_dir_mode }}'
-  - path: '{{ cmmc_compliance_log_dir }}'
-    mode: '{{ cmmc_dir_mode }}'
-  - path: '{{ cmmc_reports_dir }}'
-    mode: '{{ cmmc_dir_mode }}'
-  - path: '{{ cmmc_security_log_dir }}'
-    mode: '{{ cmmc_dir_mode }}'
-  - path: '{{ cmmc_implementation_log_dir }}'
-    mode: '{{ cmmc_dir_mode }}'
-  - path: '{{ cmmc_state_base_dir }}'
-    mode: '{{ cmmc_secure_dir_mode }}'
-  - path: '{{ cmmc_validation_dir }}'
-    mode: '{{ cmmc_secure_dir_mode }}'
-  - path: '{{ cmmc_backup_dir }}'
-    mode: '{{ cmmc_private_dir_mode }}'
-  - path: '{{ cmmc_database_dir }}'
-    mode: '{{ cmmc_secure_dir_mode }}'
+    - path: "{{ cmmc_base_dir }}"
+      mode: "{{ cmmc_secure_dir_mode }}"
+    - path: "{{ cmmc_config_dir }}"
+      mode: "{{ cmmc_secure_dir_mode }}"
+    - path: "{{ cmmc_baseline_dir }}"
+      mode: "{{ cmmc_secure_dir_mode }}"
+    - path: "{{ cmmc_policies_dir }}"
+      mode: "{{ cmmc_secure_dir_mode }}"
+    - path: "{{ cmmc_certificates_dir }}"
+      mode: "{{ cmmc_private_dir_mode }}"
+    - path: "{{ cmmc_keys_dir }}"
+      mode: "{{ cmmc_private_dir_mode }}"
+    - path: "{{ cmmc_log_base_dir }}"
+      mode: "{{ cmmc_dir_mode }}"
+    - path: "{{ cmmc_compliance_log_dir }}"
+      mode: "{{ cmmc_dir_mode }}"
+    - path: "{{ cmmc_reports_dir }}"
+      mode: "{{ cmmc_dir_mode }}"
+    - path: "{{ cmmc_security_log_dir }}"
+      mode: "{{ cmmc_dir_mode }}"
+    - path: "{{ cmmc_implementation_log_dir }}"
+      mode: "{{ cmmc_dir_mode }}"
+    - path: "{{ cmmc_state_base_dir }}"
+      mode: "{{ cmmc_secure_dir_mode }}"
+    - path: "{{ cmmc_validation_dir }}"
+      mode: "{{ cmmc_secure_dir_mode }}"
+    - path: "{{ cmmc_backup_dir }}"
+      mode: "{{ cmmc_private_dir_mode }}"
+    - path: "{{ cmmc_database_dir }}"
+      mode: "{{ cmmc_secure_dir_mode }}"
   tags:
-  - cmmc_setup
-  - cmmc_directories
+    - cmmc_setup
+    - cmmc_directories
 - name: CMMC Compliance | Install compliance validation tools
   ansible.builtin.copy:
-    src: '{{ item.src }}'
-    dest: '{{ item.dest }}'
-    owner: '{{ cmmc_default_owner }}'
-    group: '{{ cmmc_default_group }}'
-    mode: '{{ item.mode }}'
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ cmmc_default_owner }}"
+    group: "{{ cmmc_default_group }}"
+    mode: "{{ item.mode }}"
   loop:
-  - src: compliance_validator.py
-    dest: '{{ local_bin_dir }}/cmmc_validator.py'
-    mode: '{{ cmmc_executable_mode }}'
-  - src: cmmc_controls.yaml
-    dest: '{{ cmmc_base_dir }}/cmmc_controls.yaml'
-    mode: '{{ cmmc_secure_file_mode }}'
+    - src: compliance_validator.py
+      dest: "{{ local_bin_dir }}/cmmc_validator.py"
+      mode: "{{ cmmc_executable_mode }}"
+    - src: cmmc_controls.yaml
+      dest: "{{ cmmc_base_dir }}/cmmc_controls.yaml"
+      mode: "{{ cmmc_secure_file_mode }}"
   tags:
-  - cmmc_tools
-  - cmmc_validation
+    - cmmc_tools
+    - cmmc_validation
 - name: CMMC Compliance | Implement Access Control (AC) controls
   ansible.builtin.include_tasks: access_control.yml
   when: cmmc_enable_access_control | bool
   tags:
-  - cmmc_access_control
-  - cmmc_ac
+    - cmmc_access_control
+    - cmmc_ac
 - name: CMMC Compliance | Implement Audit and Accountability (AU) controls
   ansible.builtin.include_tasks: audit_accountability.yml
   when: cmmc_enable_audit_accountability | bool
   tags:
-  - cmmc_audit_accountability
-  - cmmc_au
+    - cmmc_audit_accountability
+    - cmmc_au
 - name: CMMC Compliance | Implement Configuration Management (CM) controls
   ansible.builtin.include_tasks: config_management.yml
   when: cmmc_enable_config_management | bool
   tags:
-  - cmmc_config_management
-  - cmmc_cm
+    - cmmc_config_management
+    - cmmc_cm
 - name: CMMC Compliance | Implement Identification and Authentication (IA) controls
   ansible.builtin.include_tasks: identification_auth.yml
   when: cmmc_enable_identification_auth | bool
   tags:
-  - cmmc_identification_auth
-  - cmmc_ia
+    - cmmc_identification_auth
+    - cmmc_ia
 - name: CMMC Compliance | Implement System and Communications Protection (SC) controls
   ansible.builtin.include_tasks: system_protection.yml
   when: cmmc_enable_system_protection | bool
   tags:
-  - cmmc_system_protection
-  - cmmc_sc
+    - cmmc_system_protection
+    - cmmc_sc
 - name: CMMC Compliance | Implement System and Information Integrity (SI) controls
   ansible.builtin.include_tasks: system_integrity.yml
   when: cmmc_enable_system_integrity | bool
   tags:
-  - cmmc_system_integrity
-  - cmmc_si
+    - cmmc_system_integrity
+    - cmmc_si
 - name: CMMC Compliance | Run comprehensive compliance validation
   ansible.builtin.include_tasks: validation.yml
   vars:
     validation_mode: post_implementation
   tags:
-  - cmmc_validation
-  - cmmc_post_check
+    - cmmc_validation
+    - cmmc_post_check
 - name: CMMC Compliance | Generate compliance reports
   ansible.builtin.include_tasks: reporting.yml
   when: cmmc_reporting_enabled | bool
   tags:
-  - cmmc_reporting
-  - cmmc_reports
+    - cmmc_reporting
+    - cmmc_reports
 - name: CMMC Compliance | Display completion summary
   ansible.builtin.debug:
     msg:
-    - CMMC {{ cmmc_level }} compliance implementation completed
-    - 'Client: {{ cmmc_client_id }}'
-    - 'Compliance report location: {{ cmmc_reports_dir }}'
-    - 'Validation tools installed: {{ local_bin_dir }}/cmmc_validator.py'
-    - 'Configuration directory: {{ cmmc_base_dir }}'
-    - 'Log directory: {{ cmmc_log_base_dir }}'
+      - CMMC {{ cmmc_level }} compliance implementation completed
+      - "Client: {{ cmmc_client_id }}"
+      - "Compliance report location: {{ cmmc_reports_dir }}"
+      - "Validation tools installed: {{ local_bin_dir }}/cmmc_validator.py"
+      - "Configuration directory: {{ cmmc_base_dir }}"
+      - "Log directory: {{ cmmc_log_base_dir }}"
   tags:
-  - always
-  - cmmc_summary
+    - always
+    - cmmc_summary

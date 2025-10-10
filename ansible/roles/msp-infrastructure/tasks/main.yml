@@ -1,3 +1,4 @@
+---
 - name: Include validation tasks
   ansible.builtin.include_tasks: validate.yml
   tags:
@@ -39,3 +40,4 @@
   ansible.builtin.include_tasks: verify.yml
   tags:
   - verification
+---

@@ -1,5 +1,5 @@
 ---
 # Default logging settings for MSP platform
-msp_log_server: ""          # Remote syslog server (empty = local only)
-msp_log_tag: "MSP-LOG"      # Logger tag
-msp_log_message: ""         # Message to log (required)
+msp_log_server: "" # Remote syslog server (empty = local only)
+msp_log_tag: "MSP-LOG" # Logger tag
+msp_log_message: "" # Message to log (required)

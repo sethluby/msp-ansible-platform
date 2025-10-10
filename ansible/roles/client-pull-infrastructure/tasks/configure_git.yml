@@ -1,3 +1,5 @@
+---
 - name: Infrastructure placeholder task
   ansible.builtin.debug:
     msg: Infrastructure task to be implemented
+---

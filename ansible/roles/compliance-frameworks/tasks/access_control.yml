@@ -39,7 +39,7 @@
         group: "{{ cmmc_default_group }}"
         mode: "{{ cmmc_secure_file_mode }}"
         backup: true
-        validate: 'sshd -t -f %s'
+        validate: "sshd -t -f %s"
       notify: restart sshd
       # Deploy CMMC-compliant SSH configuration
       # Validation ensures configuration is syntactically correct before application
@@ -47,8 +47,8 @@
     - name: "AC.1.001 | Disable password authentication"
       ansible.builtin.lineinfile:
         path: "{{ ssh_config_file }}"
-        regexp: '^#?PasswordAuthentication'
-        line: 'PasswordAuthentication no'
+        regexp: "^#?PasswordAuthentication"
+        line: "PasswordAuthentication no"
         state: present
       notify: restart sshd
       # Explicitly disable password-based authentication
@@ -57,8 +57,8 @@
     - name: "AC.1.001 | Enable and require public key authentication"
       ansible.builtin.lineinfile:
         path: "{{ ssh_config_file }}"
-        regexp: '^#?PubkeyAuthentication'
-        line: 'PubkeyAuthentication yes'
+        regexp: "^#?PubkeyAuthentication"
+        line: "PubkeyAuthentication yes"
         state: present
       notify: restart sshd
       # Ensure public key authentication is enabled and required
@@ -66,7 +66,7 @@
     - name: "AC.1.001 | Configure SSH port (if non-standard)"
       ansible.builtin.lineinfile:
         path: "{{ ssh_config_file }}"
-        regexp: '^#?Port'
+        regexp: "^#?Port"
         line: "Port {{ cmmc_ac_ssh_port }}"
         state: present
       notify: restart sshd
@@ -77,7 +77,7 @@
     - name: "AC.1.001 | Restrict SSH access to authorized users"
       ansible.builtin.lineinfile:
         path: "{{ ssh_config_file }}"
-        regexp: '^#?AllowUsers'
+        regexp: "^#?AllowUsers"
         line: "AllowUsers {{ cmmc_ac_allowed_users | join(' ') }}"
         state: present
       notify: restart sshd
@@ -88,7 +88,7 @@
     - name: "AC.1.001 | Set authentication attempt limits"
       ansible.builtin.lineinfile:
         path: "{{ ssh_config_file }}"
-        regexp: '^#?MaxAuthTries'
+        regexp: "^#?MaxAuthTries"
         line: "MaxAuthTries {{ cmmc_ac_max_auth_tries }}"
         state: present
       notify: restart sshd
@@ -97,7 +97,7 @@
     - name: "AC.1.001 | Configure login grace time"
       ansible.builtin.lineinfile:
         path: "{{ ssh_config_file }}"
-        regexp: '^#?LoginGraceTime'
+        regexp: "^#?LoginGraceTime"
         line: "LoginGraceTime {{ cmmc_ac_login_grace_time }}"
         state: present
       notify: restart sshd
@@ -117,39 +117,39 @@
         dest: /etc/sudoers.d/10-cmmc-restrictions
         owner: root
         group: root
-        mode: '0440'
-        validate: 'visudo -cf %s'
+        mode: "0440"
+        validate: "visudo -cf %s"
       # Deploy CMMC-compliant sudo restrictions
       # Validation ensures sudoers syntax is correct before application
 
     - name: "AC.1.002 | Enable sudo logging for transaction tracking"
       ansible.builtin.lineinfile:
         path: /etc/sudoers
-        regexp: '^Defaults.*logfile'
-        line: 'Defaults logfile=/var/log/sudo.log'
+        regexp: "^Defaults.*logfile"
+        line: "Defaults logfile=/var/log/sudo.log"
         state: present
-        validate: 'visudo -cf %s'
+        validate: "visudo -cf %s"
       # Enable detailed sudo logging for audit trail compliance
       # Tracks all privileged command execution
 
     - name: "AC.1.002 | Configure sudo session timeout"
       ansible.builtin.lineinfile:
         path: /etc/sudoers
-        regexp: '^Defaults.*timestamp_timeout'
-        line: 'Defaults timestamp_timeout=5'
+        regexp: "^Defaults.*timestamp_timeout"
+        line: "Defaults timestamp_timeout=5"
         state: present
-        validate: 'visudo -cf %s'
+        validate: "visudo -cf %s"
       # Set aggressive sudo session timeout for security
       # Requires re-authentication every 5 minutes
 
     - name: "AC.1.002 | Enable sudo command logging"
       ansible.builtin.lineinfile:
         path: /etc/sudoers
-        regexp: '^Defaults.*log_output'
-        line: 'Defaults log_output'
+        regexp: "^Defaults.*log_output"
+        line: "Defaults log_output"
         state: present
-        validate: 'visudo -cf %s'
-      # Log all sudo command output for comprehensive audit trail
+        validate: "visudo -cf %s"
+# Log all sudo command output for comprehensive audit trail
 
 # tags moved above as recommended by ansible-lint
 
@@ -163,17 +163,17 @@
       ansible.builtin.copy:
         content: |
           WARNING: This system is for authorized use only.
-          
+
           All activities on this system are monitored and recorded.
           By using this system, you consent to such monitoring.
           Unauthorized access is prohibited and may be subject to
           criminal and civil penalties.
-          
+
           Disconnect immediately if you are not an authorized user.
         dest: /etc/issue
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
       # Deploy security-focused login banner without system information disclosure
       # Removes potentially useful information for attackers
 
@@ -181,24 +181,24 @@
       ansible.builtin.copy:
         content: |
           WARNING: This system is for authorized use only.
-          
+
           All activities on this system are monitored and recorded.
           By using this system, you consent to such monitoring.
           Unauthorized access is prohibited and may be subject to
           criminal and civil penalties.
-          
+
           Disconnect immediately if you are not an authorized user.
         dest: /etc/issue.net
         owner: root
         group: root
-        mode: '0644'
+        mode: "0644"
       # Deploy network login banner for remote access warnings
 
     - name: "AC.1.003 | Hide system information in SSH banner"
       ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
-        regexp: '^#?Banner'
-        line: 'Banner /etc/issue.net'
+        regexp: "^#?Banner"
+        line: "Banner /etc/issue.net"
         state: present
       notify: restart sshd
       # Configure SSH to display warning banner instead of system information
@@ -206,8 +206,8 @@
     - name: "AC.1.003 | Disable SSH version disclosure"
       ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
-        regexp: '^#?DebianBanner'
-        line: 'DebianBanner no'
+        regexp: "^#?DebianBanner"
+        line: "DebianBanner no"
         state: present
       notify: restart sshd
       when: ansible_os_family == "Debian"
@@ -216,17 +216,17 @@
     - name: "AC.1.003 | Configure secure SSH protocol settings"
       ansible.builtin.lineinfile:
         path: /etc/ssh/sshd_config
-        regexp: '^#?{{ item.setting }}'
+        regexp: "^#?{{ item.setting }}"
         line: "{{ item.setting }} {{ item.value }}"
         state: present
       loop:
-        - { setting: 'Protocol', value: '2' }
-        - { setting: 'X11Forwarding', value: 'no' }
-        - { setting: 'AllowAgentForwarding', value: 'no' }
-        - { setting: 'AllowTcpForwarding', value: 'no' }
-        - { setting: 'PermitRootLogin', value: 'no' }
-        - { setting: 'PermitEmptyPasswords', value: 'no' }
-        - { setting: 'PermitUserEnvironment', value: 'no' }
+        - { setting: "Protocol", value: "2" }
+        - { setting: "X11Forwarding", value: "no" }
+        - { setting: "AllowAgentForwarding", value: "no" }
+        - { setting: "AllowTcpForwarding", value: "no" }
+        - { setting: "PermitRootLogin", value: "no" }
+        - { setting: "PermitEmptyPasswords", value: "no" }
+        - { setting: "PermitUserEnvironment", value: "no" }
       notify: restart sshd
       # Configure SSH security settings to minimize attack surface
       # Disables potentially dangerous features and root access
@@ -256,7 +256,7 @@
     dest: /var/lib/cmmc/validation/validate_access_control.sh
     owner: root
     group: root
-    mode: '0755'
+    mode: "0755"
   # Deploy validation script for ongoing access control verification
   # Enables independent validation during graceful disconnection
 
@@ -267,6 +267,6 @@
     create: true
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   # Log successful implementation for audit trail and troubleshooting
   # Provides timestamp record of compliance implementation

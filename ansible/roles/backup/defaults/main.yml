@@ -1,12 +1,12 @@
 ---
 # Backup configuration defaults
-backup_strategy: "rsync"  # rsync, borgbackup, restic, tar
+backup_strategy: "rsync" # rsync, borgbackup, restic, tar
 backup_enabled: true
 backup_compression: true
 backup_encryption: true
 
 # Backup scheduling
-backup_frequency: "daily"  # hourly, daily, weekly
+backup_frequency: "daily" # hourly, daily, weekly
 backup_time: "02:00"
 backup_retention_days: 30
 backup_retention_weeks: 4
@@ -48,7 +48,6 @@ backup_mysql: false
 backup_postgresql: false
 backup_mysql_databases: []
 backup_postgresql_databases: []
-
 # Backup validation
 backup_verify_backups: true
 backup_integrity_check: true

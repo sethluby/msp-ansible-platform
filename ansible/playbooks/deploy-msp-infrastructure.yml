@@ -1,3 +1,4 @@
+---
 - name: Deploy MSP Monitoring Stack
   hosts: msp_monitoring
   become: true
@@ -5,65 +6,65 @@
   vars:
     monitoring_stack_version: 1.0.0
   roles:
-  - role: common
-    tags:
-    - common
-  - role: monitoring
-    tags:
-    - monitoring
-    - metrics
-    vars:
-      monitoring_type: centralized
-      enable_alertmanager: true
-      enable_grafana: true
-  - role: network-security
-    tags:
-    - security
-    - firewall
-    vars:
-      firewall_mode: msp_monitoring
+    - role: common
+      tags:
+        - common
+    - role: monitoring
+      tags:
+        - monitoring
+        - metrics
+      vars:
+        monitoring_type: centralized
+        enable_alertmanager: true
+        enable_grafana: true
+    - role: network-security
+      tags:
+        - security
+        - firewall
+      vars:
+        firewall_mode: msp_monitoring
   post_tasks:
-  - name: Configure MSP monitoring endpoints
-    tags:
-    - configuration
-    notify: restart prometheus
-    ansible.builtin.template:
-      src: ../roles/monitoring/templates/prometheus-msp.yml.j2
-      dest: /etc/prometheus/prometheus.yml
-      backup: true
+        - name: Configure MSP monitoring endpoints
+      tags:
+        - configuration
+      notify: restart prometheus
+      ansible.builtin.template:
+        src: ../roles/monitoring/templates/prometheus-msp.yml.j2
+        dest: /etc/prometheus/prometheus.yml
+        backup: true
 - name: Deploy Client Management Infrastructure
   hosts: msp_client_managers
   become: true
   gather_facts: true
   roles:
-  - role: common
-    tags:
-    - common
-  - role: client-management
-    tags:
-    - client-mgmt
-    vars:
-      enable_wireguard_hub: true
-      enable_ssh_jumphost: true
-      enable_git_repos: true
-  - role: network-security
-    tags:
-    - security
-    - vpn
-    vars:
-      firewall_mode: client_connectivity
+        - role: common
+      tags:
+        - common
+        - role: msp-infrastructure
+      tags:
+        - client-mgmt
+      vars:
+        enable_wireguard_hub: true
+        enable_ssh_jumphost: true
+        enable_git_repos: true
+        - role: network-security
+      tags:
+        - security
+        - vpn
+      vars:
+        firewall_mode: client_connectivity
   post_tasks:
-  - name: Initialize client repository structure
-    tags:
-    - initialization
-    loop:
-    - repositories
-    - configs
-    - logs
-    - backups
-    ansible.builtin.file:
-      path: /opt/msp/clients/{{ item }}
-      state: directory
-      owner: git
-      group: git
-      mode: '0755'
+        - name: Initialize client repository structure
+      tags:
+        - initialization
+      loop:
+        - repositories
+        - configs
+        - logs
+        - backups
+      ansible.builtin.file:
+        path: /opt/msp/clients/{{ item }}
+        state: directory
+        owner: git
+        group: git
+        mode: "0755"

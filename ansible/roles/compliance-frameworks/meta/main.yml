@@ -5,7 +5,7 @@ galaxy_info:
   company: MSP Solutions
   license: MIT
   min_ansible_version: "2.12"
-  
+
   platforms:
     - name: EL
       versions:

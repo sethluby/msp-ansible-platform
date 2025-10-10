@@ -1,3 +1,4 @@
+---
 - name: Deploy monitoring placeholder
   ansible.builtin.debug:
     msg: Monitoring deployment to be implemented

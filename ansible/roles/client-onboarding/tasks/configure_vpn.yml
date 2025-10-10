@@ -1,22 +1,19 @@
+---
 - name: Install WireGuard
   ansible.builtin.package:
     name: wireguard
     state: present
   tags:
-  - vpn
-  - installation
+    - vpn
+    - installation
 - name: Generate WireGuard private key for server
-  ansible.builtin.shell: 'set -o pipefail
-
-    wg genkey
-
-    '
+  ansible.builtin.shell: "set -o pipefail\nwg genkey\n"
   register: wg_server_private_key
   changed_when: true
   no_log: true
   tags:
-  - vpn
-  - keys
+    - vpn
+    - keys
 - name: Generate WireGuard public key for server
   ansible.builtin.shell: 'set -o pipefail
 
@@ -27,20 +24,16 @@
   changed_when: false
   no_log: true
   tags:
-  - vpn
-  - keys
+    - vpn
+    - keys
 - name: Generate WireGuard private key for client
-  ansible.builtin.shell: 'set -o pipefail
-
-    wg genkey
-
-    '
+  ansible.builtin.shell: "set -o pipefail\nwg genkey\n"
   register: wg_client_private_key
   changed_when: true
   no_log: true
   tags:
-  - vpn
-  - keys
+    - vpn
+    - keys
 - name: Generate WireGuard public key for client
   ansible.builtin.shell: 'set -o pipefail
 
@@ -51,66 +44,49 @@
   changed_when: false
   no_log: true
   tags:
-  - vpn
-  - keys
+    - vpn
+    - keys
 - name: Generate pre-shared key
-  ansible.builtin.shell: 'set -o pipefail
-
-    wg genpsk
-
-    '
+  ansible.builtin.shell: "set -o pipefail\nwg genpsk\n"
   register: wg_preshared_key
   changed_when: true
   no_log: true
   tags:
-  - vpn
-  - keys
+    - vpn
+    - keys
 - name: Create WireGuard server configuration
   ansible.builtin.template:
     src: wg-server.conf.j2
     dest: /etc/wireguard/{{ client_name }}.conf
-    mode: '0600'
+    mode: "0600"
     owner: root
     group: root
   notify: restart wireguard
   tags:
-  - vpn
-  - configuration
+    - vpn
+    - configuration
 - name: Create WireGuard client configuration
   ansible.builtin.template:
     src: wg-client.conf.j2
-    dest: '{{ client_config_dir }}/certificates/{{ client_name }}-vpn.conf'
-    mode: '0600'
+    dest: "{{ client_config_dir }}/certificates/{{ client_name }}-vpn.conf"
+    mode: "0600"
     owner: root
     group: root
   tags:
-  - vpn
-  - configuration
+    - vpn
+    - configuration
 - name: Store WireGuard keys securely
   ansible.builtin.copy:
-    content: '# WireGuard Keys for {{ client_name }}
-
-      # Generated: {{ ansible_date_time.iso8601 }}
-
-      SERVER_PRIVATE_KEY={{ wg_server_private_key.stdout }}
-
-      SERVER_PUBLIC_KEY={{ wg_server_public_key.stdout }}
-
-      CLIENT_PRIVATE_KEY={{ wg_client_private_key.stdout }}
-
-      CLIENT_PUBLIC_KEY={{ wg_client_public_key.stdout }}
-
-      PRESHARED_KEY={{ wg_preshared_key.stdout }}
-
-      '
-    dest: '{{ client_config_dir }}/keys/wireguard_keys'
-    mode: '0600'
+    content: "# WireGuard Keys for {{ client_name }}\n# Generated: {{ ansible_date_time.iso8601 }}\nSERVER_PRIVATE_KEY={{ wg_server_private_key.stdout }}\nSERVER_PUBLIC_KEY={{ wg_server_public_key.stdout
+      }}\nCLIENT_PRIVATE_KEY={{ wg_client_private_key.stdout }}\nCLIENT_PUBLIC_KEY={{ wg_client_public_key.stdout }}\nPRESHARED_KEY={{ wg_preshared_key.stdout }}\n"
+    dest: "{{ client_config_dir }}/keys/wireguard_keys"
+    mode: "0600"
     owner: root
     group: root
   no_log: true
   tags:
-  - vpn
-  - keys
+    - vpn
+    - keys
 - name: Enable and start WireGuard interface
   ansible.builtin.systemd:
     name: wg-quick@{{ client_name }}
@@ -118,51 +94,51 @@
     state: started
     daemon_reload: true
   tags:
-  - vpn
-  - service
+    - vpn
+    - service
 - name: Configure firewall for WireGuard
   ansible.posix.firewalld:
-    port: '{{ vpn_port }}/udp'
+    port: "{{ vpn_port }}/udp"
     permanent: true
     state: enabled
     immediate: true
   tags:
-  - vpn
-  - firewall
+    - vpn
+    - firewall
 - name: Enable IP forwarding
   ansible.posix.sysctl:
     name: net.ipv4.ip_forward
-    value: '1'
+    value: "1"
     state: present
     reload: true
   tags:
-  - vpn
-  - networking
+    - vpn
+    - networking
 - name: Create VPN connection test script
   ansible.builtin.template:
     src: test-vpn.sh.j2
-    dest: '{{ client_config_dir }}/test-vpn.sh'
-    mode: '0755'
+    dest: "{{ client_config_dir }}/test-vpn.sh"
+    mode: "0755"
   tags:
-  - vpn
-  - testing
+    - vpn
+    - testing
 - name: Create VPN management scripts
   ansible.builtin.template:
-    src: '{{ item }}.j2'
-    dest: '{{ client_config_dir }}/{{ item }}'
-    mode: '0755'
+    src: "{{ item }}.j2"
+    dest: "{{ client_config_dir }}/{{ item }}"
+    mode: "0755"
   loop:
-  - start-vpn.sh
-  - stop-vpn.sh
-  - status-vpn.sh
+    - start-vpn.sh
+    - stop-vpn.sh
+    - status-vpn.sh
   tags:
-  - vpn
-  - management
+    - vpn
+    - management
 - name: Document VPN configuration
   ansible.builtin.template:
     src: vpn_documentation.md.j2
-    dest: '{{ client_docs_dir }}/VPN_Configuration.md'
-    mode: '0644'
+    dest: "{{ client_docs_dir }}/VPN_Configuration.md"
+    mode: "0644"
   tags:
-  - vpn
-  - documentation
+    - vpn
+    - documentation

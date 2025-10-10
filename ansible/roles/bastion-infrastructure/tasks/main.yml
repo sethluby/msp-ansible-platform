@@ -1,3 +1,4 @@
+---
 - name: Validate bastion deployment parameters
   ansible.builtin.assert:
     that:
@@ -47,3 +48,4 @@
   ansible.builtin.include_tasks: verify_bastion.yml
   tags:
   - verification
+---

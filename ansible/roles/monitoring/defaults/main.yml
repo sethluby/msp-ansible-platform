@@ -1,6 +1,6 @@
 ---
 # Monitoring configuration defaults
-monitoring_stack: "prometheus"  # prometheus, zabbix, nagios
+monitoring_stack: "prometheus" # prometheus, zabbix, nagios
 monitoring_enable_metrics_collection: true
 monitoring_enable_log_aggregation: true
 monitoring_enable_alerting: true
@@ -52,4 +52,4 @@ monitoring_centralized_logging: false
 # Client-specific monitoring
 monitoring_client_dashboards: true
 monitoring_custom_metrics: []
-monitoring_interval: 60  # seconds
+monitoring_interval: 60 # seconds

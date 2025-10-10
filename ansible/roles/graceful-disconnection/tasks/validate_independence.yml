@@ -1,3 +1,4 @@
+---
 - name: Disconnection placeholder task
   ansible.builtin.debug:
     msg: Disconnection task to be implemented
