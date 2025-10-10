@@ -1,3 +1,4 @@
+---
 - name: Playbook task placeholder
   ansible.builtin.debug:
     msg: Playbook task to be implemented
