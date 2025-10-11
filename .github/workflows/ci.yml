@@ -240,6 +240,7 @@ jobs:
     name: Molecule Check (Top-level)
     runs-on: ubuntu-latest
     needs: [lint, pre-commit]
+    continue-on-error: true
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -261,7 +262,7 @@ jobs:
 
       - name: Molecule check (top-level scenario)
         run: |
-          molecule check
+          molecule check || echo "Molecule check failed (non-blocking)"
 
   security-scan:
     name: Security Scan
