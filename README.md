@@ -204,6 +204,34 @@ MSP Control Plane: AWX/Controller, Vault, CI/CD, SIEM (multi-tenant feeds)
 *OS Config can be used for inventory/patch; default path is SSH/WinRM via WG or reverse tunnel.
 ```
 
+### On-Prem (vSphere) – MSP View
+
+```text
++--------------------------------------- vSphere (On‑Prem Tenant) ---------------------------------------+
+|                                                                                                        |
+|  vCenter + ESXi hosts                                                                                  |
+|   +----------------------+   +----------------------+    +-----------------------------------------+   |
+|   | Linux/Windows VMs    |   | k3s worker nodes     |    | Optional services (vSphere CSI/NSX)     |   |
+|   +----------+-----------+   +----------+-----------+    +----------------------+------------------+   |
+|              |                          |                                      |                      |
+|              |                          |                                      |                      |
+|  (A) Pull-Based: nodes pull from Git (HTTPS)                                    |                      |
+|  (B) Bastion: WireGuard peer VM <== VPN ==> MSP WG Hub; AWX -> SSH/WinRM over WG IPs                  |
+|  (C) Reverse: reverse-SSH agents ==> MSP Tunnel Host -> AWX loopback                                   |
+|                                                                                                        |
+|  Optional on‑prem analogs to cloud services:                                                           |
+|  - ACR  -> Harbor (registry)                                                                           |
+|  - Blob -> MinIO (S3-compatible)                                                                       |
+|  - KeyVault -> HashiCorp Vault                                                                         |
+|  - AKS  -> k3s (3 VMs) with NGINX Ingress + cert-manager + storage (Longhorn or NFS provisioner)       |
+|  - Redis/Postgres: VMs or Helm charts with persistent volumes                                          |
++--------------------------------------------------------------------------------------------------------+
+
+MSP Control Plane (self‑hosted on k3s): AWX (Operator), Harbor, MinIO, Vault, Redis, Postgres, Ingress
+```
+
+On‑prem quickstart inventory: `ansible/inventory/lab-vsphere/` (reuses global playbooks).
+
 Key repo entry points for each pattern:
 - Pull-Based: `bootstrap/bootstrap-pull-based.sh` (timer-based pull + local apply)
 - Bastion (WireGuard): `bootstrap/bootstrap-bastion-host.sh` (client peer) and AWX inventory uses WG IPs
@@ -226,6 +254,17 @@ ansible-galaxy install -r requirements.yml
 cp .env.example .env
 # Edit .env with your configuration
 ```
+
+### On‑Prem vSphere Quickstart
+- Inventory and docs: `ansible/inventory/lab-vsphere/README.md`
+- Fill placement and VM specs:
+  - `ansible/inventory/lab-vsphere/group_vars/vcenter/main.yml`
+  - `ansible/inventory/lab-vsphere/group_vars/all/vsphere_provision.yml`
+  - Copy and encrypt secrets: `ansible/inventory/lab-vsphere/vault.sample.yml` → `vault.yml`
+- Provision VMs on vCenter:
+  - `make lab-setup`
+  - `make lab-provision-vsphere`
+  - Global playbook used: `ansible/playbooks/vsphere-provision.yml`
 
 ### Usage Paths: Baseline vs CMMC Overlay
 

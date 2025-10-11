@@ -132,15 +132,15 @@
         - logging
         - audit
       ansible.builtin.lineinfile:
-      path: /var/log/msp-platform/disconnections.log
-      line: "{{ disconnection_timestamp }} | {{ client_name }} | {{ disconnection_mode }} | {{ emergency_contact_email }} | SUCCESS"
-      create: true
-      mode: "0644"
+        path: /var/log/msp-platform/disconnections.log
+        line: "{{ disconnection_timestamp }} | {{ client_name }} | {{ disconnection_mode }} | {{ emergency_contact_email }} | SUCCESS"
+        create: true
+        mode: "0644"
     - name: Remove client from active management
       tags:
         - cleanup
         - management
       failed_when: false
       ansible.builtin.file:
-      path: /opt/msp-platform/active_clients/{{ client_name }}
-      state: absent
+        path: /opt/msp-platform/active_clients/{{ client_name }}
+        state: absent

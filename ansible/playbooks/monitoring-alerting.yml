@@ -253,21 +253,21 @@
     - name: Configure logrotate for client logs
       ansible.builtin.copy:
         content: |
-        /var/log/msp/{{ client_name }}/*.log {
-        daily
-        rotate {{ client_retention_days }}
-        compress
-        delaycompress
-        missingok
-        notifempty
-        create 644 root root
-        postrotate
-        systemctl reload rsyslog > /dev/null 2>&1 || true
-        endscript
-        }
+          /var/log/msp/{{ client_name }}/*.log {
+            daily
+            rotate {{ client_retention_days }}
+            compress
+            delaycompress
+            missingok
+            notifempty
+            create 644 root root
+            postrotate
+              systemctl reload rsyslog > /dev/null 2>&1 || true
+            endscript
+          }
         dest: /etc/logrotate.d/{{ client_name }}-logs
         mode: "0644"
-        register: logrotate_config
+      register: logrotate_config
 
     - name: Configure process monitoring
       when: monitoring_profiles[client_monitoring_profile].process_monitoring
@@ -275,22 +275,22 @@
         - monitoring
         - processes
       block:
-    - name: Create process monitoring script
-      ansible.builtin.copy:
-        content: "#!/bin/bash\n# Process monitoring for {{ client_name }}\n\nTEXTFILE_DIR=\"/var/lib/prometheus/textfile_collector\"\nCLIENT_NAME=\"{{ client_name }}\"\n\n# Monitor critical processes\n{% for process in client_critical_processes | default(['sshd', 'systemd', 'kernel']) %}\nPROCESS_COUNT=$(pgrep -c {{ process }} 2>/dev/null || echo \"0\")\necho \"process_count{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\",process=\\\"{{ process }}\\\"} $PROCESS_COUNT\" >> \"$TEXTFILE_DIR/process_monitoring.prom\"\n{% endfor %}\n\n# Overall process count\nTOTAL_PROCESSES=$(ps aux | wc -l)\necho \"total_processes{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $TOTAL_PROCESSES\" >> \"$TEXTFILE_DIR/process_monitoring.prom\"\n\n# Zombie processes\nZOMBIE_PROCESSES=$(ps aux | awk '$8 ~ /^Z/ { count++ } END { print count+0 }')\necho \"zombie_processes{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $ZOMBIE_PROCESSES\" >> \"$TEXTFILE_DIR/process_monitoring.prom\"\n\n# High CPU processes (top 5)\nps aux --sort=-%cpu | head -6 | tail -5 | awk -v client=\"$CLIENT_NAME\" -v host=\"$(hostname)\" '{ printf \"high_cpu_process{client=\\\"%s\\\",host=\\\"%s\\\",user=\\\"%s\\\",pid=\\\"%s\\\",command=\\\"%s\\\"} %s\\n\", client, host, $1, $2, $11, $3 }' >> \"$TEXTFILE_DIR/process_monitoring.prom\"\n\necho \"process_monitoring_last_update{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $(date +%s)\" >> \"$TEXTFILE_DIR/process_monitoring.prom\"\n"
-        dest: /opt/msp-monitoring/{{ client_name }}/process_monitoring.sh
-        mode: "0755"
-        owner: root
-        group: root
-        register: process_monitoring_script
+        - name: Create process monitoring script
+          ansible.builtin.copy:
+            content: "#!/bin/bash\n# Process monitoring for {{ client_name }}\n\nTEXTFILE_DIR=\"/var/lib/prometheus/textfile_collector\"\nCLIENT_NAME=\"{{ client_name }}\"\n\n# Monitor critical processes\n{% for process in client_critical_processes | default(['sshd', 'systemd', 'kernel']) %}\nPROCESS_COUNT=$(pgrep -c {{ process }} 2>/dev/null || echo \"0\")\necho \"process_count{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\",process=\\\"{{ process }}\\\"} $PROCESS_COUNT\" >> \"$TEXTFILE_DIR/process_monitoring.prom\"\n{% endfor %}\n\n# Overall process count\nTOTAL_PROCESSES=$(ps aux | wc -l)\necho \"total_processes{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $TOTAL_PROCESSES\" >> \"$TEXTFILE_DIR/process_monitoring.prom\"\n\n# Zombie processes\nZOMBIE_PROCESSES=$(ps aux | awk '$8 ~ /^Z/ { count++ } END { print count+0 }')\necho \"zombie_processes{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $ZOMBIE_PROCESSES\" >> \"$TEXTFILE_DIR/process_monitoring.prom\"\n\n# High CPU processes (top 5)\nps aux --sort=-%cpu | head -6 | tail -5 | awk -v client=\"$CLIENT_NAME\" -v host=\"$(hostname)\" '{ printf \"high_cpu_process{client=\\\"%s\\\",host=\\\"%s\\\",user=\\\"%s\\\",pid=\\\"%s\\\",command=\\\"%s\\\"} %s\\n\", client, host, $1, $2, $11, $3 }' >> \"$TEXTFILE_DIR/process_monitoring.prom\"\n\necho \"process_monitoring_last_update{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $(date +%s)\" >> \"$TEXTFILE_DIR/process_monitoring.prom\"\n"
+            dest: /opt/msp-monitoring/{{ client_name }}/process_monitoring.sh
+            mode: "0755"
+            owner: root
+            group: root
+            register: process_monitoring_script
 
-    - name: Schedule process monitoring
-      ansible.builtin.cron:
-        name: Process monitoring for {{ client_name }}
-        minute: "*/2"
-        job: /opt/msp-monitoring/{{ client_name }}/process_monitoring.sh
-        user: root
-        register: process_monitoring_cron
+        - name: Schedule process monitoring
+          ansible.builtin.cron:
+            name: Process monitoring for {{ client_name }}
+            minute: "*/2"
+            job: /opt/msp-monitoring/{{ client_name }}/process_monitoring.sh
+            user: root
+            register: process_monitoring_cron
 
     - name: Configure security monitoring
       when: monitoring_profiles[client_monitoring_profile].security_monitoring | default(false)
@@ -298,22 +298,22 @@
         - monitoring
         - security
       block:
-    - name: Create security monitoring script
-      ansible.builtin.copy:
-        content: "#!/bin/bash\n# Security monitoring for {{ client_name }}\n\nTEXTFILE_DIR=\"/var/lib/prometheus/textfile_collector\"\nCLIENT_NAME=\"{{ client_name }}\"\nLOGFILE=\"/var/log/msp/{{ client_name }}/security-events.log\"\n\n# Failed SSH login attempts (last 5 minutes)\nFAILED_SSH=$(journalctl --since \"5 minutes ago\" | grep -c \"Failed password\" || echo \"0\")\necho \"failed_ssh_attempts{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $FAILED_SSH\" > \"$TEXTFILE_DIR/security_monitoring.prom\"\n\n# Successful SSH logins (last 5 minutes)\nSUCCESSFUL_SSH=$(journalctl --since \"5 minutes ago\" | grep -c \"Accepted password\\|Accepted publickey\" || echo \"0\")\necho \"successful_ssh_logins{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $SUCCESSFUL_SSH\" >> \"$TEXTFILE_DIR/security_monitoring.prom\"\n\n# sudo usage (last 5 minutes)\nSUDO_USAGE=$(journalctl --since \"5 minutes ago\" | grep -c \"sudo:\" || echo \"0\")\necho \"sudo_usage_count{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $SUDO_USAGE\" >> \"$TEXTFILE_DIR/security_monitoring.prom\"\n\n# File permission changes (if auditd is running)\nif systemctl is-active auditd >/dev/null 2>&1; then\n  PERM_CHANGES=$(ausearch -ts recent -k access 2>/dev/null | grep -c \"type=SYSCALL\" || echo \"0\")\n  echo \"file_permission_changes{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $PERM_CHANGES\" >> \"$TEXTFILE_DIR/security_monitoring.prom\"\nfi\n\n# Log critical events\nif [ \"$FAILED_SSH\" -gt 10 ]; then\n  echo \"$(date): HIGH - Excessive failed SSH attempts: $FAILED_SSH\" >> \"$LOGFILE\"\n  logger -t \"SECURITY-ALERT\" \"Client: $CLIENT_NAME | Host: $(hostname) | HIGH - Excessive failed SSH attempts: $FAILED_SSH\"\nfi\n\necho \"security_monitoring_last_update{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $(date +%s)\" >> \"$TEXTFILE_DIR/security_monitoring.prom\"\n"
-        dest: /opt/msp-monitoring/{{ client_name }}/security_monitoring.sh
-        mode: "0755"
-        owner: root
-        group: root
-        register: security_monitoring_script
+        - name: Create security monitoring script
+          ansible.builtin.copy:
+            content: "#!/bin/bash\n# Security monitoring for {{ client_name }}\n\nTEXTFILE_DIR=\"/var/lib/prometheus/textfile_collector\"\nCLIENT_NAME=\"{{ client_name }}\"\nLOGFILE=\"/var/log/msp/{{ client_name }}/security-events.log\"\n\n# Failed SSH login attempts (last 5 minutes)\nFAILED_SSH=$(journalctl --since \"5 minutes ago\" | grep -c \"Failed password\" || echo \"0\")\necho \"failed_ssh_attempts{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $FAILED_SSH\" > \"$TEXTFILE_DIR/security_monitoring.prom\"\n\n# Successful SSH logins (last 5 minutes)\nSUCCESSFUL_SSH=$(journalctl --since \"5 minutes ago\" | grep -c \"Accepted password\\|Accepted publickey\" || echo \"0\")\necho \"successful_ssh_logins{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $SUCCESSFUL_SSH\" >> \"$TEXTFILE_DIR/security_monitoring.prom\"\n\n# sudo usage (last 5 minutes)\nSUDO_USAGE=$(journalctl --since \"5 minutes ago\" | grep -c \"sudo:\" || echo \"0\")\necho \"sudo_usage_count{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $SUDO_USAGE\" >> \"$TEXTFILE_DIR/security_monitoring.prom\"\n\n# File permission changes (if auditd is running)\nif systemctl is-active auditd >/dev/null 2>&1; then\n  PERM_CHANGES=$(ausearch -ts recent -k access 2>/dev/null | grep -c \"type=SYSCALL\" || echo \"0\")\n  echo \"file_permission_changes{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $PERM_CHANGES\" >> \"$TEXTFILE_DIR/security_monitoring.prom\"\nfi\n\n# Log critical events\nif [ \"$FAILED_SSH\" -gt 10 ]; then\n  echo \"$(date): HIGH - Excessive failed SSH attempts: $FAILED_SSH\" >> \"$LOGFILE\"\n  logger -t \"SECURITY-ALERT\" \"Client: $CLIENT_NAME | Host: $(hostname) | HIGH - Excessive failed SSH attempts: $FAILED_SSH\"\nfi\n\necho \"security_monitoring_last_update{client=\\\"$CLIENT_NAME\\\",host=\\\"$(hostname)\\\"} $(date +%s)\" >> \"$TEXTFILE_DIR/security_monitoring.prom\"\n"
+            dest: /opt/msp-monitoring/{{ client_name }}/security_monitoring.sh
+            mode: "0755"
+            owner: root
+            group: root
+            register: security_monitoring_script
 
-    - name: Schedule security monitoring
-      ansible.builtin.cron:
-        name: Security monitoring for {{ client_name }}
-        minute: "*/5"
-        job: /opt/msp-monitoring/{{ client_name }}/security_monitoring.sh
-        user: root
-        register: security_monitoring_cron
+        - name: Schedule security monitoring
+          ansible.builtin.cron:
+            name: Security monitoring for {{ client_name }}
+            minute: "*/5"
+            job: /opt/msp-monitoring/{{ client_name }}/security_monitoring.sh
+            user: root
+            register: security_monitoring_cron
 
     - name: Configure client-specific alerting
       when: monitoring_profiles[client_monitoring_profile].alerting
@@ -321,79 +321,79 @@
         - monitoring
         - alerting
       block:
-    - name: Create Prometheus alerting rules
-      ansible.builtin.copy:
-        content: |
-        groups:
-    - name: {{ client_name }}_alerts
-      rules:
-      # CPU Usage Alert
-      - alert: HighCPUUsage_{{ client_name }}
-      expr: system_cpu_usage_percent{client="{{ client_name }}"} > {{ client_monitoring_thresholds.cpu_warning }}
-      for: 5m
-      labels:
-      severity: warning
-      client: {{ client_name }}
-      annotations:
-      summary: "High CPU usage on {% raw %}{{ $labels.host }}{% endraw %}"
-      description: "CPU usage is {% raw %}{{ $value }}{% endraw %}% on {% raw %}{{ $labels.host }}{% endraw %} for client {{ client_name }}"
+        - name: Create Prometheus alerting rules
+          ansible.builtin.copy:
+            content: |
+              groups:
+              - name: {{ client_name }}_alerts
+                rules:
+                # CPU Usage Alert
+                - alert: HighCPUUsage_{{ client_name }}
+                  expr: system_cpu_usage_percent{client="{{ client_name }}"} > {{ client_monitoring_thresholds.cpu_warning }}
+                  for: 5m
+                  labels:
+                    severity: warning
+                    client: {{ client_name }}
+                  annotations:
+                    summary: "High CPU usage on {% raw %}{{ $labels.host }}{% endraw %}"
+                    description: "CPU usage is {% raw %}{{ $value }}{% endraw %}% on {% raw %}{{ $labels.host }}{% endraw %} for client {{ client_name }}"
 
-      - alert: CriticalCPUUsage_{{ client_name }}
-      expr: system_cpu_usage_percent{client="{{ client_name }}"} > {{ client_monitoring_thresholds.cpu_critical }}
-      for: 2m
-      labels:
-      severity: critical
-      client: {{ client_name }}
-      annotations:
-      summary: "Critical CPU usage on {% raw %}{{ $labels.host }}{% endraw %}"
-      description: "CPU usage is {% raw %}{{ $value }}{% endraw %}% on {% raw %}{{ $labels.host }}{% endraw %} for client {{ client_name }}"
+                - alert: CriticalCPUUsage_{{ client_name }}
+                  expr: system_cpu_usage_percent{client="{{ client_name }}"} > {{ client_monitoring_thresholds.cpu_critical }}
+                  for: 2m
+                  labels:
+                    severity: critical
+                    client: {{ client_name }}
+                  annotations:
+                    summary: "Critical CPU usage on {% raw %}{{ $labels.host }}{% endraw %}"
+                    description: "CPU usage is {% raw %}{{ $value }}{% endraw %}% on {% raw %}{{ $labels.host }}{% endraw %} for client {{ client_name }}"
 
-      # Memory Usage Alert
-      - alert: HighMemoryUsage_{{ client_name }}
-      expr: system_memory_usage_percent{client="{{ client_name }}"} > {{ client_monitoring_thresholds.memory_warning }}
-      for: 5m
-      labels:
-      severity: warning
-      client: {{ client_name }}
-      annotations:
-      summary: "High memory usage on {% raw %}{{ $labels.host }}{% endraw %}"
-      description: "Memory usage is {% raw %}{{ $value }}{% endraw %}% on {% raw %}{{ $labels.host }}{% endraw %} for client {{ client_name }}"
+                # Memory Usage Alert
+                - alert: HighMemoryUsage_{{ client_name }}
+                  expr: system_memory_usage_percent{client="{{ client_name }}"} > {{ client_monitoring_thresholds.memory_warning }}
+                  for: 5m
+                  labels:
+                    severity: warning
+                    client: {{ client_name }}
+                  annotations:
+                    summary: "High memory usage on {% raw %}{{ $labels.host }}{% endraw %}"
+                    description: "Memory usage is {% raw %}{{ $value }}{% endraw %}% on {% raw %}{{ $labels.host }}{% endraw %} for client {{ client_name }}"
 
-      # Disk Usage Alert
-      - alert: HighDiskUsage_{{ client_name }}
-      expr: system_disk_usage_percent{client="{{ client_name }}"} > {{ client_monitoring_thresholds.disk_warning }}
-      for: 10m
-      labels:
-      severity: warning
-      client: {{ client_name }}
-      annotations:
-      summary: "High disk usage on {% raw %}{{ $labels.host }}{% endraw %}"
-      description: "Disk usage is {% raw %}{{ $value }}{% endraw %}% on {% raw %}{{ $labels.host }}:{{ $labels.mountpoint }}{% endraw %} for client {{ client_name }}"
+                # Disk Usage Alert
+                - alert: HighDiskUsage_{{ client_name }}
+                  expr: system_disk_usage_percent{client="{{ client_name }}"} > {{ client_monitoring_thresholds.disk_warning }}
+                  for: 10m
+                  labels:
+                    severity: warning
+                    client: {{ client_name }}
+                  annotations:
+                    summary: "High disk usage on {% raw %}{{ $labels.host }}{% endraw %}"
+                    description: "Disk usage is {% raw %}{{ $value }}{% endraw %}% on {% raw %}{{ $labels.host }}:{{ $labels.mountpoint }}{% endraw %} for client {{ client_name }}"
 
-      # Service Down Alert
-      - alert: ServiceDown_{{ client_name }}
-      expr: service_status{client="{{ client_name }}"} == 0
-      for: 1m
-      labels:
-      severity: critical
-      client: {{ client_name }}
-      annotations:
-      summary: "Service down on {% raw %}{{ $labels.host }}{% endraw %}"
-      description: "Service {% raw %}{{ $labels.service }}{% endraw %} is down on {% raw %}{{ $labels.host }}{% endraw %} for client {{ client_name }}"
+                # Service Down Alert
+                - alert: ServiceDown_{{ client_name }}
+                  expr: service_status{client="{{ client_name }}"} == 0
+                  for: 1m
+                  labels:
+                    severity: critical
+                    client: {{ client_name }}
+                  annotations:
+                    summary: "Service down on {% raw %}{{ $labels.host }}{% endraw %}"
+                    description: "Service {% raw %}{{ $labels.service }}{% endraw %} is down on {% raw %}{{ $labels.host }}{% endraw %} for client {{ client_name }}"
 
-      # Security Alerts
-      - alert: ExcessiveFailedSSH_{{ client_name }}
-      expr: failed_ssh_attempts{client="{{ client_name }}"} > 10
-      for: 0m
-      labels:
-      severity: warning
-      client: {{ client_name }}
-      annotations:
-      summary: "Excessive failed SSH attempts on {% raw %}{{ $labels.host }}{% endraw %}"
-      description: "{% raw %}{{ $value }}{% endraw %} failed SSH attempts detected on {% raw %}{{ $labels.host }}{% endraw %} for client {{ client_name }}"
-      dest: /etc/prometheus/{{ client_name }}/alerting_rules.yml
-      mode: "0644"
-      register: alerting_rules
+                # Security Alerts
+                - alert: ExcessiveFailedSSH_{{ client_name }}
+                  expr: failed_ssh_attempts{client="{{ client_name }}"} > 10
+                  for: 0m
+                  labels:
+                    severity: warning
+                    client: {{ client_name }}
+                  annotations:
+                    summary: "Excessive failed SSH attempts on {% raw %}{{ $labels.host }}{% endraw %}"
+                    description: "{% raw %}{{ $value }}{% endraw %} failed SSH attempts detected on {% raw %}{{ $labels.host }}{% endraw %} for client {{ client_name }}"
+            dest: /etc/prometheus/{{ client_name }}/alerting_rules.yml
+            mode: "0644"
+            register: alerting_rules
 
     - name: Install monitoring dependencies
       tags:
@@ -418,23 +418,23 @@
         - reporting
       loop:
         - component: Node Exporter
-      status: "{{ 'INSTALLED' if node_exporter_status.changed else 'RUNNING' }}"
-      description: Prometheus metrics collection
-      - component: System Health Monitoring
-      status: "{{ 'CONFIGURED' if health_check_script.changed else 'ACTIVE' }}"
-      description: Custom system metrics
-      - component: Log Forwarding
-      status: "{{ 'CONFIGURED' if rsyslog_config.changed else 'ACTIVE' }}"
-      description: Centralized log collection
-      - component: Process Monitoring
-      status: "{{ 'CONFIGURED' if process_monitoring_script.changed else 'ACTIVE' }}"
-      description: Process health tracking
-      - component: Security Monitoring
-      status: "{{ 'CONFIGURED' if security_monitoring_script.changed else 'ACTIVE' }}"
-      description: Security event detection
-      - component: Alerting Rules
-      status: "{{ 'CONFIGURED' if alerting_rules.changed else 'ACTIVE' }}"
-      description: Client-specific alert thresholds
+          status: "{{ 'INSTALLED' if node_exporter_status.changed else 'RUNNING' }}"
+          description: Prometheus metrics collection
+        - component: System Health Monitoring
+          status: "{{ 'CONFIGURED' if health_check_script.changed else 'ACTIVE' }}"
+          description: Custom system metrics
+        - component: Log Forwarding
+          status: "{{ 'CONFIGURED' if rsyslog_config.changed else 'ACTIVE' }}"
+          description: Centralized log collection
+        - component: Process Monitoring
+          status: "{{ 'CONFIGURED' if process_monitoring_script.changed else 'ACTIVE' }}"
+          description: Process health tracking
+        - component: Security Monitoring
+          status: "{{ 'CONFIGURED' if security_monitoring_script.changed else 'ACTIVE' }}"
+          description: Security event detection
+        - component: Alerting Rules
+          status: "{{ 'CONFIGURED' if alerting_rules.changed else 'ACTIVE' }}"
+          description: Client-specific alert thresholds
       ansible.builtin.set_fact:
         monitoring_components: "{{ monitoring_components + [item] }}"
 
@@ -461,9 +461,9 @@
         - logging
         - skip_ansible_lint
       vars:
-      msp_log_server: "{{ msp_syslog_server | default('') }}"
-      msp_log_tag: MONITORING-SETUP
-      msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ monitoring_session_id }} | Profile: {{ client_monitoring_profile }} | Status: COMPLETED | Components: {{ monitoring_components | length }} | Endpoint: {{ 'ACCESSIBLE' if metrics_test.status == 200 else 'FAILED' }}"
+        msp_log_server: "{{ msp_syslog_server | default('') }}"
+        msp_log_tag: MONITORING-SETUP
+        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ monitoring_session_id }} | Profile: {{ client_monitoring_profile }} | Status: COMPLETED | Components: {{ monitoring_components | length }} | Endpoint: {{ 'ACCESSIBLE' if metrics_test.status == 200 else 'FAILED' }}"
       ansible.builtin.include_role:
         name: msp-logging
 
@@ -472,4 +472,3 @@
       ansible.builtin.service:
         name: rsyslog
         state: restarted
-

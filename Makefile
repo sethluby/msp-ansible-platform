@@ -218,6 +218,41 @@ validate: syntax-check lint ## Validate all configurations
 # Release and versioning
 release-check: test security-scan ## Check if ready for release
 	@echo "Checking release readiness..."
+
+# -----------------------------
+# Lab (vSphere) helpers (inventory-only)
+# Reuses global playbooks; inventory at ansible/inventory/lab-vsphere
+# -----------------------------
+.PHONY: lab-setup lab-lint lab-syntax lab-ping-linux lab-ping-windows lab-site
+
+LAB_INV := ansible/inventory/lab-vsphere/hosts.yml
+
+lab-setup: ## Prepare lab directories and install collections/roles
+	@echo "Preparing lab environment..."
+	@mkdir -p logs reports backups .ansible/tmp
+	ansible-galaxy install -r requirements.yml --force
+	@echo "✅ Lab environment ready (inventory: $(LAB_INV))"
+
+lab-lint: ## Lint only the lab inventory files
+	$(YAMLLINT) ansible/inventory/lab-vsphere
+
+lab-syntax: ## Syntax check global playbooks against lab inventory
+	@for playbook in ansible/playbooks/*.yml; do \
+		echo "Checking $$playbook..."; \
+		ansible-playbook -i $(LAB_INV) --syntax-check "$$playbook"; \
+	done
+
+lab-ping-linux: ## Test SSH connectivity to Linux clients
+	ansible -i $(LAB_INV) clients_linux -m ansible.builtin.ping
+
+lab-ping-windows: ## Test WinRM connectivity to Windows clients
+	ansible -i $(LAB_INV) clients_windows -m ansible.windows.win_ping
+
+lab-site: ## Run master site orchestration with lab inventory
+	ansible-playbook -i $(LAB_INV) ansible/playbooks/site.yml
+
+lab-provision-vsphere: ## Provision VMs on vCenter using lab inventory vars
+	ansible-playbook -i $(LAB_INV) ansible/playbooks/vsphere-provision.yml
 	@git status --porcelain | grep -q . && echo "❌ Uncommitted changes found" && exit 1 || true
 	@echo "✅ Ready for release"
 

@@ -27,8 +27,8 @@
         - validation
       ansible.builtin.assert:
         that:
-        - ansible_os_family in ['Debian', 'RedHat']
-        - ansible_distribution_major_version is version('7', '>=')
+          - ansible_os_family in ['Debian', 'RedHat']
+          - ansible_distribution_major_version is version('7', '>=')
         fail_msg: "Unsupported OS family or version: {{ ansible_os_family }} {{ ansible_distribution_major_version }}"
     - name: Create STIG audit directory structure
       tags:
@@ -127,48 +127,48 @@
         - syslog
         - V-238353
       block:
-    - name: Install rsyslog
-      ansible.builtin.package:
-        name: rsyslog
-        state: present
-    - name: Enable rsyslog service
-      ansible.builtin.systemd:
-        name: rsyslog
-        enabled: true
-        state: started
+        - name: Install rsyslog
+          ansible.builtin.package:
+            name: rsyslog
+            state: present
+        - name: Enable rsyslog service
+          ansible.builtin.systemd:
+            name: rsyslog
+            enabled: true
+            state: started
     - name: V-238354 - Install and configure firewall
       tags:
         - stig
         - firewall
         - V-238354
       block:
-    - name: Install UFW (Ubuntu/Debian)
-      ansible.builtin.package:
-        name: ufw
-        state: present
-        when: ansible_os_family == "Debian"
-    - name: Install firewalld (RHEL/CentOS)
-      ansible.builtin.package:
-        name: firewalld
-        state: present
-        when: ansible_os_family == "RedHat"
+        - name: Install UFW (Ubuntu/Debian)
+          ansible.builtin.package:
+            name: ufw
+            state: present
+          when: ansible_os_family == "Debian"
+        - name: Install firewalld (RHEL/CentOS)
+          ansible.builtin.package:
+            name: firewalld
+            state: present
+          when: ansible_os_family == "RedHat"
     - name: V-238360 - Install and enable AppArmor
       tags:
         - stig
         - apparmor
         - V-238360
       block:
-    - name: Install AppArmor
-      ansible.builtin.package:
-        name: apparmor
-        state: present
-        when: ansible_os_family == "Debian"
-    - name: Enable AppArmor service
-      ansible.builtin.systemd:
-        name: apparmor
-        enabled: true
-        state: started
-        when: ansible_os_family == "Debian"
+        - name: Install AppArmor
+          ansible.builtin.package:
+            name: apparmor
+            state: present
+          when: ansible_os_family == "Debian"
+        - name: Enable AppArmor service
+          ansible.builtin.systemd:
+            name: apparmor
+            enabled: true
+            state: started
+          when: ansible_os_family == "Debian"
     - name: Install additional security packages
       when: ansible_os_family == "Debian"
       tags:
@@ -282,29 +282,29 @@
         - banner
         - V-238214
       block:
-    - name: Create DoD warning banner
-      ansible.builtin.copy:
-        content: "{{ dod_warning_banner }}"
-        dest: /etc/issue.net
-        mode: "0644"
-        owner: root
-        group: root
-        backup: true
-    - name: Create local issue banner
-      ansible.builtin.copy:
-        content: "{{ dod_warning_banner }}\n"
-        dest: /etc/issue
-        mode: "0644"
-        owner: root
-        group: root
-        backup: true
-    - name: Configure SSH to use banner
-      ansible.builtin.lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: ^#?Banner
-        line: Banner /etc/issue.net
-        backup: true
-        notify: restart sshd
+        - name: Create DoD warning banner
+          ansible.builtin.copy:
+            content: "{{ dod_warning_banner }}"
+            dest: /etc/issue.net
+            mode: "0644"
+            owner: root
+            group: root
+            backup: true
+        - name: Create local issue banner
+          ansible.builtin.copy:
+            content: "{{ dod_warning_banner }}\n"
+            dest: /etc/issue
+            mode: "0644"
+            owner: root
+            group: root
+            backup: true
+        - name: Configure SSH to use banner
+          ansible.builtin.lineinfile:
+            path: /etc/ssh/sshd_config
+            regexp: ^#?Banner
+            line: Banner /etc/issue.net
+            backup: true
+          notify: restart sshd
 
     - name: V-238216 - Configure SSH MACs
       tags:
@@ -489,30 +489,30 @@
         - V-238250
         - V-238251
       block:
-    - name: Set audit log file permissions
-      ansible.builtin.file:
-        path: /var/log/audit
-        state: directory
-        mode: "0750"
-        owner: root
-        group: root
-        recurse: true
-    - name: Set audit log files permissions
-      ansible.builtin.shell: |
-        find /var/log/audit -type f -exec chmod 0600 {} \;
-        find /var/log/audit -type f -exec chown root:root {} \;
-        changed_when: false
-    - name: Configure audit log group
-      ansible.builtin.lineinfile:
-        path: /etc/audit/auditd.conf
-        regexp: ^#?log_group
-        line: log_group = root
-        backup: true
-    - name: Set audit configuration permissions
-      ansible.builtin.shell: |
-        chmod 0640 /etc/audit/audit*.{rules,conf} /etc/audit/rules.d/* 2>/dev/null || true
-        chown root:root /etc/audit/audit*.{rules,conf} /etc/audit/rules.d/* 2>/dev/null || true
-        changed_when: false
+        - name: Set audit log file permissions
+          ansible.builtin.file:
+            path: /var/log/audit
+            state: directory
+            mode: "0750"
+            owner: root
+            group: root
+            recurse: true
+        - name: Set audit log files permissions
+          ansible.builtin.shell: |
+            find /var/log/audit -type f -exec chmod 0600 {} \;
+            find /var/log/audit -type f -exec chown root:root {} \;
+          changed_when: false
+        - name: Configure audit log group
+          ansible.builtin.lineinfile:
+            path: /etc/audit/auditd.conf
+            regexp: ^#?log_group
+            line: log_group = root
+            backup: true
+        - name: Set audit configuration permissions
+          ansible.builtin.shell: |
+            chmod 0640 /etc/audit/audit*.{rules,conf} /etc/audit/rules.d/* 2>/dev/null || true
+            chown root:root /etc/audit/audit*.{rules,conf} /etc/audit/rules.d/* 2>/dev/null || true
+          changed_when: false
     - name: Configure comprehensive audit rules for privileged commands
       tags:
         - stig
@@ -547,28 +547,28 @@
         - V-238302
         - V-238303
       block:
-    - name: Set audit tools permissions
-      ansible.builtin.file:
-        path: /sbin/{{ item }}
-        mode: "0755"
-        owner: root
-        group: root
-      loop:
-        - auditctl
-        - auditd
-        - ausearch
-        - aureport
-        - autrace
-        - audispd
-        - augenrules
-      failed_when: false
-    - name: Configure AIDE for audit tools
-      ansible.builtin.blockinfile:
-        path: /etc/aide/aide.conf
-        block: "# STIG V-238303: Audit tools integrity\n/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/audispd p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512\n"
-        marker: "# {mark} STIG AUDIT TOOLS AIDE CONFIG"
-        create: true
-        backup: true
+        - name: Set audit tools permissions
+          ansible.builtin.file:
+            path: /sbin/{{ item }}
+            mode: "0755"
+            owner: root
+            group: root
+          loop:
+            - auditctl
+            - auditd
+            - ausearch
+            - aureport
+            - autrace
+            - audispd
+            - augenrules
+          failed_when: false
+        - name: Configure AIDE for audit tools
+          ansible.builtin.blockinfile:
+            path: /etc/aide/aide.conf
+            block: "# STIG V-238303: Audit tools integrity\n/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/audispd p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512\n"
+            marker: "# {mark} STIG AUDIT TOOLS AIDE CONFIG"
+            create: true
+            backup: true
 
     - name: V-238308 - Set timezone to UTC
       tags:
@@ -619,37 +619,37 @@
         - firewall
         - V-238328
       block:
-    - name: Configure UFW (Ubuntu/Debian)
-      when: ansible_os_family == "Debian"
-      block:
-    - name: Set UFW defaults
-      community.general.ufw:
-        direction: "{{ item.direction }}"
-        policy: "{{ item.policy }}"
-      loop:
-        - { direction: incoming, policy: deny }
-        - { direction: outgoing, policy: allow }
-    - name: Allow SSH
-      community.general.ufw:
-        rule: allow
-        name: OpenSSH
-    - name: Enable UFW
-      community.general.ufw:
-        state: enabled
-    - name: Configure firewalld (RHEL/CentOS)
-      when: ansible_os_family == "RedHat"
-      block:
-    - name: Start and enable firewalld
-      ansible.builtin.systemd:
-        name: firewalld
-        state: started
-        enabled: true
-    - name: Allow SSH through firewalld
-      ansible.posix.firewalld:
-        service: ssh
-        permanent: true
-        state: enabled
-        immediate: true
+        - name: Configure UFW (Ubuntu/Debian)
+          when: ansible_os_family == "Debian"
+          block:
+            - name: Set UFW defaults
+              community.general.ufw:
+                direction: "{{ item.direction }}"
+                policy: "{{ item.policy }}"
+              loop:
+                - { direction: incoming, policy: deny }
+                - { direction: outgoing, policy: allow }
+            - name: Allow SSH
+              community.general.ufw:
+                rule: allow
+                name: OpenSSH
+            - name: Enable UFW
+              community.general.ufw:
+                state: enabled
+        - name: Configure firewalld (RHEL/CentOS)
+          when: ansible_os_family == "RedHat"
+          block:
+            - name: Start and enable firewalld
+              ansible.builtin.systemd:
+                name: firewalld
+                state: started
+                enabled: true
+            - name: Allow SSH through firewalld
+              ansible.posix.firewalld:
+                service: ssh
+                permanent: true
+                state: enabled
+                immediate: true
     - name: V-238329 - Lock root account
       tags:
         - stig
@@ -713,61 +713,61 @@
         - V-238351
         - V-238352
       block:
-    - name: Set log file permissions
-      ansible.builtin.shell: |
-        find /var/log -perm /137 -type f -exec chmod 640 '{}' \; 2>/dev/null || true
-    - name: Configure /var/log directory
-      ansible.builtin.file:
-        path: /var/log
-        state: directory
-        mode: "0750"
-        owner: root
-        group: syslog
-    - name: Configure /var/log/syslog
-      ansible.builtin.file:
-        path: /var/log/syslog
-        mode: "0640"
-        owner: syslog
-        group: adm
-        failed_when: false
-    - name: Secure system command directories
-      ansible.builtin.shell: |
-        find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type d -exec chmod 755 '{}' \; 2>/dev/null || true
-        find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type d -exec chown root '{}' \; 2>/dev/null || true
-        find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type d -exec chgrp root '{}' \; 2>/dev/null || true
-    - name: Secure library files and directories
-      ansible.builtin.shell: |
-        find /lib /lib64 /usr/lib -perm /022 -type f -exec chmod 755 '{}' \; 2>/dev/null || true
-        find /lib /lib64 /usr/lib -perm /022 -type d -exec chmod 755 '{}' \; 2>/dev/null || true
-        find /lib /usr/lib /lib64 ! -user root -type f -exec chown root '{}' \; 2>/dev/null || true
-        find /lib /usr/lib /lib64 ! -user root -type d -exec chown root '{}' \; 2>/dev/null || true
-        find /lib /usr/lib /lib64 ! -group root -type f -exec chgrp root '{}' \; 2>/dev/null || true
-        find /lib /usr/lib /lib64 ! -group root -type d -exec chgrp root '{}' \; 2>/dev/null || true
-    - name: Secure system commands
-      ansible.builtin.shell: |
-        find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type f -exec chmod 755 '{}' \; 2>/dev/null || true
-        find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type f -exec chown root '{}' \; 2>/dev/null || true
-        find -L /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type f ! -perm /2000 -exec chgrp root '{}' \; 2>/dev/null || true
-        changed_when: false
+        - name: Set log file permissions
+          ansible.builtin.shell: |
+            find /var/log -perm /137 -type f -exec chmod 640 '{}' \; 2>/dev/null || true
+        - name: Configure /var/log directory
+          ansible.builtin.file:
+            path: /var/log
+            state: directory
+            mode: "0750"
+            owner: root
+            group: syslog
+        - name: Configure /var/log/syslog
+          ansible.builtin.file:
+            path: /var/log/syslog
+            mode: "0640"
+            owner: syslog
+            group: adm
+          failed_when: false
+        - name: Secure system command directories
+          ansible.builtin.shell: |
+            find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type d -exec chmod 755 '{}' \; 2>/dev/null || true
+            find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type d -exec chown root '{}' \; 2>/dev/null || true
+            find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type d -exec chgrp root '{}' \; 2>/dev/null || true
+        - name: Secure library files and directories
+          ansible.builtin.shell: |
+            find /lib /lib64 /usr/lib -perm /022 -type f -exec chmod 755 '{}' \; 2>/dev/null || true
+            find /lib /lib64 /usr/lib -perm /022 -type d -exec chmod 755 '{}' \; 2>/dev/null || true
+            find /lib /usr/lib /lib64 ! -user root -type f -exec chown root '{}' \; 2>/dev/null || true
+            find /lib /usr/lib /lib64 ! -user root -type d -exec chown root '{}' \; 2>/dev/null || true
+            find /lib /usr/lib /lib64 ! -group root -type f -exec chgrp root '{}' \; 2>/dev/null || true
+            find /lib /usr/lib /lib64 ! -group root -type d -exec chgrp root '{}' \; 2>/dev/null || true
+        - name: Secure system commands
+          ansible.builtin.shell: |
+            find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type f -exec chmod 755 '{}' \; 2>/dev/null || true
+            find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type f -exec chown root '{}' \; 2>/dev/null || true
+            find -L /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type f ! -perm /2000 -exec chgrp root '{}' \; 2>/dev/null || true
+          changed_when: false
     - name: V-238356 - Configure time synchronization
       tags:
         - stig
         - time
         - V-238356
       block:
-    - name: Configure chrony
-      ansible.builtin.copy:
-        content: "# STIG V-238356: Time synchronization\nserver tick.usno.navy.mil iburst maxpoll 16\nserver tock.usno.navy.mil iburst maxpoll 16\nserver ntp2.usno.navy.mil iburst maxpoll 16\ndriftfile /var/lib/chrony/drift\nmakestep 1.0 3\nrtcsync\nlogdir /var/log/chrony\n"
-        dest: /etc/chrony/chrony.conf
-        backup: true
-        when: ansible_os_family == "Debian"
-    - name: Configure chrony daemon options
-      ansible.builtin.lineinfile:
-        path: /etc/default/chrony
-        regexp: ^#?DAEMON_OPTS
-        line: DAEMON_OPTS="-R -F -1"
-        backup: true
-        when: ansible_os_family == "Debian"
+        - name: Configure chrony
+          ansible.builtin.copy:
+            content: "# STIG V-238356: Time synchronization\nserver tick.usno.navy.mil iburst maxpoll 16\nserver tock.usno.navy.mil iburst maxpoll 16\nserver ntp2.usno.navy.mil iburst maxpoll 16\ndriftfile /var/lib/chrony/drift\nmakestep 1.0 3\nrtcsync\nlogdir /var/log/chrony\n"
+            dest: /etc/chrony/chrony.conf
+            backup: true
+          when: ansible_os_family == "Debian"
+        - name: Configure chrony daemon options
+          ansible.builtin.lineinfile:
+            path: /etc/default/chrony
+            regexp: ^#?DAEMON_OPTS
+            line: DAEMON_OPTS="-R -F -1"
+            backup: true
+          when: ansible_os_family == "Debian"
 
     - name: V-238358 - Configure AIDE reporting
       tags:
@@ -835,14 +835,14 @@
         - system
         - V-238380
       block:
-    - name: Disable ctrl-alt-del target
-      ansible.builtin.systemd:
-        name: ctrl-alt-del.target
-        enabled: false
-        masked: true
-    - name: Reload systemd
-      ansible.builtin.systemd:
-        daemon_reload: true
+        - name: Disable ctrl-alt-del target
+          ansible.builtin.systemd:
+            name: ctrl-alt-del.target
+            enabled: false
+            masked: true
+        - name: Reload systemd
+          ansible.builtin.systemd:
+            daemon_reload: true
 
     - name: V-251504 - Remove null password option
       when: ansible_os_family == "Debian"

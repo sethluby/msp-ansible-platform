@@ -264,7 +264,10 @@
       community.general.mail:
         to: "{{ client_notification_email }}"
         subject: MSP Update Report - {{ client_name }} - {{ inventory_hostname }}
-        body: "Update session {{ update_session_id }} completed for {{ inventory_hostname }}.\nReboot required: {{ reboot_required }}\nLog file: /var/log/msp/{{ client_name }}/update-report-{{ update_session_id }}.log\n"
+        body: >-
+          Update session {{ update_session_id }} completed for {{ inventory_hostname }}.
+          Reboot required: {{ reboot_required }}
+          Log file: /var/log/msp/{{ client_name }}/update-report-{{ update_session_id }}.log
     - name: Reboot system if required
       when:
         - reboot_required | bool
