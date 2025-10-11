@@ -37,8 +37,8 @@
         - validation
       ansible.builtin.assert:
         that:
-        - client_name is defined
-        - client_stig_profile in stig_profiles
+          - client_name is defined
+          - client_stig_profile in stig_profiles
         fail_msg: "Invalid client_name or unsupported STIG profile: {{ client_stig_profile }}"
     - name: Create client STIG compliance log directory
       tags:
@@ -54,8 +54,12 @@
       tags:
         - logging
       failed_when: false
-      ansible.builtin.shell: >-
-      logger -n {{ msp_syslog_server }} -t "MSP-STIG" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ stig_session_id }} | Profile: {{ client_stig_profile }} | Status: STARTED"
+      ansible.builtin.shell:
+        cmd: |
+          set -o pipefail
+          logger -n {{ msp_syslog_server }} -t "MSP-STIG" \
+            "Client: {{ client_name }} | Host: {{ inventory_hostname }} | \
+            Session: {{ stig_session_id }} | Profile: {{ client_stig_profile }} | Status: STARTED"
   tasks:
     - name: STIG V-230221 - Configure system logon banner
       tags:
@@ -184,25 +188,26 @@
       ansible.builtin.blockinfile:
         path: /etc/audit/rules.d/50-msp-stig.rules
         create: true
+        mode: "0640"
         block: |
-        # Account management events (STIG V-230320)
-        -w /etc/passwd -p wa -k identity
-        -w /etc/group -p wa -k identity
-        -w /etc/gshadow -p wa -k identity
-        -w /etc/shadow -p wa -k identity
-        -w /etc/opasswd -p wa -k identity
-        -w /etc/security/opasswd -p wa -k identity
+          # Account management events (STIG V-230320)
+          -w /etc/passwd -p wa -k identity
+          -w /etc/group -p wa -k identity
+          -w /etc/gshadow -p wa -k identity
+          -w /etc/shadow -p wa -k identity
+          -w /etc/opasswd -p wa -k identity
+          -w /etc/security/opasswd -p wa -k identity
 
-        # Login/logout events
-        -w /var/log/lastlog -p wa -k logins
-        -w /var/run/faillock -p wa -k logins
+          # Login/logout events
+          -w /var/log/lastlog -p wa -k logins
+          -w /var/run/faillock -p wa -k logins
 
-        # Session initiation
-        -w /var/run/utmp -p wa -k session
-        -w /var/log/wtmp -p wa -k logins
-        -w /var/log/btmp -p wa -k logins
+          # Session initiation
+          -w /var/run/utmp -p wa -k session
+          -w /var/log/wtmp -p wa -k logins
+          -w /var/log/btmp -p wa -k logins
         marker: "# {mark} MSP STIG AUDIT RULES"
-        register: stig_audit_rules
+      register: stig_audit_rules
     - name: STIG V-230469 - Ensure no blank passwords
       tags:
         - stig
@@ -228,14 +233,14 @@
         line: "{{ item.line }}"
         backup: true
       loop:
-        - { regexp: '^#?minlen',         line: 'minlen = 15' }
-        - { regexp: '^#?minclass',       line: 'minclass = 4' }
-        - { regexp: '^#?maxrepeat',      line: 'maxrepeat = 3' }
-        - { regexp: '^#?maxclassrepeat', line: 'maxclassrepeat = 4' }
-        - { regexp: '^#?dcredit',        line: 'dcredit = -1' }
-        - { regexp: '^#?ucredit',        line: 'ucredit = -1' }
-        - { regexp: '^#?lcredit',        line: 'lcredit = -1' }
-        - { regexp: '^#?ocredit',        line: 'ocredit = -1' }
+        - {regexp: '^#?minlen', line: 'minlen = 15'}
+        - {regexp: '^#?minclass', line: 'minclass = 4'}
+        - {regexp: '^#?maxrepeat', line: 'maxrepeat = 3'}
+        - {regexp: '^#?maxclassrepeat', line: 'maxclassrepeat = 4'}
+        - {regexp: '^#?dcredit', line: 'dcredit = -1'}
+        - {regexp: '^#?ucredit', line: 'ucredit = -1'}
+        - {regexp: '^#?lcredit', line: 'lcredit = -1'}
+        - {regexp: '^#?ocredit', line: 'ocredit = -1'}
       register: stig_password_complexity
     - name: Apply client-specific STIG exceptions
       when: client_stig_exceptions | length > 0
@@ -298,7 +303,10 @@
       vars:
         msp_log_server: "{{ msp_syslog_server | default('') }}"
         msp_log_tag: MSP-STIG
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ stig_session_id }} | Status: COMPLETED | Findings: {{ compliance_findings | length }}"
+        msp_log_message: >-
+          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+          Session: {{ stig_session_id }} | Status: COMPLETED |
+          Findings: {{ compliance_findings | length }}
       ansible.builtin.include_role:
         name: msp-logging
   handlers:
