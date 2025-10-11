@@ -31,8 +31,7 @@
   tasks:
     - name: Display onboarding summary
       ansible.builtin.debug:
-      msg: "🚀 MSP Platform Client Onboarding\n================================\nClient: {{ client_name | title }}\nDomain: {{ client_domain }}\nTier: {{ client_tier | title }}\nAdmin:
-      {{ client_admin_email }}\nVPN: {{ 'Enabled' if (vpn_enabled | bool) else 'Disabled' }}\nID: {{ client_id }}\nTimestamp: {{ onboarding_timestamp }}\n"
+        msg: "🚀 MSP Platform Client Onboarding\n================================\nClient: {{ client_name | title }}\nDomain: {{ client_domain }}\nTier: {{ client_tier | title }}\nAdmin: {{ client_admin_email }}\nVPN: {{ 'Enabled' if (vpn_enabled | bool) else 'Disabled' }}\nID: {{ client_id }}\nTimestamp: {{ onboarding_timestamp }}\n"
     - name: Validate prerequisites
       tags:
       - validation
@@ -43,34 +42,34 @@
       - onboarding
       - setup
       vars:
-      generate_ssh_keys: true
-      backup_enabled: true
-      monitoring_enabled: true
-      notification_enabled: true
+        generate_ssh_keys: true
+        backup_enabled: true
+        monitoring_enabled: true
+        notification_enabled: true
       ansible.builtin.include_role:
-      name: client-onboarding
+        name: client-onboarding
     - name: Initialize compliance frameworks
       when: compliance_frameworks is defined
       tags:
       - compliance
       - initialization
       vars:
-      target_compliance:
-      - CIS Benchmarks
-      - "{{ 'CMMC Level 2' if client_tier in ['professional', 'enterprise'] else '' }}"
-      - "{{ 'DISA STIG' if client_tier == 'enterprise' else '' }}"
-      compliance_mode: initialize
+        target_compliance:
+          - CIS Benchmarks
+          - "{{ 'CMMC Level 2' if client_tier in ['professional', 'enterprise'] else '' }}"
+          - "{{ 'DISA STIG' if client_tier == 'enterprise' else '' }}"
+        compliance_mode: initialize
       ansible.builtin.include_role:
-      name: compliance-frameworks
+        name: compliance-frameworks
     - name: Deploy MSP infrastructure components
       tags:
       - msp
       - infrastructure
       vars:
-      deployment_mode: client_focused
-      client_specific: true
+        deployment_mode: client_focused
+        client_specific: true
       ansible.builtin.include_role:
-      name: msp-infrastructure
+        name: msp-infrastructure
     - name: Configure monitoring and alerting
       when: monitoring_enabled | default(true)
       tags:
@@ -92,17 +91,17 @@
       - documentation
       - summary
       vars:
-      onboarding_status: COMPLETED
-      next_steps:
-      - Review generated documentation
-      - Test VPN connectivity
-      - Add client hosts to inventory
-      - Run initial compliance scan
-      - Configure monitoring alerts
+        onboarding_status: COMPLETED
+        next_steps:
+          - Review generated documentation
+          - Test VPN connectivity
+          - Add client hosts to inventory
+          - Run initial compliance scan
+          - Configure monitoring alerts
       ansible.builtin.template:
-      src: ../roles/client-onboarding/templates/onboarding_report.md.j2
-      dest: /opt/msp-platform/clients/{{ client_name }}/ONBOARDING_REPORT.md
-      mode: "0644"
+        src: ../roles/client-onboarding/templates/onboarding_report.md.j2
+        dest: /opt/msp-platform/clients/{{ client_name }}/ONBOARDING_REPORT.md
+        mode: "0644"
     - name: Send completion notifications
       when: notification_enabled | default(true)
       tags:
@@ -123,17 +122,13 @@
   post_tasks:
     - name: Display completion message
       ansible.builtin.debug:
-      msg: "✅ Client {{ client_name }} onboarding completed successfully!\n\n📁 Configuration Directory: /opt/msp-platform/clients/{{ client_name }}\n🔐 SSH Key: /opt/msp-platform/clients/{{
-      client_name }}/keys/{{ client_name }}_id_ed25519\n{% if vpn_enabled | bool %}🌐 VPN Config: /opt/msp-platform/clients/{{ client_name }}/certificates/{{ client_name }}-vpn.conf{%
-      endif %}\n📊 Onboarding Report: /opt/msp-platform/clients/{{ client_name }}/ONBOARDING_REPORT.md\n\nNext Steps:\n1. Review the onboarding report\n{% if vpn_enabled | bool %}2.
-      Deploy VPN configuration to client network{% endif %}\n3. Add client hosts to inventory\n4. Run initial security and compliance scans\n5. Configure monitoring and alerting\n
-      \nSupport: {{ client_admin_email }}\nMSP Platform: {{ msp_ansible_tower_url }}\n"
+        msg: "✅ Client {{ client_name }} onboarding completed successfully!\n\n📁 Configuration Directory: /opt/msp-platform/clients/{{ client_name }}\n🔐 SSH Key: /opt/msp-platform/clients/{{ client_name }}/keys/{{ client_name }}_id_ed25519\n{% if vpn_enabled | bool %}🌐 VPN Config: /opt/msp-platform/clients/{{ client_name }}/certificates/{{ client_name }}-vpn.conf{% endif %}\n📊 Onboarding Report: /opt/msp-platform/clients/{{ client_name }}/ONBOARDING_REPORT.md\n\nNext Steps:\n1. Review the onboarding report\n{% if vpn_enabled | bool %}2. Deploy VPN configuration to client network{% endif %}\n3. Add client hosts to inventory\n4. Run initial security and compliance scans\n5. Configure monitoring and alerting\n\nSupport: {{ client_admin_email }}\nMSP Platform: {{ msp_ansible_tower_url }}\n"
     - name: Log onboarding completion
       tags:
       - logging
       - audit
       ansible.builtin.lineinfile:
-      path: /var/log/msp-platform/onboarding.log
-      line: "{{ onboarding_timestamp }} | {{ client_name }} | {{ client_tier }} | {{ client_admin_email }} | SUCCESS"
-      create: true
-      mode: "0644"
+        path: /var/log/msp-platform/onboarding.log
+        line: "{{ onboarding_timestamp }} | {{ client_name }} | {{ client_tier }} | {{ client_admin_email }} | SUCCESS"
+        create: true
+        mode: "0644"
