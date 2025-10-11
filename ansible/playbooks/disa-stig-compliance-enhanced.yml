@@ -24,20 +24,20 @@
   pre_tasks:
     - name: Validate STIG compliance prerequisites
       tags:
-      - validation
+        - validation
       ansible.builtin.assert:
         that:
-          - ansible_os_family in ['Debian', 'RedHat']
-          - ansible_distribution_major_version is version('7', '>=')
+        - ansible_os_family in ['Debian', 'RedHat']
+        - ansible_distribution_major_version is version('7', '>=')
         fail_msg: "Unsupported OS family or version: {{ ansible_os_family }} {{ ansible_distribution_major_version }}"
     - name: Create STIG audit directory structure
       tags:
-      - logging
+        - logging
       loop:
-      - audit
-      - findings
-      - remediation
-      - reports
+        - audit
+        - findings
+        - remediation
+        - reports
       ansible.builtin.file:
         path: /var/log/stig-audit/{{ item }}
         state: directory
@@ -46,7 +46,7 @@
         group: root
     - name: Create STIG audit rules file
       tags:
-      - audit
+        - audit
       ansible.builtin.file:
         path: /etc/audit/rules.d/99-stig-audit.rules
         state: touch
@@ -56,9 +56,9 @@
   tasks:
     - name: Update system packages (prerequisite)
       tags:
-      - updates
-      - packages
-      - skip_ansible_lint
+        - updates
+        - packages
+        - skip_ansible_lint
       register: stig_system_update
       ansible.builtin.package:
         name: "*"
@@ -67,36 +67,36 @@
     - name: V-238200 - Install session lock capability (vlock)
       when: ansible_os_family == "Debian"
       tags:
-      - stig
-      - session
-      - V-238200
+        - stig
+        - session
+        - V-238200
       register: stig_v238200
       ansible.builtin.package:
         name: vlock
         state: present
     - name: V-238371 - Install file integrity monitoring (AIDE)
       tags:
-      - stig
-      - integrity
-      - V-238371
+        - stig
+        - integrity
+        - V-238371
       register: stig_v238371
       ansible.builtin.package:
         name: aide
         state: present
     - name: V-238298 - Install auditd package
       tags:
-      - stig
-      - audit
-      - V-238298
+        - stig
+        - audit
+        - V-238298
       register: stig_v238298_install
       ansible.builtin.package:
         name: auditd
         state: present
     - name: V-238298 - Enable auditd service
       tags:
-      - stig
-      - audit
-      - V-238298
+        - stig
+        - audit
+        - V-238298
       register: stig_v238298_service
       ansible.builtin.systemd:
         name: auditd
@@ -105,87 +105,87 @@
         daemon_reload: true
     - name: V-238326 - Remove telnet package
       tags:
-      - stig
-      - telnet
-      - V-238326
+        - stig
+        - telnet
+        - V-238326
       register: stig_v238326
       ansible.builtin.package:
         name: telnetd
         state: absent
     - name: V-238327 - Remove rsh-server package
       tags:
-      - stig
-      - rsh
-      - V-238327
+        - stig
+        - rsh
+        - V-238327
       register: stig_v238327
       ansible.builtin.package:
         name: rsh-server
         state: absent
     - name: V-238353 - Install and enable rsyslog
       tags:
-      - stig
-      - syslog
-      - V-238353
+        - stig
+        - syslog
+        - V-238353
       block:
-        - name: Install rsyslog
-          ansible.builtin.package:
-            name: rsyslog
-            state: present
-        - name: Enable rsyslog service
-          ansible.builtin.systemd:
-            name: rsyslog
-            enabled: true
-            state: started
+    - name: Install rsyslog
+      ansible.builtin.package:
+        name: rsyslog
+        state: present
+    - name: Enable rsyslog service
+      ansible.builtin.systemd:
+        name: rsyslog
+        enabled: true
+        state: started
     - name: V-238354 - Install and configure firewall
       tags:
-      - stig
-      - firewall
-      - V-238354
+        - stig
+        - firewall
+        - V-238354
       block:
-        - name: Install UFW (Ubuntu/Debian)
-          ansible.builtin.package:
-            name: ufw
-            state: present
-          when: ansible_os_family == "Debian"
-        - name: Install firewalld (RHEL/CentOS)
-          ansible.builtin.package:
-            name: firewalld
-            state: present
-          when: ansible_os_family == "RedHat"
+    - name: Install UFW (Ubuntu/Debian)
+      ansible.builtin.package:
+        name: ufw
+        state: present
+        when: ansible_os_family == "Debian"
+    - name: Install firewalld (RHEL/CentOS)
+      ansible.builtin.package:
+        name: firewalld
+        state: present
+        when: ansible_os_family == "RedHat"
     - name: V-238360 - Install and enable AppArmor
       tags:
-      - stig
-      - apparmor
-      - V-238360
+        - stig
+        - apparmor
+        - V-238360
       block:
-        - name: Install AppArmor
-          ansible.builtin.package:
-            name: apparmor
-            state: present
-          when: ansible_os_family == "Debian"
-        - name: Enable AppArmor service
-          ansible.builtin.systemd:
-            name: apparmor
-            enabled: true
-            state: started
-          when: ansible_os_family == "Debian"
+    - name: Install AppArmor
+      ansible.builtin.package:
+        name: apparmor
+        state: present
+        when: ansible_os_family == "Debian"
+    - name: Enable AppArmor service
+      ansible.builtin.systemd:
+        name: apparmor
+        enabled: true
+        state: started
+        when: ansible_os_family == "Debian"
     - name: Install additional security packages
       when: ansible_os_family == "Debian"
       tags:
-      - stig
-      - packages
+        - stig
+        - packages
       register: stig_additional_packages
       loop:
-      - libpam-pwquality
-      - chrony
+        - libpam-pwquality
+        - chrony
       ansible.builtin.package:
         name: "{{ item }}"
         state: present
     - name: V-238202 - Set minimum password lifetime to 1 day
       tags:
-      - stig
-      - passwords
-      - V-238202
+        - stig
+        - passwords
+        - V-238202
       register: stig_v238202
       ansible.builtin.lineinfile:
         path: /etc/login.defs
@@ -194,9 +194,9 @@
         backup: true
     - name: V-238203 - Set maximum password lifetime to 60 days
       tags:
-      - stig
-      - passwords
-      - V-238203
+        - stig
+        - passwords
+        - V-238203
       register: stig_v238203
       ansible.builtin.lineinfile:
         path: /etc/login.defs
@@ -205,9 +205,9 @@
         backup: true
     - name: V-238207 - Configure session timeout
       tags:
-      - stig
-      - session
-      - V-238207
+        - stig
+        - session
+        - V-238207
       register: stig_v238207
       ansible.builtin.copy:
         content: "# MSP STIG V-238207: Session timeout\nTMOUT=600\nreadonly TMOUT\nexport TMOUT\n"
@@ -217,12 +217,12 @@
         group: root
     - name: V-238208 - Remove NOPASSWD from sudoers
       tags:
-      - stig
-      - sudo
-      - V-238208
+        - stig
+        - sudo
+        - V-238208
       register: stig_v238208
       loop:
-      - /etc/sudoers
+        - /etc/sudoers
       ansible.builtin.replace:
         path: "{{ item }}"
         regexp: NOPASSWD
@@ -230,9 +230,9 @@
         backup: true
     - name: V-238209 - Set default umask to 077
       tags:
-      - stig
-      - umask
-      - V-238209
+        - stig
+        - umask
+        - V-238209
       register: stig_v238209
       ansible.builtin.lineinfile:
         path: /etc/login.defs
@@ -241,9 +241,9 @@
         backup: true
     - name: V-238211 - Enable SSH PAM authentication
       tags:
-      - stig
-      - ssh
-      - V-238211
+        - stig
+        - ssh
+        - V-238211
       register: stig_v238211
       notify: restart sshd
       ansible.builtin.lineinfile:
@@ -253,9 +253,9 @@
         backup: true
     - name: V-238212 - Set SSH ClientAliveCountMax to 1
       tags:
-      - stig
-      - ssh
-      - V-238212
+        - stig
+        - ssh
+        - V-238212
       register: stig_v238212
       notify: restart sshd
       ansible.builtin.lineinfile:
@@ -265,9 +265,9 @@
         backup: true
     - name: V-238213 - Set SSH ClientAliveInterval to 600
       tags:
-      - stig
-      - ssh
-      - V-238213
+        - stig
+        - ssh
+        - V-238213
       register: stig_v238213
       notify: restart sshd
       ansible.builtin.lineinfile:
@@ -277,41 +277,41 @@
         backup: true
     - name: V-238214 - Configure SSH banner
       tags:
-      - stig
-      - ssh
-      - banner
-      - V-238214
+        - stig
+        - ssh
+        - banner
+        - V-238214
       block:
-        - name: Create DoD warning banner
-          ansible.builtin.copy:
-            content: "{{ dod_warning_banner }}"
-            dest: /etc/issue.net
-            mode: "0644"
-            owner: root
-            group: root
-            backup: true
-        - name: Create local issue banner
-          ansible.builtin.copy:
-            content: "{{ dod_warning_banner }}\n"
-            dest: /etc/issue
-            mode: "0644"
-            owner: root
-            group: root
-            backup: true
-        - name: Configure SSH to use banner
-          ansible.builtin.lineinfile:
-            path: /etc/ssh/sshd_config
-            regexp: ^#?Banner
-            line: Banner /etc/issue.net
-            backup: true
-          notify: restart sshd
+    - name: Create DoD warning banner
+      ansible.builtin.copy:
+        content: "{{ dod_warning_banner }}"
+        dest: /etc/issue.net
+        mode: "0644"
+        owner: root
+        group: root
+        backup: true
+    - name: Create local issue banner
+      ansible.builtin.copy:
+        content: "{{ dod_warning_banner }}\n"
+        dest: /etc/issue
+        mode: "0644"
+        owner: root
+        group: root
+        backup: true
+    - name: Configure SSH to use banner
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: ^#?Banner
+        line: Banner /etc/issue.net
+        backup: true
+        notify: restart sshd
 
     - name: V-238216 - Configure SSH MACs
       tags:
-      - stig
-      - ssh
-      - macs
-      - V-238216
+        - stig
+        - ssh
+        - macs
+        - V-238216
       register: stig_v238216
       notify: restart sshd
       ansible.builtin.lineinfile:
@@ -321,9 +321,9 @@
         backup: true
     - name: V-238218 - Configure SSH security settings
       tags:
-      - stig
-      - ssh
-      - V-238218
+        - stig
+        - ssh
+        - V-238218
       register: stig_v238218
       notify: restart sshd
       loop:
@@ -338,10 +338,10 @@
         backup: true
     - name: V-238219 - Disable SSH X11 forwarding
       tags:
-      - stig
-      - ssh
-      - x11
-      - V-238219
+        - stig
+        - ssh
+        - x11
+        - V-238219
       register: stig_v238219
       notify: restart sshd
       ansible.builtin.lineinfile:
@@ -351,10 +351,10 @@
         backup: true
     - name: V-238220 - Configure SSH X11UseLocalhost
       tags:
-      - stig
-      - ssh
-      - x11
-      - V-238220
+        - stig
+        - ssh
+        - x11
+        - V-238220
       register: stig_v238220
       notify: restart sshd
       ansible.builtin.lineinfile:
@@ -364,17 +364,17 @@
         backup: true
     - name: V-238221-V-238228 - Configure password complexity
       tags:
-      - stig
-      - passwords
-      - complexity
-      - V-238221
-      - V-238222
-      - V-238223
-      - V-238224
-      - V-238225
-      - V-238226
-      - V-238227
-      - V-238228
+        - stig
+        - passwords
+        - complexity
+        - V-238221
+        - V-238222
+        - V-238223
+        - V-238224
+        - V-238225
+        - V-238226
+        - V-238227
+        - V-238228
       register: stig_v238221_228
       loop:
         - regexp: ^#?ucredit
@@ -401,10 +401,10 @@
     - name: V-238234 - Configure password history
       when: ansible_os_family == "Debian"
       tags:
-      - stig
-      - passwords
-      - history
-      - V-238234
+        - stig
+        - passwords
+        - history
+        - V-238234
       register: stig_v238234
       ansible.builtin.replace:
         path: /etc/pam.d/common-password
@@ -413,10 +413,10 @@
         backup: true
     - name: V-238235 - Configure account lockout
       tags:
-      - stig
-      - passwords
-      - lockout
-      - V-238235
+        - stig
+        - passwords
+        - lockout
+        - V-238235
       register: stig_v238235
       loop:
         - regexp: ^#?audit
@@ -437,10 +437,10 @@
     - name: V-238237 - Configure login delay
       when: ansible_os_family == "Debian"
       tags:
-      - stig
-      - authentication
-      - delay
-      - V-238237
+        - stig
+        - authentication
+        - delay
+        - V-238237
       register: stig_v238237
       ansible.builtin.replace:
         path: /etc/pam.d/common-auth
@@ -449,14 +449,14 @@
         backup: true
     - name: V-238238-V-238242 - Configure file monitoring audit rules
       tags:
-      - stig
-      - audit
-      - files
-      - V-238238
-      - V-238239
-      - V-238240
-      - V-238241
-      - V-238242
+        - stig
+        - audit
+        - files
+        - V-238238
+        - V-238239
+        - V-238240
+        - V-238241
+        - V-238242
       register: stig_v238238_242
       ansible.builtin.blockinfile:
         path: /etc/audit/rules.d/99-stig-audit.rules
@@ -466,10 +466,10 @@
         backup: true
     - name: V-238244 - Configure audit failure action
       tags:
-      - stig
-      - audit
-      - failure
-      - V-238244
+        - stig
+        - audit
+        - failure
+        - V-238244
       register: stig_v238244
       ansible.builtin.lineinfile:
         path: /etc/audit/auditd.conf
@@ -478,46 +478,46 @@
         backup: true
     - name: V-238245-V-238251 - Configure audit log security
       tags:
-      - stig
-      - audit
-      - permissions
-      - V-238245
-      - V-238246
-      - V-238247
-      - V-238248
-      - V-238249
-      - V-238250
-      - V-238251
+        - stig
+        - audit
+        - permissions
+        - V-238245
+        - V-238246
+        - V-238247
+        - V-238248
+        - V-238249
+        - V-238250
+        - V-238251
       block:
-        - name: Set audit log file permissions
-          ansible.builtin.file:
-            path: /var/log/audit
-            state: directory
-            mode: "0750"
-            owner: root
-            group: root
-            recurse: true
-        - name: Set audit log files permissions
-          ansible.builtin.shell: |
-            find /var/log/audit -type f -exec chmod 0600 {} \;
-            find /var/log/audit -type f -exec chown root:root {} \;
-          changed_when: false
-        - name: Configure audit log group
-          ansible.builtin.lineinfile:
-            path: /etc/audit/auditd.conf
-            regexp: ^#?log_group
-            line: log_group = root
-            backup: true
-        - name: Set audit configuration permissions
-          ansible.builtin.shell: |
-            chmod 0640 /etc/audit/audit*.{rules,conf} /etc/audit/rules.d/* 2>/dev/null || true
-            chown root:root /etc/audit/audit*.{rules,conf} /etc/audit/rules.d/* 2>/dev/null || true
-          changed_when: false
+    - name: Set audit log file permissions
+      ansible.builtin.file:
+        path: /var/log/audit
+        state: directory
+        mode: "0750"
+        owner: root
+        group: root
+        recurse: true
+    - name: Set audit log files permissions
+      ansible.builtin.shell: |
+        find /var/log/audit -type f -exec chmod 0600 {} \;
+        find /var/log/audit -type f -exec chown root:root {} \;
+        changed_when: false
+    - name: Configure audit log group
+      ansible.builtin.lineinfile:
+        path: /etc/audit/auditd.conf
+        regexp: ^#?log_group
+        line: log_group = root
+        backup: true
+    - name: Set audit configuration permissions
+      ansible.builtin.shell: |
+        chmod 0640 /etc/audit/audit*.{rules,conf} /etc/audit/rules.d/* 2>/dev/null || true
+        chown root:root /etc/audit/audit*.{rules,conf} /etc/audit/rules.d/* 2>/dev/null || true
+        changed_when: false
     - name: Configure comprehensive audit rules for privileged commands
       tags:
-      - stig
-      - audit
-      - comprehensive
+        - stig
+        - audit
+        - comprehensive
       register: stig_comprehensive_audit
       ansible.builtin.blockinfile:
         path: /etc/audit/rules.d/99-stig-audit.rules
@@ -526,10 +526,10 @@
         backup: true
     - name: V-238299 - Enable audit at boot
       tags:
-      - stig
-      - boot
-      - audit
-      - V-238299
+        - stig
+        - boot
+        - audit
+        - V-238299
       register: stig_v238299
       notify: update grub
       ansible.builtin.lineinfile:
@@ -539,50 +539,50 @@
         backup: true
     - name: V-238300-V-238303 - Secure audit tools
       tags:
-      - stig
-      - audit
-      - tools
-      - V-238300
-      - V-238301
-      - V-238302
-      - V-238303
+        - stig
+        - audit
+        - tools
+        - V-238300
+        - V-238301
+        - V-238302
+        - V-238303
       block:
-        - name: Set audit tools permissions
-          ansible.builtin.file:
-            path: /sbin/{{ item }}
-            mode: "0755"
-            owner: root
-            group: root
-          loop:
-            - auditctl
-            - auditd
-            - ausearch
-            - aureport
-            - autrace
-            - audispd
-            - augenrules
-          failed_when: false
-        - name: Configure AIDE for audit tools
-          ansible.builtin.blockinfile:
-            path: /etc/aide/aide.conf
-            block: "# STIG V-238303: Audit tools integrity\n/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/audispd p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512\n"
-            marker: "# {mark} STIG AUDIT TOOLS AIDE CONFIG"
-            create: true
-            backup: true
+    - name: Set audit tools permissions
+      ansible.builtin.file:
+        path: /sbin/{{ item }}
+        mode: "0755"
+        owner: root
+        group: root
+      loop:
+        - auditctl
+        - auditd
+        - ausearch
+        - aureport
+        - autrace
+        - audispd
+        - augenrules
+      failed_when: false
+    - name: Configure AIDE for audit tools
+      ansible.builtin.blockinfile:
+        path: /etc/aide/aide.conf
+        block: "# STIG V-238303: Audit tools integrity\n/sbin/auditctl p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/auditd p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/ausearch p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/aureport p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/autrace p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/audispd p+i+n+u+g+s+b+acl+xattrs+sha512\n/sbin/augenrules p+i+n+u+g+s+b+acl+xattrs+sha512\n"
+        marker: "# {mark} STIG AUDIT TOOLS AIDE CONFIG"
+        create: true
+        backup: true
 
     - name: V-238308 - Set timezone to UTC
       tags:
-      - stig
-      - time
-      - V-238308
+        - stig
+        - time
+        - V-238308
       register: stig_v238308
       community.general.timezone:
         name: UTC
     - name: V-238323 - Configure session limits
       tags:
-      - stig
-      - sessions
-      - V-238323
+        - stig
+        - sessions
+        - V-238323
       register: stig_v238323
       ansible.builtin.lineinfile:
         path: /etc/security/limits.conf
@@ -590,23 +590,23 @@
         backup: true
     - name: V-238324 - Configure remote access monitoring
       tags:
-      - stig
-      - monitoring
-      - V-238324
+        - stig
+        - monitoring
+        - V-238324
       register: stig_v238324
       loop:
-      - auth.*,authpriv.* /var/log/secure
-      - daemon.* /var/log/messages
+        - auth.*,authpriv.* /var/log/secure
+        - daemon.* /var/log/messages
       ansible.builtin.lineinfile:
         path: /etc/rsyslog.d/50-default.conf
         line: "{{ item }}"
         backup: true
     - name: V-238325 - Configure password encryption
       tags:
-      - stig
-      - passwords
-      - encryption
-      - V-238325
+        - stig
+        - passwords
+        - encryption
+        - V-238325
       register: stig_v238325
       ansible.builtin.lineinfile:
         path: /etc/login.defs
@@ -615,63 +615,65 @@
         backup: true
     - name: V-238328 - Configure firewall rules
       tags:
-      - stig
-      - firewall
-      - V-238328
+        - stig
+        - firewall
+        - V-238328
       block:
-        - name: Configure UFW (Ubuntu/Debian)
-          when: ansible_os_family == "Debian"
-          block:
-            - name: Set UFW defaults
-              community.general.ufw:
-                direction: "{{ item.direction }}"
-                policy: "{{ item.policy }}"
-              loop:
-                - { direction: incoming, policy: deny }
-                - { direction: outgoing, policy: allow }
-            - name: Allow SSH
-              community.general.ufw:
-                rule: allow
-                name: OpenSSH
-            - name: Enable UFW
-              community.general.ufw:
-                state: enabled
-        - name: Configure firewalld (RHEL/CentOS)
-          when: ansible_os_family == "RedHat"
-          block:
-            - name: Start and enable firewalld
-              ansible.builtin.systemd:
-                name: firewalld
-                state: started
-                enabled: true
-            - name: Allow SSH through firewalld
-              ansible.posix.firewalld:
-                service: ssh
-                permanent: true
-                state: enabled
-                immediate: true
+    - name: Configure UFW (Ubuntu/Debian)
+      when: ansible_os_family == "Debian"
+      block:
+    - name: Set UFW defaults
+      community.general.ufw:
+        direction: "{{ item.direction }}"
+        policy: "{{ item.policy }}"
+      loop:
+        - { direction: incoming, policy: deny }
+        - { direction: outgoing, policy: allow }
+    - name: Allow SSH
+      community.general.ufw:
+        rule: allow
+        name: OpenSSH
+    - name: Enable UFW
+      community.general.ufw:
+        state: enabled
+    - name: Configure firewalld (RHEL/CentOS)
+      when: ansible_os_family == "RedHat"
+      block:
+    - name: Start and enable firewalld
+      ansible.builtin.systemd:
+        name: firewalld
+        state: started
+        enabled: true
+    - name: Allow SSH through firewalld
+      ansible.posix.firewalld:
+        service: ssh
+        permanent: true
+        state: enabled
+        immediate: true
     - name: V-238329 - Lock root account
       tags:
-      - stig
-      - root
-      - V-238329
+        - stig
+        - root
+        - V-238329
       register: stig_v238329
       ansible.builtin.user:
         name: root
         password_lock: true
     - name: V-238332 - Set sticky bit on public directories
       tags:
-      - stig
-      - directories
-      - V-238332
+        - stig
+        - directories
+        - V-238332
       register: stig_v238332
       changed_when: false
-      ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nfind / -type d -perm -002 ! -perm -1000 -exec chmod +t '{}' \\; 2>/dev/null || true\n"
+      ansible.builtin.shell: |
+        set -o pipefail
+        find / -type d -perm -002 ! -perm -1000 -exec chmod +t '{}' \; 2>/dev/null || true
     - name: V-238333 - Enable TCP syncookies
       tags:
-      - stig
-      - network
-      - V-238333
+        - stig
+        - network
+        - V-238333
       register: stig_v238333
       ansible.posix.sysctl:
         name: net.ipv4.tcp_syncookies
@@ -681,9 +683,9 @@
         sysctl_file: /etc/sysctl.d/99-stig.conf
     - name: V-238334 - Disable kdump service
       tags:
-      - stig
-      - kdump
-      - V-238334
+        - stig
+        - kdump
+        - V-238334
       register: stig_v238334
       failed_when: false
       ansible.builtin.systemd:
@@ -692,86 +694,86 @@
         state: stopped
     - name: V-238337-V-238352 - Configure log security
       tags:
-      - stig
-      - permissions
-      - V-238337
-      - V-238338
-      - V-238339
-      - V-238340
-      - V-238341
-      - V-238342
-      - V-238343
-      - V-238344
-      - V-238345
-      - V-238346
-      - V-238347
-      - V-238348
-      - V-238349
-      - V-238350
-      - V-238351
-      - V-238352
+        - stig
+        - permissions
+        - V-238337
+        - V-238338
+        - V-238339
+        - V-238340
+        - V-238341
+        - V-238342
+        - V-238343
+        - V-238344
+        - V-238345
+        - V-238346
+        - V-238347
+        - V-238348
+        - V-238349
+        - V-238350
+        - V-238351
+        - V-238352
       block:
-        - name: Set log file permissions
-          ansible.builtin.shell: |
-            find /var/log -perm /137 -type f -exec chmod 640 '{}' \; 2>/dev/null || true
-        - name: Configure /var/log directory
-          ansible.builtin.file:
-            path: /var/log
-            state: directory
-            mode: "0750"
-            owner: root
-            group: syslog
-        - name: Configure /var/log/syslog
-          ansible.builtin.file:
-            path: /var/log/syslog
-            mode: "0640"
-            owner: syslog
-            group: adm
-          failed_when: false
-        - name: Secure system command directories
-          ansible.builtin.shell: |
-            find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type d -exec chmod 755 '{}' \; 2>/dev/null || true
-            find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type d -exec chown root '{}' \; 2>/dev/null || true
-            find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type d -exec chgrp root '{}' \; 2>/dev/null || true
-        - name: Secure library files and directories
-          ansible.builtin.shell: |
-            find /lib /lib64 /usr/lib -perm /022 -type f -exec chmod 755 '{}' \; 2>/dev/null || true
-            find /lib /lib64 /usr/lib -perm /022 -type d -exec chmod 755 '{}' \; 2>/dev/null || true
-            find /lib /usr/lib /lib64 ! -user root -type f -exec chown root '{}' \; 2>/dev/null || true
-            find /lib /usr/lib /lib64 ! -user root -type d -exec chown root '{}' \; 2>/dev/null || true
-            find /lib /usr/lib /lib64 ! -group root -type f -exec chgrp root '{}' \; 2>/dev/null || true
-            find /lib /usr/lib /lib64 ! -group root -type d -exec chgrp root '{}' \; 2>/dev/null || true
-        - name: Secure system commands
-          ansible.builtin.shell: |
-            find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type f -exec chmod 755 '{}' \; 2>/dev/null || true
-            find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type f -exec chown root '{}' \; 2>/dev/null || true
-            find -L /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type f ! -perm /2000 -exec chgrp root '{}' \; 2>/dev/null || true
-          changed_when: false
+    - name: Set log file permissions
+      ansible.builtin.shell: |
+        find /var/log -perm /137 -type f -exec chmod 640 '{}' \; 2>/dev/null || true
+    - name: Configure /var/log directory
+      ansible.builtin.file:
+        path: /var/log
+        state: directory
+        mode: "0750"
+        owner: root
+        group: syslog
+    - name: Configure /var/log/syslog
+      ansible.builtin.file:
+        path: /var/log/syslog
+        mode: "0640"
+        owner: syslog
+        group: adm
+        failed_when: false
+    - name: Secure system command directories
+      ansible.builtin.shell: |
+        find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type d -exec chmod 755 '{}' \; 2>/dev/null || true
+        find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type d -exec chown root '{}' \; 2>/dev/null || true
+        find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type d -exec chgrp root '{}' \; 2>/dev/null || true
+    - name: Secure library files and directories
+      ansible.builtin.shell: |
+        find /lib /lib64 /usr/lib -perm /022 -type f -exec chmod 755 '{}' \; 2>/dev/null || true
+        find /lib /lib64 /usr/lib -perm /022 -type d -exec chmod 755 '{}' \; 2>/dev/null || true
+        find /lib /usr/lib /lib64 ! -user root -type f -exec chown root '{}' \; 2>/dev/null || true
+        find /lib /usr/lib /lib64 ! -user root -type d -exec chown root '{}' \; 2>/dev/null || true
+        find /lib /usr/lib /lib64 ! -group root -type f -exec chgrp root '{}' \; 2>/dev/null || true
+        find /lib /usr/lib /lib64 ! -group root -type d -exec chgrp root '{}' \; 2>/dev/null || true
+    - name: Secure system commands
+      ansible.builtin.shell: |
+        find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin -perm /022 -type f -exec chmod 755 '{}' \; 2>/dev/null || true
+        find /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -user root -type f -exec chown root '{}' \; 2>/dev/null || true
+        find -L /bin /sbin /usr/bin /usr/sbin /usr/local/bin /usr/local/sbin ! -group root -type f ! -perm /2000 -exec chgrp root '{}' \; 2>/dev/null || true
+        changed_when: false
     - name: V-238356 - Configure time synchronization
       tags:
-      - stig
-      - time
-      - V-238356
+        - stig
+        - time
+        - V-238356
       block:
-        - name: Configure chrony
-          ansible.builtin.copy:
-            content: "# STIG V-238356: Time synchronization\nserver tick.usno.navy.mil iburst maxpoll 16\nserver tock.usno.navy.mil iburst maxpoll 16\nserver ntp2.usno.navy.mil iburst maxpoll 16\ndriftfile /var/lib/chrony/drift\nmakestep 1.0 3\nrtcsync\nlogdir /var/log/chrony\n"
-            dest: /etc/chrony/chrony.conf
-            backup: true
-          when: ansible_os_family == "Debian"
-        - name: Configure chrony daemon options
-          ansible.builtin.lineinfile:
-            path: /etc/default/chrony
-            regexp: ^#?DAEMON_OPTS
-            line: DAEMON_OPTS="-R -F -1"
-            backup: true
-          when: ansible_os_family == "Debian"
+    - name: Configure chrony
+      ansible.builtin.copy:
+        content: "# STIG V-238356: Time synchronization\nserver tick.usno.navy.mil iburst maxpoll 16\nserver tock.usno.navy.mil iburst maxpoll 16\nserver ntp2.usno.navy.mil iburst maxpoll 16\ndriftfile /var/lib/chrony/drift\nmakestep 1.0 3\nrtcsync\nlogdir /var/log/chrony\n"
+        dest: /etc/chrony/chrony.conf
+        backup: true
+        when: ansible_os_family == "Debian"
+    - name: Configure chrony daemon options
+      ansible.builtin.lineinfile:
+        path: /etc/default/chrony
+        regexp: ^#?DAEMON_OPTS
+        line: DAEMON_OPTS="-R -F -1"
+        backup: true
+        when: ansible_os_family == "Debian"
 
     - name: V-238358 - Configure AIDE reporting
       tags:
-      - stig
-      - aide
-      - V-238358
+        - stig
+        - aide
+        - V-238358
       register: stig_v238358
       ansible.builtin.lineinfile:
         path: /etc/default/aide
@@ -781,25 +783,19 @@
     - name: V-238359 - Remove APT unauthenticated packages
       when: ansible_os_family == "Debian"
       tags:
-      - stig
-      - apt
-      - V-238359
+        - stig
+        - apt
+        - V-238359
       register: stig_v238359
       changed_when: false
-      ansible.builtin.shell: 'set -o pipefail
-
-      |
-
-      set -o pipefail
-
-      find /etc/apt/apt.conf.d/ -name "*.conf" -exec sed -i ''/AllowUnauthenticated/d'' {} \;
-
-      '
+      ansible.builtin.shell: |
+        set -o pipefail
+        find /etc/apt/apt.conf.d/ -name "*.conf" -exec sed -i '/AllowUnauthenticated/d' {} \;
     - name: V-238369 - Configure ASLR
       tags:
-      - stig
-      - aslr
-      - V-238369
+        - stig
+        - aslr
+        - V-238369
       register: stig_v238369
       ansible.posix.sysctl:
         name: kernel.randomize_va_space
@@ -810,23 +806,23 @@
     - name: V-238370 - Configure APT cleanup
       when: ansible_os_family == "Debian"
       tags:
-      - stig
-      - apt
-      - cleanup
-      - V-238370
+        - stig
+        - apt
+        - cleanup
+        - V-238370
       register: stig_v238370
       loop:
-      - Unattended-Upgrade::Remove-Unused-Dependencies "true";
-      - Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+        - Unattended-Upgrade::Remove-Unused-Dependencies "true";
+        - Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
       ansible.builtin.lineinfile:
         path: /etc/apt/apt.conf.d/50unattended-upgrades
         line: "{{ item }}"
         backup: true
     - name: V-238373 - Configure last login display
       tags:
-      - stig
-      - login
-      - V-238373
+        - stig
+        - login
+        - V-238373
       register: stig_v238373
       ansible.builtin.replace:
         path: /etc/pam.d/login
@@ -835,25 +831,25 @@
         backup: true
     - name: V-238380 - Disable Ctrl-Alt-Delete
       tags:
-      - stig
-      - system
-      - V-238380
+        - stig
+        - system
+        - V-238380
       block:
-        - name: Disable ctrl-alt-del target
-          ansible.builtin.systemd:
-            name: ctrl-alt-del.target
-            enabled: false
-            masked: true
-        - name: Reload systemd
-          ansible.builtin.systemd:
-            daemon_reload: true
+    - name: Disable ctrl-alt-del target
+      ansible.builtin.systemd:
+        name: ctrl-alt-del.target
+        enabled: false
+        masked: true
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
 
     - name: V-251504 - Remove null password option
       when: ansible_os_family == "Debian"
       tags:
-      - stig
-      - passwords
-      - V-251504
+        - stig
+        - passwords
+        - V-251504
       register: stig_v251504
       ansible.builtin.replace:
         path: /etc/pam.d/common-password
@@ -862,9 +858,9 @@
         backup: true
     - name: V-251505 - Disable USB mass storage
       tags:
-      - stig
-      - usb
-      - V-251505
+        - stig
+        - usb
+        - V-251505
       register: stig_v251505
       ansible.builtin.blockinfile:
         path: /etc/modprobe.d/DISASTIG.conf
@@ -875,9 +871,9 @@
     - name: Initialize AIDE database
       when: ansible_os_family == "Debian"
       tags:
-      - stig
-      - aide
-      - initialization
+        - stig
+        - aide
+        - initialization
       register: stig_aide_init
       changed_when: false
       failed_when: false
@@ -890,7 +886,7 @@
   post_tasks:
     - name: Collect all STIG findings
       tags:
-      - reporting
+        - reporting
       loop:
         - rule: V-238200
           status: "{{ 'FIXED' if stig_v238200.changed else 'COMPLIANT' }}"
@@ -926,7 +922,7 @@
         stig_findings: "{{ stig_findings + [item] }}"
     - name: Generate comprehensive STIG compliance report
       tags:
-      - reporting
+        - reporting
       vars:
         total_controls: "{{ stig_findings | length }}"
         fixed_controls: "{{ stig_findings | selectattr('status', 'equalto', 'FIXED') | list | length }}"
@@ -939,25 +935,27 @@
         mode: "0640"
     - name: Restart critical services
       tags:
-      - services
+        - services
       failed_when: false
       loop:
-      - auditd
-      - rsyslog
-      - chrony
+        - auditd
+        - rsyslog
+        - chrony
       ansible.builtin.systemd:
         name: "{{ item }}"
         state: restarted
         daemon_reload: true
     - name: Reload audit rules
       tags:
-      - audit
+        - audit
       register: audit_reload
       failed_when: false
-      ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\naugenrules --load\n"
+      ansible.builtin.shell: |
+        set -o pipefail
+        augenrules --load
     - name: Final STIG compliance summary
       tags:
-      - summary
+        - summary
       ansible.builtin.debug:
         msg: "🔒 Enhanced STIG Compliance Complete for {{ client_name }}\n================================================\nTotal Controls: {{ stig_findings | length }}\nFixed: {{ stig_findings | selectattr('status', 'equalto', 'FIXED') | list | length }}\nCompliant: {{ stig_findings | selectattr('status', 'equalto', 'COMPLIANT') | list | length }}\nFailed: {{ stig_findings | selectattr('status', 'equalto', 'FAILED') | list | length }}\nCompliance: {{ ((stig_findings | selectattr('status', 'in', ['FIXED', 'COMPLIANT']) | list | length) / stig_findings | length * 100) | round(2) }}%\n\nReport: /var/log/msp/{{ client_name }}/stig-enhanced/reports/enhanced-stig-report-{{ stig_session_id }}.json\n"
   handlers:

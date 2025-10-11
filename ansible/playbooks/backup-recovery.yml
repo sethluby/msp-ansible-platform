@@ -77,7 +77,10 @@
       vars:
         msp_log_server: "{{ msp_syslog_server | default('') }}"
         msp_log_tag: BACKUP-OPERATION
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ backup_session_id }} | Operation: {{ backup_operation }} | Strategy: {{ backup_strategy }} | Status: STARTED"
+        msp_log_message: >-
+          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+          Session: {{ backup_session_id }} | Operation: {{ backup_operation }} |
+          Strategy: {{ backup_strategy }} | Status: STARTED
       ansible.builtin.include_role:
         name: msp-logging
   tasks:
@@ -148,7 +151,13 @@
               - /etc/ssl/private
           register: system_config_backup
         - name: Create package list backup
-          ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nif command -v dpkg >/dev/null 2>&1; then\n  dpkg --get-selections > \"/var/backups/msp/{{ client_name }}/packages-{{ backup_session_id }}.list\"\nelif command -v rpm >/dev/null 2>&1; then\n  rpm -qa > \"/var/backups/msp/{{ client_name }}/packages-{{ backup_session_id }}.list\"\nfi\n"
+          ansible.builtin.shell: |
+            set -o pipefail
+            if command -v dpkg >/dev/null 2>&1; then
+              dpkg --get-selections > "/var/backups/msp/{{ client_name }}/packages-{{ backup_session_id }}.list"
+            elif command -v rpm >/dev/null 2>&1; then
+              rpm -qa > "/var/backups/msp/{{ client_name }}/packages-{{ backup_session_id }}.list"
+            fi
           register: package_list_backup
           changed_when: package_list_backup.rc == 0
         - name: Create filesystem layout backup
@@ -168,12 +177,28 @@
         - user_data
       block:
         - name: Create user home directories backup
-          ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\ntar -czf \"/var/backups/msp/{{ client_name }}/user-homes-{{ backup_session_id }}.tar.gz\" \\\n+  --exclude='*/.*cache*' \\\n+  --exclude='*/.mozilla/firefox/*/Cache*' \\\n+  --exclude='*/.cache' \\\n+  --exclude='*/Downloads' \\\n+  --exclude='*/.local/share/Trash' \\\n+  /home/ 2>/dev/null || true\n"
+          ansible.builtin.shell: |
+            set -o pipefail
+            tar -czf "/var/backups/msp/{{ client_name }}/user-homes-{{ backup_session_id }}.tar.gz" \
+              --exclude='*/.*cache*' \
+              --exclude='*/.mozilla/firefox/*/Cache*' \
+              --exclude='*/.cache' \
+              --exclude='*/Downloads' \
+              --exclude='*/.local/share/Trash' \
+              /home/ 2>/dev/null || true
           register: user_homes_backup
           changed_when: user_homes_backup.rc == 0
         - name: Create user accounts backup
           ansible.builtin.copy:
-            content: "# User Accounts Backup for {{ client_name }}\n# Generated: {{ ansible_date_time.iso8601 }}\n\n# /etc/passwd entries\n{{ ansible_facts.getent_passwd | default({}) | to_nice_yaml }}\n\n# /etc/group entries  \n{{ ansible_facts.getent_group | default({}) | to_nice_yaml }}\n"
+            content: |
+              # User Accounts Backup for {{ client_name }}
+              # Generated: {{ ansible_date_time.iso8601 }}
+
+              # /etc/passwd entries
+              {{ ansible_facts.getent_passwd | default({}) | to_nice_yaml }}
+
+              # /etc/group entries
+              {{ ansible_facts.getent_group | default({}) | to_nice_yaml }}
             dest: /var/backups/msp/{{ client_name }}/user-accounts-{{ backup_session_id }}.yml
             mode: "0600"
           register: user_accounts_backup
@@ -189,18 +214,33 @@
         - name: Detect running databases
           ansible.builtin.service_facts:
           register: database_services
+
         - name: Backup MySQL/MariaDB databases
-          ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nif systemctl is-active mysql >/dev/null 2>&1 || systemctl is-active mariadb >/dev/null 2>&1; then\n  mysqldump --all-databases --single-transaction --routines --triggers | gzip > \"/var/backups/msp/{{ client_name }}/mysql-all-{{ backup_session_id }}.sql.gz\"\nfi\n"
+          ansible.builtin.shell: |
+            set -o pipefail
+            if systemctl is-active mysql >/dev/null 2>&1 || systemctl is-active mariadb >/dev/null 2>&1; then
+              mysqldump --all-databases --single-transaction --routines --triggers | gzip > "/var/backups/msp/{{ client_name }}/mysql-all-{{ backup_session_id }}.sql.gz"
+            fi
           register: mysql_backup
           changed_when: mysql_backup.rc == 0
           failed_when: false
+
         - name: Backup PostgreSQL databases
-          ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nif systemctl is-active postgresql >/dev/null 2>&1; then\n  sudo -u postgres pg_dumpall | gzip > \"/var/backups/msp/{{ client_name }}/postgresql-all-{{ backup_session_id }}.sql.gz\"\nfi\n"
+          ansible.builtin.shell: |
+            set -o pipefail
+            if systemctl is-active postgresql >/dev/null 2>&1; then
+              sudo -u postgres pg_dumpall | gzip > "/var/backups/msp/{{ client_name }}/postgresql-all-{{ backup_session_id }}.sql.gz"
+            fi
           register: postgresql_backup
           changed_when: postgresql_backup.rc == 0
           failed_when: false
+
         - name: Backup MongoDB databases
-          ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\nif systemctl is-active mongod >/dev/null 2>&1; then\n  mongodump --archive=\"/var/backups/msp/{{ client_name }}/mongodb-{{ backup_session_id }}.archive\" --gzip\nfi\n"
+          ansible.builtin.shell: |
+            set -o pipefail
+            if systemctl is-active mongod >/dev/null 2>&1; then
+              mongodump --archive="/var/backups/msp/{{ client_name }}/mongodb-{{ backup_session_id }}.archive" --gzip
+            fi
           register: mongodb_backup
           changed_when: mongodb_backup.rc == 0
           failed_when: false
@@ -214,11 +254,23 @@
         - verification
       block:
         - name: Generate backup checksums
-          ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\ncd \"/var/backups/msp/{{ client_name }}\"\nfind . -name \"*-{{ backup_session_id }}*\" -type f -exec sha256sum {} \\; > \"backup-checksums-{{ backup_session_id }}.txt\"\n"
+          ansible.builtin.shell: |
+            set -o pipefail
+            cd "/var/backups/msp/{{ client_name }}"
+            find . -name "*-{{ backup_session_id }}*" -type f -exec sha256sum {} \; > "backup-checksums-{{ backup_session_id }}.txt"
           register: backup_checksums
           changed_when: backup_checksums.rc == 0
+
         - name: Test backup archives
-          ansible.builtin.shell: "set -o pipefail\n|\nset -o pipefail\ncd \"/var/backups/msp/{{ client_name }}\"\nfor file in *-{{ backup_session_id }}.tar.gz; do\n  if [ -f \"$file\" ]; then\n    tar -tzf \"$file\" >/dev/null\n    echo \"Verified: $file\"\n  fi\ndone\n"
+          ansible.builtin.shell: |
+            set -o pipefail
+            cd "/var/backups/msp/{{ client_name }}"
+            for file in *-{{ backup_session_id }}.tar.gz; do
+              if [ -f "$file" ]; then
+                tar -tzf "$file" >/dev/null
+                echo "Verified: $file"
+              fi
+            done
           register: backup_verification
           changed_when: false
           failed_when: backup_verification.rc != 0
@@ -236,6 +288,7 @@
             age: "{{ client_retention_policy.daily_retention | default(7) }}d"
             file_type: file
           register: old_backups
+
         - name: Delete old backup files
           ansible.builtin.file:
             path: "{{ item.path }}"
@@ -268,7 +321,22 @@
       tags:
         - reporting
       ansible.builtin.copy:
-        content: "Backup Operation Report for {{ client_name }}\n============================================\nOperation: {{ backup_operation }}\nStrategy: {{ backup_strategy }}\nHost: {{ inventory_hostname }}\nSession ID: {{ backup_session_id }}\n\nBackup Components:\n{% for result in backup_results %}\n- {{ result.component }}: {{ result.status }} ({{ result.size }})\n{% endfor %}\n\nBackup Location: /var/backups/msp/{{ client_name }}/\n\nReport Generated: {{ ansible_date_time.iso8601 }}\n"
+        content: |
+          Backup Operation Report for {{ client_name }}
+          ============================================
+          Operation: {{ backup_operation }}
+          Strategy: {{ backup_strategy }}
+          Host: {{ inventory_hostname }}
+          Session ID: {{ backup_session_id }}
+
+          Backup Components:
+          {% for result in backup_results %}
+          - {{ result.component }}: {{ result.status }} ({{ result.size }})
+          {% endfor %}
+
+          Backup Location: /var/backups/msp/{{ client_name }}/
+
+          Report Generated: {{ ansible_date_time.iso8601 }}
         dest: /var/log/msp/{{ client_name }}/backup/backup-report-{{ backup_session_id }}.txt
         mode: "0640"
 
@@ -279,7 +347,11 @@
       vars:
         msp_log_server: "{{ msp_syslog_server | default('') }}"
         msp_log_tag: BACKUP-OPERATION
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ backup_session_id }} | Operation: {{ backup_operation }} | Strategy: {{ backup_strategy }} | Status: COMPLETED | Components: {{ backup_results | length }}"
+        msp_log_message: >-
+          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+          Session: {{ backup_session_id }} | Operation: {{ backup_operation }} |
+          Strategy: {{ backup_strategy }} | Status: COMPLETED |
+          Components: {{ backup_results | length }}
       ansible.builtin.include_role:
         name: msp-logging
 

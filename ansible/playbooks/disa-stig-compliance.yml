@@ -37,8 +37,8 @@
         - validation
       ansible.builtin.assert:
         that:
-          - client_name is defined
-          - client_stig_profile in stig_profiles
+        - client_name is defined
+        - client_stig_profile in stig_profiles
         fail_msg: "Invalid client_name or unsupported STIG profile: {{ client_stig_profile }}"
     - name: Create client STIG compliance log directory
       tags:
@@ -55,30 +55,41 @@
         - logging
       failed_when: false
       ansible.builtin.shell: >-
-        logger -n {{ msp_syslog_server }} -t "MSP-STIG" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ stig_session_id }} | Profile: {{ client_stig_profile }} | Status: STARTED"
+      logger -n {{ msp_syslog_server }} -t "MSP-STIG" "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ stig_session_id }} | Profile: {{ client_stig_profile }} | Status: STARTED"
   tasks:
     - name: STIG V-230221 - Configure system logon banner
+      tags:
+        - stig
+        - banner
+        - V-230221
       block:
         - name: Set DoD warning banner content
+          register: stig_banner_result
           ansible.builtin.copy:
-            content: "You are accessing a U.S. Government (USG) Information System (IS) that is provided for USG-authorized use only. By using this IS (which includes any device attached to this IS), you consent to the following conditions: - The USG routinely intercepts and monitors communications on this IS for purposes including, but not limited to, penetration testing, COMSEC monitoring, network operations and defense, personnel misconduct (PM), law enforcement (LE), and counterintelligence (CI) investigations. At any time, the USG may inspect and seize data stored on this IS. Communications using, or data stored on, this IS are not private, are subject to routine monitoring, interception, and search, and may be disclosed or used for any USG-authorized purpose. This IS includes security measures (e.g., authentication and access controls) to protect USG interests -- not for your personal benefit or privacy. Notwithstanding the above, using this IS does not constitute consent to PM, LE or CI investigative searching or monitoring of the content of privileged communications, or work product, related to personal representation or services by attorneys, psychotherapists, or clergy, and their assistants. Such communications and work product are private and confidential. See User Agreement for details."
+            content: >-
+              You are accessing a U.S. Government (USG) Information System (IS) that is provided for USG-authorized use only.
+              By using this IS (which includes any device attached to this IS), you consent to the following conditions:
+              - The USG routinely intercepts and monitors communications on this IS for purposes including, but not limited to,
+              penetration testing, COMSEC monitoring, network operations and defense, personnel misconduct (PM), law enforcement (LE),
+              and counterintelligence (CI) investigations. At any time, the USG may inspect and seize data stored on this IS.
+              Communications using, or data stored on, this IS are not private, are subject to routine monitoring, interception,
+              and search, and may be disclosed or used for any USG-authorized purpose. This IS includes security measures
+              (e.g., authentication and access controls) to protect USG interests -- not for your personal benefit or privacy.
+              Notwithstanding the above, using this IS does not constitute consent to PM, LE or CI investigative searching or
+              monitoring of the content of privileged communications, or work product, related to personal representation or
+              services by attorneys, psychotherapists, or clergy, and their assistants. Such communications and work product
+              are private and confidential. See User Agreement for details.
             dest: "{{ stig_profiles[client_stig_profile].banner_file }}"
             mode: "0644"
             owner: root
             group: root
             backup: true
-          register: stig_banner_result
-
-      tags:
-        - stig
-        - banner
-        - V-230221
     - name: STIG V-230222 - Configure SSH banner
       tags:
-      - stig
-      - ssh
-      - banner
-      - V-230222
+        - stig
+        - ssh
+        - banner
+        - V-230222
       register: stig_ssh_banner
       notify: Restart sshd
       ansible.builtin.lineinfile:
@@ -88,10 +99,10 @@
         backup: true
     - name: STIG V-230223 - Configure SSH client alive interval
       tags:
-      - stig
-      - ssh
-      - timeout
-      - V-230223
+        - stig
+        - ssh
+        - timeout
+        - V-230223
       register: stig_ssh_timeout
       notify: Restart sshd
       ansible.builtin.lineinfile:
@@ -101,10 +112,10 @@
         backup: true
     - name: STIG V-230224 - Disable host-based authentication
       tags:
-      - stig
-      - ssh
-      - authentication
-      - V-230224
+        - stig
+        - ssh
+        - authentication
+        - V-230224
       register: stig_ssh_hostauth
       notify: Restart sshd
       ansible.builtin.lineinfile:
@@ -114,10 +125,10 @@
         backup: true
     - name: STIG V-230225 - Disable SSH environment option setting
       tags:
-      - stig
-      - ssh
-      - environment
-      - V-230225
+        - stig
+        - ssh
+        - environment
+        - V-230225
       register: stig_ssh_userenv
       notify: Restart sshd
       ansible.builtin.lineinfile:
@@ -127,13 +138,13 @@
         backup: true
     - name: STIG V-230235 - Configure system crypto policy
       when:
-      - ansible_os_family == "RedHat"
-      - ansible_distribution_major_version | int >= 8
+        - ansible_os_family == "RedHat"
+        - ansible_distribution_major_version | int >= 8
       tags:
-      - stig
-      - crypto
-      - fips
-      - V-230235
+        - stig
+        - crypto
+        - fips
+        - V-230235
       register: stig_crypto_policy
       changed_when: "'already using policy' not in stig_crypto_policy.stderr"
       ansible.builtin.shell: |
@@ -141,10 +152,10 @@
         update-crypto-policies --set FIPS
     - name: STIG V-230264 - Enable ASLR
       tags:
-      - stig
-      - kernel
-      - aslr
-      - V-230264
+        - stig
+        - kernel
+        - aslr
+        - V-230264
       register: stig_aslr
       ansible.posix.sysctl:
         name: kernel.randomize_va_space
@@ -154,10 +165,10 @@
         sysctl_file: /etc/sysctl.d/99-stig.conf
     - name: STIG V-230265 - Configure NX bit support check
       tags:
-      - stig
-      - kernel
-      - dep
-      - V-230265
+        - stig
+        - kernel
+        - dep
+        - V-230265
       register: stig_nx_check
       changed_when: false
       ansible.builtin.shell: |
@@ -165,39 +176,39 @@
         dmesg | grep -i "nx protection" || echo "NX_NOT_FOUND"
     - name: STIG V-230320 - Configure audit rules for account management
       tags:
-      - stig
-      - audit
-      - account
-      - V-230320
+        - stig
+        - audit
+        - account
+        - V-230320
       notify: Reload auditd
       ansible.builtin.blockinfile:
         path: /etc/audit/rules.d/50-msp-stig.rules
         create: true
         block: |
-          # Account management events (STIG V-230320)
-          -w /etc/passwd -p wa -k identity
-          -w /etc/group -p wa -k identity
-          -w /etc/gshadow -p wa -k identity
-          -w /etc/shadow -p wa -k identity
-          -w /etc/opasswd -p wa -k identity
-          -w /etc/security/opasswd -p wa -k identity
+        # Account management events (STIG V-230320)
+        -w /etc/passwd -p wa -k identity
+        -w /etc/group -p wa -k identity
+        -w /etc/gshadow -p wa -k identity
+        -w /etc/shadow -p wa -k identity
+        -w /etc/opasswd -p wa -k identity
+        -w /etc/security/opasswd -p wa -k identity
 
-          # Login/logout events
-          -w /var/log/lastlog -p wa -k logins
-          -w /var/run/faillock -p wa -k logins
+        # Login/logout events
+        -w /var/log/lastlog -p wa -k logins
+        -w /var/run/faillock -p wa -k logins
 
-          # Session initiation
-          -w /var/run/utmp -p wa -k session
-          -w /var/log/wtmp -p wa -k logins
-          -w /var/log/btmp -p wa -k logins
+        # Session initiation
+        -w /var/run/utmp -p wa -k session
+        -w /var/log/wtmp -p wa -k logins
+        -w /var/log/btmp -p wa -k logins
         marker: "# {mark} MSP STIG AUDIT RULES"
-      register: stig_audit_rules
+        register: stig_audit_rules
     - name: STIG V-230469 - Ensure no blank passwords
       tags:
-      - stig
-      - pam
-      - passwords
-      - V-230469
+        - stig
+        - pam
+        - passwords
+        - V-230469
       register: stig_no_blank_passwords
       ansible.builtin.replace:
         path: /etc/pam.d/system-auth
@@ -235,7 +246,6 @@
       ansible.builtin.debug:
         msg: Skipping STIG rule {{ item }} per client exception
   post_tasks:
-    
     - name: Collect STIG compliance findings
       tags:
         - reporting

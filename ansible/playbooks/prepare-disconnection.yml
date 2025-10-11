@@ -35,7 +35,15 @@
       failed_when: false
     - name: Display disconnection summary
       ansible.builtin.debug:
-        msg: "🔌 MSP Platform Graceful Disconnection\n=====================================\nClient: {{ client_name | title }}\nMode: {{ disconnection_mode | title }}\nPreserve Monitoring: {{ 'Yes' if (preserve_monitoring | bool) else 'No' }}\nEmergency Contact: {{ emergency_contact_email }}\nTimestamp: {{ disconnection_timestamp }}\n⚠️  This will remove MSP management capabilities!\n"
+        msg: |
+          🔌 MSP Platform Graceful Disconnection
+          =====================================
+          Client: {{ client_name | title }}
+          Mode: {{ disconnection_mode | title }}
+          Preserve Monitoring: {{ 'Yes' if (preserve_monitoring | bool) else 'No' }}
+          Emergency Contact: {{ emergency_contact_email }}
+          Timestamp: {{ disconnection_timestamp }}
+          ⚠️  This will remove MSP management capabilities!
     - name: Confirm disconnection
       ansible.builtin.pause:
         prompt: Continue with disconnection? This cannot be easily undone. [yes/no]
@@ -44,8 +52,8 @@
   tasks:
     - name: Execute graceful disconnection
       tags:
-      - disconnection
-      - automation
+        - disconnection
+        - automation
       vars:
         preserve_configurations: true
         create_local_backups: true
@@ -74,32 +82,32 @@
         name: graceful-disconnection
     - name: Create independence validation script
       tags:
-      - validation
-      - independence
+        - validation
+        - independence
       ansible.builtin.template:
         src: ../roles/graceful-disconnection/templates/validate_independence.sh.j2
         dest: "{{ client_config_dir }}/validate_independence.sh"
         mode: "0755"
     - name: Generate local operations guide
       tags:
-      - documentation
-      - operations
+        - documentation
+        - operations
       ansible.builtin.template:
         src: ../roles/graceful-disconnection/templates/local_operations_guide.md.j2
         dest: "{{ client_config_dir }}/LOCAL_OPERATIONS_GUIDE.md"
         mode: "0644"
     - name: Create emergency procedures
       tags:
-      - documentation
-      - emergency
+        - documentation
+        - emergency
       ansible.builtin.template:
         src: ../roles/graceful-disconnection/templates/emergency_procedures.md.j2
         dest: "{{ client_config_dir }}/EMERGENCY_PROCEDURES.md"
         mode: "0644"
     - name: Update client README for independence
       tags:
-      - documentation
-      - readme
+        - documentation
+        - readme
       ansible.builtin.template:
         src: ../roles/graceful-disconnection/templates/independent_README.md.j2
         dest: "{{ client_config_dir }}/README.md"
@@ -107,21 +115,32 @@
   post_tasks:
     - name: Display disconnection completion
       ansible.builtin.debug:
-        msg: "✅ Client {{ client_name }} graceful disconnection completed!\n\n📁 Configuration Directory: {{ client_config_dir }}\n📋 Operations Guide: {{ client_config_dir }}/LOCAL_OPERATIONS_GUIDE.md\n🚨 Emergency Procedures: {{ client_config_dir }}/EMERGENCY_PROCEDURES.md\n🔍 Independence Validator: {{ client_config_dir }}/validate_independence.sh\n📊 Final Report: {{ client_config_dir }}/DISCONNECTION_REPORT.md\n🗄️  MSP Archive: {{ msp_archive_dir }}\n\nClient is now operating independently!\nEmergency Contact: {{ emergency_contact_email }}\n"
+        msg: |
+          ✅ Client {{ client_name }} graceful disconnection completed!
+
+          📁 Configuration Directory: {{ client_config_dir }}
+          📋 Operations Guide: {{ client_config_dir }}/LOCAL_OPERATIONS_GUIDE.md
+          🚨 Emergency Procedures: {{ client_config_dir }}/EMERGENCY_PROCEDURES.md
+          🔍 Independence Validator: {{ client_config_dir }}/validate_independence.sh
+          📊 Final Report: {{ client_config_dir }}/DISCONNECTION_REPORT.md
+          🗄️  MSP Archive: {{ msp_archive_dir }}
+
+          Client is now operating independently!
+          Emergency Contact: {{ emergency_contact_email }}
     - name: Log disconnection completion
       tags:
-      - logging
-      - audit
+        - logging
+        - audit
       ansible.builtin.lineinfile:
-        path: /var/log/msp-platform/disconnections.log
-        line: "{{ disconnection_timestamp }} | {{ client_name }} | {{ disconnection_mode }} | {{ emergency_contact_email }} | SUCCESS"
-        create: true
-        mode: "0644"
+      path: /var/log/msp-platform/disconnections.log
+      line: "{{ disconnection_timestamp }} | {{ client_name }} | {{ disconnection_mode }} | {{ emergency_contact_email }} | SUCCESS"
+      create: true
+      mode: "0644"
     - name: Remove client from active management
       tags:
-      - cleanup
-      - management
+        - cleanup
+        - management
       failed_when: false
       ansible.builtin.file:
-        path: /opt/msp-platform/active_clients/{{ client_name }}
-        state: absent
+      path: /opt/msp-platform/active_clients/{{ client_name }}
+      state: absent

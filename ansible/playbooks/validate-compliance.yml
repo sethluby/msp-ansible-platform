@@ -24,8 +24,8 @@
       tags:
         - cmmc_validation
       vars:
-        validation_mode: post_implementation
-        validation_execution_id: "{{ validation_id }}"
+      validation_mode: post_implementation
+      validation_execution_id: "{{ validation_id }}"
       ansible.builtin.include_role:
         name: cmmc-compliance
         tasks_from: validation
@@ -35,37 +35,37 @@
       tags:
         - ssh_validation
       block:
-        - name: CMMC Validation | Verify SSH daemon configuration
-          ansible.builtin.command: sshd -t
-          register: ssh_test
-          changed_when: false
-          when: not ansible_check_mode
+    - name: CMMC Validation | Verify SSH daemon configuration
+      ansible.builtin.command: sshd -t
+      register: ssh_test
+      changed_when: false
+      when: not ansible_check_mode
 
-        - name: CMMC Validation | Check SSH security settings
-          ansible.builtin.shell: |
-            set -o pipefail
-            sshd -T | grep -E "(PasswordAuthentication|PubkeyAuthentication|PermitRootLogin)"
-          register: ssh_security
-          changed_when: false
-          when: not ansible_check_mode
+    - name: CMMC Validation | Check SSH security settings
+      ansible.builtin.shell: |
+        set -o pipefail
+        sshd -T | grep -E "(PasswordAuthentication|PubkeyAuthentication|PermitRootLogin)"
+        register: ssh_security
+        changed_when: false
+        when: not ansible_check_mode
 
     - name: CMMC Validation | Test audit system
       when: cmmc_enable_audit_accountability | default(true) | bool
       tags:
         - audit_validation
       block:
-        - name: CMMC Validation | Check auditd service status
-          ansible.builtin.systemd:
-            name: auditd
-          register: auditd_status
-          when: not ansible_check_mode
-          changed_when: false
+    - name: CMMC Validation | Check auditd service status
+      ansible.builtin.systemd:
+        name: auditd
+        register: auditd_status
+        when: not ansible_check_mode
+        changed_when: false
 
-        - name: CMMC Validation | Verify audit rules are loaded
-          ansible.builtin.command: auditctl -l
-          register: audit_rules
-          changed_when: false
-          when: not ansible_check_mode
+    - name: CMMC Validation | Verify audit rules are loaded
+      ansible.builtin.command: auditctl -l
+      register: audit_rules
+      changed_when: false
+      when: not ansible_check_mode
 
     - name: CMMC Validation | Run compliance validator tool
       when: not ansible_check_mode
@@ -79,21 +79,24 @@
     - name: Validation Complete | Generate validation report
       ansible.builtin.set_fact:
         validation_report:
-          validation_id: "{{ validation_id }}"
-          timestamp: "{{ ansible_date_time.iso8601 }}"
-          hostname: "{{ inventory_hostname }}"
-          cmmc_level: "{{ cmmc_level }}"
-          client_id: "{{ cmmc_client_id }}"
-          ssh_validation:
-            config_test: "{{ 'PASS' if ssh_test.rc == 0 else 'FAIL' if ssh_test is defined else 'SKIPPED' }}"
-            security_settings: "{{ ssh_security.stdout_lines if ssh_security is defined else 'SKIPPED' }}"
-          audit_validation:
-            service_status: "{{ auditd_status.status.ActiveState if auditd_status is defined else 'SKIPPED' }}"
-            rules_loaded: "{{ 'YES' if (audit_rules.stdout_lines | length > 0) else 'NO' if audit_rules is defined else 'SKIPPED' }}"
-          validator_test:
-            exit_code: "{{ validator_output.rc if validator_output is defined else 'SKIPPED' }}"
-            status: "{{ 'PASS' if validator_output.rc == 0 else 'FAIL' if validator_output is defined else 'SKIPPED' }}"
-          overall_status: "{{ 'PASS' if (ssh_test.rc | default(1) == 0) and (auditd_status.status.ActiveState | default('inactive') == 'active') and (validator_output.rc | default(1) == 0) else 'FAIL' }}"
+        validation_id: "{{ validation_id }}"
+        timestamp: "{{ ansible_date_time.iso8601 }}"
+        hostname: "{{ inventory_hostname }}"
+        cmmc_level: "{{ cmmc_level }}"
+        client_id: "{{ cmmc_client_id }}"
+        ssh_validation:
+        config_test: "{{ 'PASS' if ssh_test.rc == 0 else 'FAIL' if ssh_test is defined else 'SKIPPED' }}"
+        security_settings: "{{ ssh_security.stdout_lines if ssh_security is defined else 'SKIPPED' }}"
+        audit_validation:
+        service_status: "{{ auditd_status.status.ActiveState if auditd_status is defined else 'SKIPPED' }}"
+        rules_loaded: "{{ 'YES' if (audit_rules.stdout_lines | length > 0) else 'NO' if audit_rules is defined else 'SKIPPED' }}"
+        validator_test:
+        exit_code: "{{ validator_output.rc if validator_output is defined else 'SKIPPED' }}"
+        status: "{{ 'PASS' if validator_output.rc == 0 else 'FAIL' if validator_output is defined else 'SKIPPED' }}"
+        overall_status: >-
+          {{ 'PASS' if (ssh_test.rc | default(1) == 0)
+          and (auditd_status.status.ActiveState | default('inactive') == 'active')
+          and (validator_output.rc | default(1) == 0) else 'FAIL' }}
     - name: Validation Complete | Save validation report
       ansible.builtin.copy:
         content: "{{ validation_report | to_nice_json }}"

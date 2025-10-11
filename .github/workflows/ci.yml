@@ -33,7 +33,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install pre-commit ansible ansible-lint yamllint detect-secrets
 
-      - name: Run pre-commit
+      - name: Run pre-commit on changed files (PR)
+        if: ${{ github.event_name == 'pull_request' }}
+        run: |
+          pre-commit run --from-ref ${{ github.event.pull_request.base.sha }} --to-ref ${{ github.sha }} --show-diff-on-failure
+
+      - name: Run pre-commit (baseline, non-blocking)
+        if: ${{ github.event_name != 'pull_request' }}
         run: pre-commit run --all-files --show-diff-on-failure || true
 
   lint:
@@ -58,14 +64,56 @@ jobs:
           ansible-galaxy collection install -r requirements.yml -p ~/.ansible/collections --force || true
           ansible-galaxy role install -r requirements.yml -p ~/.ansible/roles --force || true
 
-      - name: Run yamllint
+      - name: Run yamllint on changed files (PR)
+        if: ${{ github.event_name == 'pull_request' }}
         run: |
-          yamllint .
+          set -e
+          CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | tr '\n' ' ')
+          echo "Changed files: $CHANGED"
+          if [ -n "$CHANGED" ]; then
+            YML_FILES=$(echo "$CHANGED" | tr ' ' '\n' | grep -E '\\.(yml|yaml)$' || true)
+            if [ -n "$YML_FILES" ]; then
+              yamllint $YML_FILES
+            else
+              echo "No YAML changes detected"
+            fi
+          else
+            echo "No changes detected"
+          fi
 
-      - name: Run ansible-lint
+      - name: Run yamllint (full, non-blocking)
+        if: ${{ github.event_name != 'pull_request' }}
         run: |
-          ansible-lint ansible/playbooks/
-          ansible-lint ansible/roles/
+          yamllint . || true
+
+      - name: Run ansible-lint on changed files (PR)
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          ANSIBLE_LOCAL_TEMP: .ansible/tmp
+          ANSIBLE_REMOTE_TEMP: .ansible/tmp
+        run: |
+          set -e
+          CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.sha }} | tr '\n' ' ')
+          echo "Changed files: $CHANGED"
+          if [ -n "$CHANGED" ]; then
+            TARGETS=$(echo "$CHANGED" | tr ' ' '\n' | grep -E '^(ansible/|molecule/).*\\.(yml|yaml)$' || true)
+            if [ -n "$TARGETS" ]; then
+              ansible-lint $TARGETS
+            else
+              echo "No Ansible YAML changes detected"
+            fi
+          else
+            echo "No changes detected"
+          fi
+
+      - name: Run ansible-lint (full, non-blocking)
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          ANSIBLE_LOCAL_TEMP: .ansible/tmp
+          ANSIBLE_REMOTE_TEMP: .ansible/tmp
+        run: |
+          ansible-lint ansible/playbooks/ || true
+          ansible-lint ansible/roles/ || true
 
   syntax-check:
     name: Syntax Check

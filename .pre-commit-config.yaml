@@ -23,6 +23,15 @@ repos:
         additional_dependencies: []
         files: ^ansible/|^molecule/|^\.ansible/|^roles/
 
+  - repo: local
+    hooks:
+      - id: yaml-indent-fix
+        name: YAML indent fix (Ansible common patterns)
+        entry: python3 scripts/yaml_indent_fix.py
+        language: system
+        files: \.(yml|yaml)$
+        pass_filenames: true
+
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.4.0
     hooks:

@@ -22,8 +22,8 @@
         - validation
       ansible.builtin.assert:
         that:
-          - client_name is defined
-          - client_name != ""
+        - client_name is defined
+        - client_name != ""
         fail_msg: client_name must be defined for MSP operations
     - name: Check maintenance window (if defined)
       when:
@@ -55,24 +55,24 @@
       ansible.builtin.shell: |
         set -o pipefail
         if command -v lvcreate >/dev/null 2>&1; then
-          lvcreate -L1G -s -n {{ client_name }}-pre-update-{{ update_session_id }} /dev/mapper/{{ ansible_lvm.vgs.keys() | first }}-root || true
+        lvcreate -L1G -s -n {{ client_name }}-pre-update-{{ update_session_id }} /dev/mapper/{{ ansible_lvm.vgs.keys() | first }}-root || true
         fi
     - name: Record system state before updates
       tags:
         - pre-update
       ansible.builtin.setup:
         gather_subset:
-          - hardware
-          - network
-          - virtual
-      register: pre_update_facts
+        - hardware
+        - network
+        - virtual
+        register: pre_update_facts
     - name: Log update initiation to MSP syslog
       tags:
         - logging
       vars:
-        msp_log_server: "{{ msp_syslog_server | default('') }}"
-        msp_log_tag: MSP-UPDATE
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ update_session_id }} | Status: STARTED"
+      msp_log_server: "{{ msp_syslog_server | default('') }}"
+      msp_log_tag: MSP-UPDATE
+      msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ update_session_id }} | Status: STARTED"
       ansible.builtin.include_role:
         name: msp-logging
   tasks:
@@ -82,54 +82,54 @@
         - rhel
         - updates
       block:
-        - name: Update package cache (RHEL)
-          ansible.builtin.dnf:
-            update_cache: true
-          when: ansible_pkg_mgr == "dnf"
-        - name: Update package cache (Legacy RHEL)
-          ansible.builtin.yum:
-            update_cache: true
-          when: ansible_pkg_mgr == "yum"
-          tags:
-            - skip_ansible_lint
-        - name: Install security updates only (RHEL)
-          ansible.builtin.dnf:
-            name: "*"
-            state: latest
-            security: true
-            update_only: true
-          when:
-            - ansible_pkg_mgr == "dnf"
-            - update_mode == "security"
-          register: rhel_security_updates
-          async: "{{ max_update_time }}"
-          poll: 30
-          tags:
-            - updates
-            - skip_ansible_lint
-        - name: Install all available updates (RHEL)
-          ansible.builtin.dnf:
-            name: "*"
-            state: latest
-            update_only: true
-          when:
-            - ansible_pkg_mgr == "dnf"
-            - update_mode == "all"
-          register: rhel_all_updates
-          async: "{{ max_update_time }}"
-          poll: 30
-          tags:
-            - updates
-            - skip_ansible_lint
-        - name: Check if reboot required (RHEL)
-          ansible.builtin.stat:
-            path: /var/run/reboot-required
-          register: rhel_reboot_required
-        - name: Set reboot flag (RHEL)
-          ansible.builtin.set_fact:
-            reboot_required: true
-          when:
-            - rhel_reboot_required.stat.exists or (rhel_security_updates.changed | default(false)) or (rhel_all_updates.changed | default(false))
+    - name: Update package cache (RHEL)
+      ansible.builtin.dnf:
+        update_cache: true
+        when: ansible_pkg_mgr == "dnf"
+    - name: Update package cache (Legacy RHEL)
+      ansible.builtin.yum:
+        update_cache: true
+        when: ansible_pkg_mgr == "yum"
+      tags:
+        - skip_ansible_lint
+    - name: Install security updates only (RHEL)
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        security: true
+        update_only: true
+      when:
+        - ansible_pkg_mgr == "dnf"
+        - update_mode == "security"
+      register: rhel_security_updates
+      async: "{{ max_update_time }}"
+      poll: 30
+      tags:
+        - updates
+        - skip_ansible_lint
+    - name: Install all available updates (RHEL)
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        update_only: true
+      when:
+        - ansible_pkg_mgr == "dnf"
+        - update_mode == "all"
+      register: rhel_all_updates
+      async: "{{ max_update_time }}"
+      poll: 30
+      tags:
+        - updates
+        - skip_ansible_lint
+    - name: Check if reboot required (RHEL)
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+        register: rhel_reboot_required
+    - name: Set reboot flag (RHEL)
+      ansible.builtin.set_fact:
+        reboot_required: true
+      when:
+        - rhel_reboot_required.stat.exists or (rhel_security_updates.changed | default(false)) or (rhel_all_updates.changed | default(false))
     - name: Update Ubuntu/Debian systems
       when: ansible_os_family == "Debian"
       tags:
@@ -137,37 +137,37 @@
         - debian
         - updates
       block:
-        - name: Update package cache (Ubuntu)
-          ansible.builtin.apt:
-            update_cache: true
-            cache_valid_time: 3600
-        - name: Install security updates only (Ubuntu)
-          ansible.builtin.apt:
-            upgrade: safe
-            autoremove: true
-            autoclean: true
-          when: update_mode == "security"
-          register: ubuntu_security_updates
-          async: "{{ max_update_time }}"
-          poll: 30
-        - name: Install all available updates (Ubuntu)
-          ansible.builtin.apt:
-            upgrade: full
-            autoremove: true
-            autoclean: true
-          when: update_mode == "all"
-          register: ubuntu_all_updates
-          async: "{{ max_update_time }}"
-          poll: 30
-        - name: Check if reboot required (Ubuntu)
-          ansible.builtin.stat:
-            path: /var/run/reboot-required
-          register: ubuntu_reboot_required
-        - name: Set reboot flag (Ubuntu)
-          ansible.builtin.set_fact:
-            reboot_required: true
-          when:
-            - ubuntu_reboot_required.stat.exists or (ubuntu_security_updates.changed | default(false)) or (ubuntu_all_updates.changed | default(false))
+    - name: Update package cache (Ubuntu)
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+    - name: Install security updates only (Ubuntu)
+      ansible.builtin.apt:
+        upgrade: safe
+        autoremove: true
+        autoclean: true
+        when: update_mode == "security"
+        register: ubuntu_security_updates
+        async: "{{ max_update_time }}"
+        poll: 30
+    - name: Install all available updates (Ubuntu)
+      ansible.builtin.apt:
+        upgrade: full
+        autoremove: true
+        autoclean: true
+        when: update_mode == "all"
+        register: ubuntu_all_updates
+        async: "{{ max_update_time }}"
+        poll: 30
+    - name: Check if reboot required (Ubuntu)
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+        register: ubuntu_reboot_required
+    - name: Set reboot flag (Ubuntu)
+      ansible.builtin.set_fact:
+        reboot_required: true
+      when:
+        - ubuntu_reboot_required.stat.exists or (ubuntu_security_updates.changed | default(false)) or (ubuntu_all_updates.changed | default(false))
     - name: Update SUSE systems
       when: ansible_os_family == "Suse"
       tags:
@@ -175,60 +175,60 @@
         - sles
         - updates
       block:
-        - name: Update package cache (SUSE)
-          community.general.zypper:
-            update_cache: true
+    - name: Update package cache (SUSE)
+      community.general.zypper:
+        update_cache: true
     - name: Install security updates (SUSE)
       community.general.zypper:
         name: "*"
         state: latest
         type: patch
         category: security
-      when: update_mode == "security"
-      register: suse_security_updates
-      async: "{{ max_update_time }}"
-      poll: 30
+        when: update_mode == "security"
+        register: suse_security_updates
+        async: "{{ max_update_time }}"
+        poll: 30
       tags:
-      - updates
-      - skip_ansible_lint
+        - updates
+        - skip_ansible_lint
     - name: Install all updates (SUSE)
       community.general.zypper:
         name: "*"
         state: latest
-      when: update_mode == "all"
-      register: suse_all_updates
-      async: "{{ max_update_time }}"
-      poll: 30
+        when: update_mode == "all"
+        register: suse_all_updates
+        async: "{{ max_update_time }}"
+        poll: 30
       tags:
-      - updates
-      - skip_ansible_lint
+        - updates
+        - skip_ansible_lint
     - name: Check for kernel updates (SUSE)
       ansible.builtin.shell: |
         set -o pipefail
         zypper lu | grep -i kernel || echo "no_kernel_updates"
-      register: suse_kernel_check
-      changed_when: false
+        register: suse_kernel_check
+        changed_when: false
     - name: Set reboot flag (SUSE)
       ansible.builtin.set_fact:
         reboot_required: true
       when:
-      - "'no_kernel_updates' not in suse_kernel_check.stdout"
-      - (suse_security_updates.changed | default(false)) or (suse_all_updates.changed | default(false))
+        - "'no_kernel_updates' not in suse_kernel_check.stdout"
+        - (suse_security_updates.changed | default(false)) or (suse_all_updates.changed | default(false))
   post_tasks:
     - name: Create client update report
       tags:
-      - reporting
+        - reporting
       ansible.builtin.template:
         src: update_report.j2
         dest: /var/log/msp/{{ client_name }}/update-report-{{ update_session_id }}.log
         mode: "0644"
     - name: Log update completion to MSP syslog
       tags:
-      - logging
+        - logging
       vars:
-        msp_log_server: "{{ msp_syslog_server | default('') }}"
-        msp_log_tag: MSP-UPDATE
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ update_session_id }} | Status: COMPLETED | Reboot: {{ reboot_required }}"
+      msp_log_server: "{{ msp_syslog_server | default('') }}"
+      msp_log_tag: MSP-UPDATE
+      msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ update_session_id }} | Status: COMPLETED | Reboot: {{ reboot_required }}"
       ansible.builtin.include_role:
         name: msp-logging
     - name: Send client notification email (if configured)
@@ -263,12 +263,12 @@
         timeout: 300
     - name: Verify system health post-update
       tags:
-      - verification
+        - verification
       failed_when: false
       loop:
-      - sshd
-      - systemd-resolved
-      - NetworkManager
+        - sshd
+        - systemd-resolved
+        - NetworkManager
       ansible.builtin.service:
         name: "{{ item }}"
         state: started
@@ -277,9 +277,9 @@
       ansible.builtin.service:
         name: NetworkManager
         state: restarted
-      listen: restart services
+        listen: restart services
     - name: Restart sshd
       ansible.builtin.service:
         name: sshd
         state: restarted
-      listen: restart services
+        listen: restart services

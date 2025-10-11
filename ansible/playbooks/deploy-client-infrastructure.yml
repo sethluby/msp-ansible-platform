@@ -63,9 +63,10 @@
         mode: "0644"
     - name: Send client onboarding notification
       tags: [notification]
+      when: client_notification_email is defined
       ansible.builtin.mail:
         to: "{{ client_notification_email | default(omit) }}"
-        subject: MSP Client Onboarding Complete - {{ client_name }}
+        subject: "MSP Client Onboarding Complete - {{ client_name }}"
         body: |
           Client: {{ client_name }}
           Architecture: {{ deployment_architecture }}
@@ -77,7 +78,6 @@
           2. Run initial compliance scan
           3. Configure monitoring thresholds
           4. Schedule first maintenance window
-      when: client_notification_email is defined
     - name: Log final deployment status
       tags: [logging]
       vars:

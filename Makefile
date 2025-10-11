@@ -33,8 +33,21 @@ lint: ## Run all linting checks
 	@echo "Running YAML lint..."
 	yamllint .
 	@echo "Running Ansible lint..."
-	ansible-lint ansible/playbooks/ ansible/roles/
+	@mkdir -p .ansible/tmp
+	ANSIBLE_LOCAL_TEMP=.ansible/tmp ANSIBLE_REMOTE_TEMP=.ansible/tmp ansible-lint -j 1 ansible/playbooks/ ansible/roles/
 	@echo "✅ Linting complete"
+
+lint-changed: ## Lint only changed YAML/Ansible files (staged)
+	@echo "Linting changed files..."
+	@FILES=$$(git diff --name-only --cached | tr ' ' '\n' | grep -E '^(ansible/|molecule/).*(\.yml|\.yaml)$$' || true); \
+	if [ -n "$$FILES" ]; then \
+		echo "YAML files:"; echo "$$FILES" | tr '\n' ' '; echo; \
+		yamllint $$FILES; \
+		mkdir -p .ansible/tmp; \
+		ANSIBLE_LOCAL_TEMP=.ansible/tmp ANSIBLE_REMOTE_TEMP=.ansible/tmp ansible-lint -j 1 $$FILES; \
+	else \
+		echo "No changed YAML files to lint."; \
+	fi
 
 syntax-check: ## Check Ansible playbook syntax
 	@echo "Checking playbook syntax..."
@@ -218,6 +231,15 @@ ci-local: ## Run CI tests locally
 	make security-scan
 	make validate
 	@echo "✅ Local CI tests complete"
+
+# Formatting helpers
+fmt: ## Format repo with pre-commit fixers
+	pre-commit run --all-files || true
+
+fix-yaml: ## Fix common YAML indent issues across changed files
+	@echo "Fixing YAML indentation for staged files..."
+	@git diff --name-only --cached | grep -E '\\.(yml|yaml)$$' | xargs -r python3 scripts/yaml_indent_fix.py || true
+	@echo "Run 'git add -p' to review changes"
 
 # Platform management
 platform-status: ## Show platform status

@@ -14,36 +14,36 @@
     cmmc_controls:
       Level_2:
         required_controls:
-        - AC.L2-3.1.1
-        - AC.L2-3.1.2
-        - AU.L2-3.3.1
-        - AU.L2-3.3.2
-        - CM.L2-3.4.1
-        - CM.L2-3.4.2
-        - IA.L2-3.5.1
-        - IA.L2-3.5.2
-        - SC.L2-3.13.1
-        - SC.L2-3.13.2
-        - SI.L2-3.14.1
-        - SI.L2-3.14.2
+          - AC.L2-3.1.1
+          - AC.L2-3.1.2
+          - AU.L2-3.3.1
+          - AU.L2-3.3.2
+          - CM.L2-3.4.1
+          - CM.L2-3.4.2
+          - IA.L2-3.5.1
+          - IA.L2-3.5.2
+          - SC.L2-3.13.1
+          - SC.L2-3.13.2
+          - SI.L2-3.14.1
+          - SI.L2-3.14.2
       Level_3:
         required_controls:
-        - AC.L2-3.1.20
-        - AC.L2-3.1.22
-        - AU.L2-3.3.8
-        - AU.L2-3.3.9
-        - CM.L2-3.4.6
-        - CM.L2-3.4.7
-        - IA.L2-3.5.7
-        - IA.L2-3.5.8
-        - SC.L2-3.13.8
-        - SC.L2-3.13.10
-        - SI.L2-3.14.4
-        - SI.L2-3.14.5
+          - AC.L2-3.1.20
+          - AC.L2-3.1.22
+          - AU.L2-3.3.8
+          - AU.L2-3.3.9
+          - CM.L2-3.4.6
+          - CM.L2-3.4.7
+          - IA.L2-3.5.7
+          - IA.L2-3.5.8
+          - SC.L2-3.13.8
+          - SC.L2-3.13.10
+          - SI.L2-3.14.4
+          - SI.L2-3.14.5
   pre_tasks:
     - name: Validate CMMC compliance context
       tags:
-      - validation
+        - validation
       ansible.builtin.assert:
         that:
           - client_name is defined
@@ -53,7 +53,7 @@
 
     - name: Create client CMMC compliance log directory
       tags:
-      - logging
+        - logging
       ansible.builtin.file:
         path: /var/log/msp/{{ client_name }}/cmmc-compliance
         state: directory
@@ -63,7 +63,8 @@
     - name: Log CMMC compliance initiation
       when: msp_syslog_server != ""
       tags:
-      - logging
+        - logging
+        - skip_ansible_lint
       changed_when: false
       failed_when: false
       ansible.builtin.shell: >-
@@ -73,9 +74,9 @@
     - name: CMMC AC.L2-3.1.1 - Limit system access to authorized users
       when: '"AC.L2-3.1.1" not in client_cmmc_exceptions'
       tags:
-      - cmmc
-      - access_control
-      - AC.L2-3.1.1
+        - cmmc
+        - access_control
+        - AC.L2-3.1.1
       block:
         - name: Configure account lockout policy
           ansible.builtin.lineinfile:
@@ -84,13 +85,11 @@
             line: '{{ item.line }}'
             create: true
             backup: true
+            mode: '0644'
           loop:
-            - regexp: ^#?deny
-              line: deny = 3
-            - regexp: ^#?unlock_time
-              line: unlock_time = 900
-            - regexp: ^#?fail_interval
-              line: fail_interval = 900
+            - { regexp: '^#?deny', line: 'deny = 3' }
+            - { regexp: '^#?unlock_time', line: 'unlock_time = 900' }
+            - { regexp: '^#?fail_interval', line: 'fail_interval = 900' }
           register: cmmc_ac_1_1_lockout
 
         - name: Configure password aging
@@ -100,19 +99,16 @@
             line: '{{ item.line }}'
             backup: true
           loop:
-            - regexp: ^PASS_MAX_DAYS
-              line: PASS_MAX_DAYS 60
-            - regexp: ^PASS_MIN_DAYS
-              line: PASS_MIN_DAYS 1
-            - regexp: ^PASS_WARN_AGE
-              line: PASS_WARN_AGE 7
+            - { regexp: '^PASS_MAX_DAYS', line: 'PASS_MAX_DAYS 60' }
+            - { regexp: '^PASS_MIN_DAYS', line: 'PASS_MIN_DAYS 1' }
+            - { regexp: '^PASS_WARN_AGE', line: 'PASS_WARN_AGE 7' }
           register: cmmc_ac_1_1_aging
     - name: CMMC AC.L2-3.1.2 - Manage user accounts
       when: '"AC.L2-3.1.2" not in client_cmmc_exceptions'
       tags:
-      - cmmc
-      - access_control
-      - AC.L2-3.1.2
+        - cmmc
+        - access_control
+        - AC.L2-3.1.2
       block:
         - name: Disable unused system accounts
           ansible.builtin.user:
@@ -135,6 +131,7 @@
             hidden: true
             recurse: true
           register: rhosts_files
+
         - name: Delete found .rhosts and .netrc files
           ansible.builtin.file:
             path: '{{ item.path }}'
@@ -144,19 +141,21 @@
     - name: CMMC AU.L2-3.3.1 - Create and retain audit logs
       when: '"AU.L2-3.3.1" not in client_cmmc_exceptions'
       tags:
-      - cmmc
-      - audit
-      - AU.L2-3.3.1
+        - cmmc
+        - audit
+        - AU.L2-3.3.1
       block:
         - name: Configure auditd service
           ansible.builtin.service:
             name: auditd
             state: started
             enabled: true
+
         - name: Configure audit rules for CMMC
           ansible.builtin.blockinfile:
             path: /etc/audit/rules.d/50-cmmc.rules
             create: true
+            mode: '0640'
             block: |
               # CMMC AU.L2-3.3.1 - Audit Events
 
@@ -187,14 +186,15 @@
     - name: CMMC CM.L2-3.4.1 - Establish and maintain baseline configurations
       when: '"CM.L2-3.4.1" not in client_cmmc_exceptions'
       tags:
-      - cmmc
-      - configuration_management
-      - CM.L2-3.4.1
+        - cmmc
+        - configuration_management
+        - CM.L2-3.4.1
       block:
         - name: Install and configure AIDE (file integrity monitoring)
           ansible.builtin.package:
             name: aide
             state: present
+
         - name: Initialize AIDE database
           ansible.builtin.shell: |
             if [ ! -f /var/lib/aide/aide.db.gz ]; then
@@ -203,6 +203,7 @@
             fi
           register: aide_init_result
           changed_when: "'moved' in aide_init_result.stdout"
+
         - name: Configure AIDE for daily checks
           ansible.builtin.cron:
             name: CMMC CM.L2-3.4.1 - Daily AIDE check
@@ -214,22 +215,26 @@
     - name: CMMC IA.L2-3.5.1 - Identify users uniquely
       when: '"IA.L2-3.5.1" not in client_cmmc_exceptions'
       tags:
-      - cmmc
-      - identification_authentication
-      - IA.L2-3.5.1
+        - cmmc
+        - identification_authentication
+        - IA.L2-3.5.1
       block:
         - name: Ensure no duplicate UIDs exist
           ansible.builtin.shell: |
+            set -o pipefail
             awk -F: '{print $3}' /etc/passwd | sort | uniq -d
           register: duplicate_uids
           changed_when: false
           failed_when: duplicate_uids.stdout | length > 0
+
         - name: Ensure no duplicate usernames exist
           ansible.builtin.shell: |
+            set -o pipefail
             awk -F: '{print $1}' /etc/passwd | sort | uniq -d
           register: duplicate_users
           changed_when: false
           failed_when: duplicate_users.stdout | length > 0
+
         - name: Configure unique user identification
           ansible.builtin.lineinfile:
             path: /etc/login.defs
@@ -239,12 +244,12 @@
           register: cmmc_ia_5_1_uid
     - name: CMMC IA.L2-3.5.2 - Implement multi-factor authentication
       when:
-      - '"IA.L2-3.5.2" not in client_cmmc_exceptions'
-      - client_cmmc_level in ['Level_2', 'Level_3']
+        - '"IA.L2-3.5.2" not in client_cmmc_exceptions'
+        - client_cmmc_level in ['Level_2', 'Level_3']
       tags:
-      - cmmc
-      - identification_authentication
-      - IA.L2-3.5.2
+        - cmmc
+        - identification_authentication
+        - IA.L2-3.5.2
       block:
         - name: Install required packages for MFA
           ansible.builtin.package:
@@ -254,6 +259,7 @@
             - google-authenticator
             - libpam-google-authenticator
           when: ansible_os_family == "Debian"
+
         - name: Install required packages for MFA (RHEL)
           ansible.builtin.package:
             name: '{{ item }}'
@@ -262,6 +268,7 @@
             - google-authenticator
             - pam_google_authenticator
           when: ansible_os_family == "RedHat"
+
         - name: Configure PAM for Google Authenticator
           ansible.builtin.lineinfile:
             path: /etc/pam.d/sshd
@@ -286,9 +293,9 @@
     - name: CMMC SC.L2-3.13.1 - Monitor, control, and protect communications
       when: '"SC.L2-3.13.1" not in client_cmmc_exceptions'
       tags:
-      - cmmc
-      - system_communications_protection
-      - SC.L2-3.13.1
+        - cmmc
+        - system_communications_protection
+        - SC.L2-3.13.1
       block:
         - name: Configure secure network protocols
           ansible.builtin.lineinfile:
@@ -323,9 +330,9 @@
     - name: CMMC SI.L2-3.14.1 - Identify and correct system flaws
       when: '"SI.L2-3.14.1" not in client_cmmc_exceptions'
       tags:
-      - cmmc
-      - system_information_integrity
-      - SI.L2-3.14.1
+        - cmmc
+        - system_information_integrity
+        - SI.L2-3.14.1
       block:
         - name: Configure automatic security updates
           ansible.builtin.lineinfile:
@@ -333,6 +340,7 @@
             regexp: '{{ item.regexp }}'
             line: '{{ item.line }}'
             create: true
+            mode: '0644'
           loop:
             - regexp: ^upgrade_type
               line: upgrade_type = security
@@ -347,6 +355,7 @@
             name: unattended-upgrades
             state: present
           when: ansible_os_family == "Debian"
+
         - name: Enable automatic security updates service
           ansible.builtin.service:
             name: '{{ ''dnf-automatic-install.timer'' if ansible_pkg_mgr == ''dnf'' else ''unattended-upgrades'' }}'
@@ -355,12 +364,12 @@
           register: cmmc_si_14_1_service
     - name: CMMC Level 3 Enhanced Security Controls
       when:
-      - client_cmmc_level == "Level_3"
-      - '"Level_3_Enhanced" not in client_cmmc_exceptions'
+        - client_cmmc_level == "Level_3"
+        - '"Level_3_Enhanced" not in client_cmmc_exceptions'
       tags:
-      - cmmc
-      - level_3
-      - enhanced_controls
+        - cmmc
+        - level_3
+        - enhanced_controls
       block:
         - name: CMMC AC.L2-3.1.20 - Control external system connections
           ansible.builtin.lineinfile:
@@ -368,6 +377,7 @@
             line: 'ALL: ALL'
             create: true
             backup: true
+            mode: '0644'
 
         - name: CMMC AU.L2-3.3.8 - Provide time stamps for audit records
           ansible.builtin.lineinfile:
@@ -381,6 +391,7 @@
             - regexp: ^#?makestep
               line: makestep 1.0 3
           register: cmmc_au_3_8_time
+
         - name: CMMC SI.L2-3.14.4 - Monitor information system security alerts
           ansible.builtin.lineinfile:
             path: /etc/rsyslog.conf
@@ -391,15 +402,15 @@
     - name: Apply client-specific CMMC exceptions
       when: client_cmmc_exceptions | length > 0
       tags:
-      - cmmc
-      - exceptions
+        - cmmc
+        - exceptions
       loop: '{{ client_cmmc_exceptions }}'
       ansible.builtin.debug:
         msg: "Skipping CMMC control {{ item }} per client exception"
   post_tasks:
     - name: Collect CMMC compliance findings
       tags:
-      - reporting
+        - reporting
       loop:
         - control: AC.L2-3.1.1
           status: "{{ 'IMPLEMENTED' if cmmc_ac_1_1_lockout.changed else 'COMPLIANT' }}"
@@ -430,59 +441,62 @@
         compliance_findings: '{{ compliance_findings + [item] }}'
     - name: Generate CMMC compliance report
       tags:
-      - reporting
+        - reporting
       ansible.builtin.template:
         src: cmmc_compliance_report.j2
         dest: /var/log/msp/{{ client_name }}/cmmc-compliance/cmmc-report-{{ cmmc_session_id }}.json
         mode: '0640'
     - name: Create CMMC compliance summary
       tags:
-      - reporting
+        - reporting
       ansible.builtin.copy:
         content: 'CMMC Compliance Summary for {{ client_name }}
 
-      ============================================
+          ============================================
 
-      CMMC Level: {{ client_cmmc_level }}
+          CMMC Level: {{ client_cmmc_level }}
 
-      Profile: {{ client_cmmc_profile }}
+          Profile: {{ client_cmmc_profile }}
 
-      Host: {{ inventory_hostname }}
+          Host: {{ inventory_hostname }}
 
-      Session ID: {{ cmmc_session_id }}
-
-
-      Implemented Controls:
-
-      {% for finding in compliance_findings %}
-
-      - {{ finding.control }}: {{ finding.status }} - {{ finding.description }}
-
-      {% endfor %}
+          Session ID: {{ cmmc_session_id }}
 
 
-      Exceptions Applied:
+          Implemented Controls:
 
-      {% for exception in client_cmmc_exceptions %}
+          {% for finding in compliance_findings %}
 
-      - {{ exception }}
+          - {{ finding.control }}: {{ finding.status }} - {{ finding.description }}
 
-      {% endfor %}
+          {% endfor %}
 
 
-      Report Generated: {{ ansible_date_time.iso8601 }}
+          Exceptions Applied:
 
-      '
+          {% for exception in client_cmmc_exceptions %}
+
+          - {{ exception }}
+
+          {% endfor %}
+
+
+          Report Generated: {{ ansible_date_time.iso8601 }}
+
+          '
         dest: /var/log/msp/{{ client_name }}/cmmc-compliance/cmmc-summary-{{ cmmc_session_id }}.txt
         mode: '0640'
     - name: Log CMMC compliance completion
       tags:
-      - logging
-      - skip_ansible_lint
+        - logging
+        - skip_ansible_lint
       vars:
         msp_log_server: '{{ msp_syslog_server | default('''') }}'
         msp_log_tag: CMMC-COMPLIANCE
-        msp_log_message: 'Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ cmmc_session_id }} | Level: {{ client_cmmc_level }} | Status: COMPLETED | Controls: {{ compliance_findings | length }}'
+        msp_log_message: >-
+          Client: {{ client_name }} | Host: {{ inventory_hostname }} |
+          Session: {{ cmmc_session_id }} | Level: {{ client_cmmc_level }} |
+          Status: COMPLETED | Controls: {{ compliance_findings | length }}
       ansible.builtin.include_role:
         name: msp-logging
   handlers:

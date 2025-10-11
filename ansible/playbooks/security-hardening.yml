@@ -43,9 +43,9 @@
         - validation
       ansible.builtin.assert:
         that:
-          - client_name is defined
-          - client_security_profile in ['minimal', 'standard', 'strict']
-          - client_hardening_level in ['minimal', 'standard', 'strict']
+        - client_name is defined
+        - client_security_profile in ['minimal', 'standard', 'strict']
+        - client_hardening_level in ['minimal', 'standard', 'strict']
         fail_msg: Invalid security hardening parameters
     - name: Create client security hardening log directory
       tags:
@@ -66,55 +66,55 @@
         - logging
         - skip_ansible_lint
       vars:
-        msp_log_server: "{{ msp_syslog_server | default('') }}"
-        msp_log_tag: SECURITY-HARDENING
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ hardening_session_id }} | Profile: {{ client_security_profile }} | Benchmark: {{ active_cis_benchmark }} | Status: STARTED"
+      msp_log_server: "{{ msp_syslog_server | default('') }}"
+      msp_log_tag: SECURITY-HARDENING
+      msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ hardening_session_id }} | Profile: {{ client_security_profile }} | Benchmark: {{ active_cis_benchmark }} | Status: STARTED"
       ansible.builtin.include_role:
         name: msp-logging
   tasks:
     - name: CIS 1.1.1 - Disable unused filesystems
       when:
-      - security_profiles[client_security_profile].disable_unused_filesystems
-      - '"CIS-1.1.1" not in client_security_exceptions'
+        - security_profiles[client_security_profile].disable_unused_filesystems
+        - '"CIS-1.1.1" not in client_security_exceptions'
       tags:
-      - cis
-      - filesystem
-      - CIS-1.1.1
+        - cis
+        - filesystem
+        - CIS-1.1.1
       block:
-        - name: Create modprobe configuration for unused filesystems
-          ansible.builtin.lineinfile:
-            path: /etc/modprobe.d/cis-unused-filesystems.conf
-            line: "install {{ item }} /bin/true"
-            create: true
-            mode: "0644"
-          loop:
-            - cramfs
-            - freevxfs
-            - jffs2
-            - hfs
-            - hfsplus
-            - squashfs
-            - udf
-            - fat
-            - vfat
-            - nfs
-            - nfsv3
-            - gfs2
-          register: cis_1_1_filesystems
-        - name: Remove existing filesystem modules
-          community.general.modprobe:
-            name: "{{ item }}"
-            state: absent
-          loop:
-            - cramfs
-            - freevxfs
-            - jffs2
-            - hfs
-            - hfsplus
-            - squashfs
-            - udf
-          failed_when: false
-          register: cis_1_1_remove_modules
+    - name: Create modprobe configuration for unused filesystems
+      ansible.builtin.lineinfile:
+        path: /etc/modprobe.d/cis-unused-filesystems.conf
+        line: "install {{ item }} /bin/true"
+        create: true
+        mode: "0644"
+      loop:
+        - cramfs
+        - freevxfs
+        - jffs2
+        - hfs
+        - hfsplus
+        - squashfs
+        - udf
+        - fat
+        - vfat
+        - nfs
+        - nfsv3
+        - gfs2
+      register: cis_1_1_filesystems
+    - name: Remove existing filesystem modules
+      community.general.modprobe:
+        name: "{{ item }}"
+        state: absent
+      loop:
+        - cramfs
+        - freevxfs
+        - jffs2
+        - hfs
+        - hfsplus
+        - squashfs
+        - udf
+      failed_when: false
+      register: cis_1_1_remove_modules
     - name: CIS 1.1.22 - Disable automounting
       when: '"CIS-1.1.22" not in client_security_exceptions'
       tags:
@@ -125,275 +125,275 @@
         name: autofs
         state: stopped
         enabled: false
-      register: cis_1_1_22_autofs
-      failed_when: false
+        register: cis_1_1_22_autofs
+        failed_when: false
     - name: CIS 3.1 - Network parameter configuration
       when:
-      - security_profiles[client_security_profile].network_hardening
-      - '"CIS-3.1" not in client_security_exceptions'
+        - security_profiles[client_security_profile].network_hardening
+        - '"CIS-3.1" not in client_security_exceptions'
       tags:
-      - cis
-      - network
-      - CIS-3.1
+        - cis
+        - network
+        - CIS-3.1
       block:
-        - name: Configure network parameters
-          ansible.posix.sysctl:
-            name: "{{ item.name }}"
-            value: "{{ item.value }}"
-            state: present
-            reload: true
-            sysctl_file: /etc/sysctl.d/99-cis-network.conf
-          loop:
-            - { name: net.ipv4.ip_forward, value: "0" }
-            - { name: net.ipv6.conf.all.forwarding, value: "0" }
-            - { name: net.ipv4.conf.all.send_redirects, value: "0" }
-            - { name: net.ipv4.conf.default.send_redirects, value: "0" }
-            - { name: net.ipv4.conf.all.accept_source_route, value: "0" }
-            - { name: net.ipv4.conf.default.accept_source_route, value: "0" }
-            - { name: net.ipv6.conf.all.accept_source_route, value: "0" }
-            - { name: net.ipv6.conf.default.accept_source_route, value: "0" }
-            - { name: net.ipv4.conf.all.accept_redirects, value: "0" }
-            - { name: net.ipv4.conf.default.accept_redirects, value: "0" }
-            - { name: net.ipv6.conf.all.accept_redirects, value: "0" }
-            - { name: net.ipv6.conf.default.accept_redirects, value: "0" }
-            - { name: net.ipv4.conf.all.secure_redirects, value: "0" }
-            - { name: net.ipv4.conf.default.secure_redirects, value: "0" }
-            - { name: net.ipv4.conf.all.log_martians, value: "1" }
-            - { name: net.ipv4.conf.default.log_martians, value: "1" }
-            - { name: net.ipv4.icmp_echo_ignore_broadcasts, value: "1" }
-            - { name: net.ipv4.icmp_ignore_bogus_error_responses, value: "1" }
-            - { name: net.ipv4.conf.all.rp_filter, value: "1" }
-            - { name: net.ipv4.conf.default.rp_filter, value: "1" }
-            - { name: net.ipv4.tcp_syncookies, value: "1" }
-            - { name: net.ipv6.conf.all.accept_ra, value: "0" }
-            - { name: net.ipv6.conf.default.accept_ra, value: "0" }
-          register: cis_3_network_params
+    - name: Configure network parameters
+      ansible.posix.sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: true
+        sysctl_file: /etc/sysctl.d/99-cis-network.conf
+      loop:
+        - { name: net.ipv4.ip_forward, value: "0" }
+        - { name: net.ipv6.conf.all.forwarding, value: "0" }
+        - { name: net.ipv4.conf.all.send_redirects, value: "0" }
+        - { name: net.ipv4.conf.default.send_redirects, value: "0" }
+        - { name: net.ipv4.conf.all.accept_source_route, value: "0" }
+        - { name: net.ipv4.conf.default.accept_source_route, value: "0" }
+        - { name: net.ipv6.conf.all.accept_source_route, value: "0" }
+        - { name: net.ipv6.conf.default.accept_source_route, value: "0" }
+        - { name: net.ipv4.conf.all.accept_redirects, value: "0" }
+        - { name: net.ipv4.conf.default.accept_redirects, value: "0" }
+        - { name: net.ipv6.conf.all.accept_redirects, value: "0" }
+        - { name: net.ipv6.conf.default.accept_redirects, value: "0" }
+        - { name: net.ipv4.conf.all.secure_redirects, value: "0" }
+        - { name: net.ipv4.conf.default.secure_redirects, value: "0" }
+        - { name: net.ipv4.conf.all.log_martians, value: "1" }
+        - { name: net.ipv4.conf.default.log_martians, value: "1" }
+        - { name: net.ipv4.icmp_echo_ignore_broadcasts, value: "1" }
+        - { name: net.ipv4.icmp_ignore_bogus_error_responses, value: "1" }
+        - { name: net.ipv4.conf.all.rp_filter, value: "1" }
+        - { name: net.ipv4.conf.default.rp_filter, value: "1" }
+        - { name: net.ipv4.tcp_syncookies, value: "1" }
+        - { name: net.ipv6.conf.all.accept_ra, value: "0" }
+        - { name: net.ipv6.conf.default.accept_ra, value: "0" }
+      register: cis_3_network_params
     - name: CIS 3.3 - Disable IPv6
       when:
-      - client_disable_ipv6 | default(false)
-      - '"CIS-3.3" not in client_security_exceptions'
+        - client_disable_ipv6 | default(false)
+        - '"CIS-3.3" not in client_security_exceptions'
       tags:
-      - cis
-      - network
-      - ipv6
-      - CIS-3.3
+        - cis
+        - network
+        - ipv6
+        - CIS-3.3
       block:
-        - name: Configure IPv6 disable
-          ansible.posix.sysctl:
-            name: "{{ item }}"
-            value: "1"
-            state: present
-            reload: true
-            sysctl_file: /etc/sysctl.d/99-cis-ipv6-disable.conf
-          loop:
-            - net.ipv6.conf.all.disable_ipv6
-            - net.ipv6.conf.default.disable_ipv6
-            - net.ipv6.conf.lo.disable_ipv6
-          register: cis_3_3_ipv6
-        - name: Add IPv6 disable to GRUB
-          ansible.builtin.lineinfile:
-            path: /etc/default/grub
-            regexp: ^GRUB_CMDLINE_LINUX=
-            line: 'GRUB_CMDLINE_LINUX="ipv6.disable=1"'
-            backup: true
-          register: cis_3_3_grub
-          notify: Update grub
+    - name: Configure IPv6 disable
+      ansible.posix.sysctl:
+        name: "{{ item }}"
+        value: "1"
+        state: present
+        reload: true
+        sysctl_file: /etc/sysctl.d/99-cis-ipv6-disable.conf
+      loop:
+        - net.ipv6.conf.all.disable_ipv6
+        - net.ipv6.conf.default.disable_ipv6
+        - net.ipv6.conf.lo.disable_ipv6
+      register: cis_3_3_ipv6
+    - name: Add IPv6 disable to GRUB
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: ^GRUB_CMDLINE_LINUX=
+        line: 'GRUB_CMDLINE_LINUX="ipv6.disable=1"'
+        backup: true
+        register: cis_3_3_grub
+        notify: Update grub
     - name: CIS 4.1 - Configure auditd
       when: '"CIS-4.1" not in client_security_exceptions'
       tags:
-      - cis
-      - audit
-      - CIS-4.1
+        - cis
+        - audit
+        - CIS-4.1
       block:
-        - name: Ensure auditd is installed
-          ansible.builtin.package:
-            name: "{{ 'audit' if ansible_os_family == 'RedHat' else 'auditd' }}"
-            state: present
-        - name: Configure auditd
-          ansible.builtin.lineinfile:
-            path: /etc/audit/auditd.conf
-            regexp: "{{ item.regexp }}"
-            line: "{{ item.line }}"
-            backup: true
-          loop:
-            - { regexp: '^max_log_file\\s*=', line: 'max_log_file = 100' }
-            - { regexp: '^space_left_action\\s*=', line: 'space_left_action = email' }
-            - { regexp: '^action_mail_acct\\s*=', line: 'action_mail_acct = root' }
-            - { regexp: '^admin_space_left_action\\s*=', line: 'admin_space_left_action = halt' }
-            - { regexp: '^max_log_file_action\\s*=', line: 'max_log_file_action = keep_logs' }
-          register: cis_4_1_config
-        - name: Enable and start auditd
-          ansible.builtin.service:
-            name: auditd
-            state: started
-            enabled: true
-          register: cis_4_1_service
+    - name: Ensure auditd is installed
+      ansible.builtin.package:
+        name: "{{ 'audit' if ansible_os_family == 'RedHat' else 'auditd' }}"
+        state: present
+    - name: Configure auditd
+      ansible.builtin.lineinfile:
+        path: /etc/audit/auditd.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        backup: true
+      loop:
+        - { regexp: '^max_log_file\\s*=', line: 'max_log_file = 100' }
+        - { regexp: '^space_left_action\\s*=', line: 'space_left_action = email' }
+        - { regexp: '^action_mail_acct\\s*=', line: 'action_mail_acct = root' }
+        - { regexp: '^admin_space_left_action\\s*=', line: 'admin_space_left_action = halt' }
+        - { regexp: '^max_log_file_action\\s*=', line: 'max_log_file_action = keep_logs' }
+      register: cis_4_1_config
+    - name: Enable and start auditd
+      ansible.builtin.service:
+        name: auditd
+        state: started
+        enabled: true
+        register: cis_4_1_service
     - name: CIS 5.1 - Configure cron
       when: '"CIS-5.1" not in client_security_exceptions'
       tags:
-      - cis
-      - cron
-      - CIS-5.1
+        - cis
+        - cron
+        - CIS-5.1
       block:
-        - name: Ensure cron daemon is enabled
-          ansible.builtin.service:
-            name: "{{ 'crond' if ansible_os_family == 'RedHat' else 'cron' }}"
-            state: started
-            enabled: true
-        - name: Set cron file permissions
-          ansible.builtin.file:
-            path: "{{ item }}"
-            owner: root
-            group: root
-            mode: "0600"
-          loop:
-            - /etc/crontab
-            - /etc/cron.hourly
-            - /etc/cron.daily
-            - /etc/cron.weekly
-            - /etc/cron.monthly
-            - /etc/cron.d
-          failed_when: false
-          register: cis_5_1_permissions
-        - name: Remove cron.deny and at.deny
-          ansible.builtin.file:
-            path: "{{ item }}"
-            state: absent
-          loop:
-            - /etc/cron.deny
-            - /etc/at.deny
-          register: cis_5_1_deny_files
-        - name: Create cron.allow and at.allow
-          ansible.builtin.file:
-            path: "{{ item }}"
-            state: touch
-            owner: root
-            group: root
-            mode: "0600"
-          loop:
-            - /etc/cron.allow
-            - /etc/at.allow
-          register: cis_5_1_allow_files
+    - name: Ensure cron daemon is enabled
+      ansible.builtin.service:
+        name: "{{ 'crond' if ansible_os_family == 'RedHat' else 'cron' }}"
+        state: started
+        enabled: true
+    - name: Set cron file permissions
+      ansible.builtin.file:
+        path: "{{ item }}"
+        owner: root
+        group: root
+        mode: "0600"
+      loop:
+        - /etc/crontab
+        - /etc/cron.hourly
+        - /etc/cron.daily
+        - /etc/cron.weekly
+        - /etc/cron.monthly
+        - /etc/cron.d
+      failed_when: false
+      register: cis_5_1_permissions
+    - name: Remove cron.deny and at.deny
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/cron.deny
+        - /etc/at.deny
+      register: cis_5_1_deny_files
+    - name: Create cron.allow and at.allow
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: touch
+        owner: root
+        group: root
+        mode: "0600"
+      loop:
+        - /etc/cron.allow
+        - /etc/at.allow
+      register: cis_5_1_allow_files
     - name: CIS 5.2 - SSH server configuration
       when: '"CIS-5.2" not in client_security_exceptions'
       tags:
-      - cis
-      - ssh
-      - CIS-5.2
+        - cis
+        - ssh
+        - CIS-5.2
       block:
-        - name: Configure SSH daemon
-          ansible.builtin.lineinfile:
-            path: /etc/ssh/sshd_config
-            regexp: "{{ item.regexp }}"
-            line: "{{ item.line }}"
-            backup: true
-          loop:
-            - { regexp: '^#?Protocol', line: 'Protocol 2' }
-            - { regexp: '^#?LogLevel', line: 'LogLevel VERBOSE' }
-            - { regexp: '^#?X11Forwarding', line: 'X11Forwarding no' }
-            - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 4' }
-            - { regexp: '^#?IgnoreRhosts', line: 'IgnoreRhosts yes' }
-            - { regexp: '^#?HostbasedAuthentication', line: 'HostbasedAuthentication no' }
-            - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
-            - { regexp: '^#?PermitEmptyPasswords', line: 'PermitEmptyPasswords no' }
-            - { regexp: '^#?PermitUserEnvironment', line: 'PermitUserEnvironment no' }
-            - { regexp: '^#?MACs', line: 'MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256' }
-            - { regexp: '^#?ClientAliveInterval', line: 'ClientAliveInterval 300' }
-            - { regexp: '^#?ClientAliveCountMax', line: 'ClientAliveCountMax 0' }
-            - { regexp: '^#?LoginGraceTime', line: 'LoginGraceTime 60' }
-            - { regexp: '^#?Banner', line: 'Banner /etc/issue.net' }
-          notify: Restart sshd
-          register: cis_5_2_ssh_config
-        - name: Create SSH banner
-          ansible.builtin.copy:
-            content: "Authorized uses only. All activity may be monitored and reported.\n"
-            dest: /etc/issue.net
-            owner: root
-            group: root
-            mode: "0644"
-          register: cis_5_2_banner
+    - name: Configure SSH daemon
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        backup: true
+      loop:
+        - { regexp: '^#?Protocol', line: 'Protocol 2' }
+        - { regexp: '^#?LogLevel', line: 'LogLevel VERBOSE' }
+        - { regexp: '^#?X11Forwarding', line: 'X11Forwarding no' }
+        - { regexp: '^#?MaxAuthTries', line: 'MaxAuthTries 4' }
+        - { regexp: '^#?IgnoreRhosts', line: 'IgnoreRhosts yes' }
+        - { regexp: '^#?HostbasedAuthentication', line: 'HostbasedAuthentication no' }
+        - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+        - { regexp: '^#?PermitEmptyPasswords', line: 'PermitEmptyPasswords no' }
+        - { regexp: '^#?PermitUserEnvironment', line: 'PermitUserEnvironment no' }
+        - { regexp: '^#?MACs', line: 'MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256' }
+        - { regexp: '^#?ClientAliveInterval', line: 'ClientAliveInterval 300' }
+        - { regexp: '^#?ClientAliveCountMax', line: 'ClientAliveCountMax 0' }
+        - { regexp: '^#?LoginGraceTime', line: 'LoginGraceTime 60' }
+        - { regexp: '^#?Banner', line: 'Banner /etc/issue.net' }
+      notify: Restart sshd
+      register: cis_5_2_ssh_config
+    - name: Create SSH banner
+      ansible.builtin.copy:
+        content: "Authorized uses only. All activity may be monitored and reported.\n"
+        dest: /etc/issue.net
+        owner: root
+        group: root
+        mode: "0644"
+        register: cis_5_2_banner
     - name: CIS 5.3 - Configure sudo
       when: '"CIS-5.3" not in client_security_exceptions'
       tags:
-      - cis
-      - sudo
-      - CIS-5.3
+        - cis
+        - sudo
+        - CIS-5.3
       block:
-        - name: Configure sudo settings
-          ansible.builtin.lineinfile:
-            path: /etc/sudoers
-            regexp: "{{ item.regexp }}"
-            line: "{{ item.line }}"
-            validate: visudo -cf %s
-            backup: true
-          loop:
-            - { regexp: '^Defaults\\s+env_reset', line: 'Defaults env_reset' }
-            - { regexp: '^Defaults\\s+mail_badpass', line: 'Defaults mail_badpass' }
-            - { regexp: '^Defaults\\s+secure_path', line: 'Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' }
-            - { regexp: '^Defaults\\s+logfile', line: 'Defaults logfile="/var/log/sudo.log"' }
-          register: cis_5_3_sudo
+    - name: Configure sudo settings
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        validate: visudo -cf %s
+        backup: true
+      loop:
+        - { regexp: '^Defaults\\s+env_reset', line: 'Defaults env_reset' }
+        - { regexp: '^Defaults\\s+mail_badpass', line: 'Defaults mail_badpass' }
+        - { regexp: '^Defaults\\s+secure_path', line: 'Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"' }
+        - { regexp: '^Defaults\\s+logfile', line: 'Defaults logfile="/var/log/sudo.log"' }
+      register: cis_5_3_sudo
     - name: CIS 6.1 - System file permissions
       when: '"CIS-6.1" not in client_security_exceptions'
       tags:
-      - cis
-      - permissions
-      - CIS-6.1
+        - cis
+        - permissions
+        - CIS-6.1
       block:
-        - name: Set permissions on sensitive files
-          ansible.builtin.file:
-            path: "{{ item.path }}"
-            owner: "{{ item.owner }}"
-            group: "{{ item.group }}"
-            mode: "{{ item.mode }}"
-          loop:
-            - { path: /etc/passwd,   owner: root, group: root,   mode: "0644" }
-            - { path: /etc/shadow,   owner: root, group: shadow, mode: "0640" }
-            - { path: /etc/group,    owner: root, group: root,   mode: "0644" }
-            - { path: /etc/gshadow,  owner: root, group: shadow, mode: "0640" }
-            - { path: /etc/passwd-,  owner: root, group: root,   mode: "0600" }
-            - { path: /etc/shadow-,  owner: root, group: shadow, mode: "0600" }
-            - { path: /etc/group-,   owner: root, group: root,   mode: "0600" }
-            - { path: /etc/gshadow-, owner: root, group: shadow, mode: "0600" }
-          failed_when: false
-          register: cis_6_1_permissions
+    - name: Set permissions on sensitive files
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: "{{ item.mode }}"
+      loop:
+        - { path: /etc/passwd,   owner: root, group: root,   mode: "0644" }
+        - { path: /etc/shadow,   owner: root, group: shadow, mode: "0640" }
+        - { path: /etc/group,    owner: root, group: root,   mode: "0644" }
+        - { path: /etc/gshadow,  owner: root, group: shadow, mode: "0640" }
+        - { path: /etc/passwd-,  owner: root, group: root,   mode: "0600" }
+        - { path: /etc/shadow-,  owner: root, group: shadow, mode: "0600" }
+        - { path: /etc/group-,   owner: root, group: root,   mode: "0600" }
+        - { path: /etc/gshadow-, owner: root, group: shadow, mode: "0600" }
+      failed_when: false
+      register: cis_6_1_permissions
     - name: Advanced security configurations (strict profile)
       when:
-      - client_security_profile == "strict"
-      - security_profiles[client_security_profile].mandatory_access_control | default(false)
-      - '"CIS-ADVANCED" not in client_security_exceptions'
+        - client_security_profile == "strict"
+        - security_profiles[client_security_profile].mandatory_access_control | default(false)
+        - '"CIS-ADVANCED" not in client_security_exceptions'
       tags:
-      - cis
-      - advanced
-      - strict
+        - cis
+        - advanced
+        - strict
       block:
-        - name: Configure SELinux (RHEL)
-          ansible.posix.selinux:
-            policy: targeted
-            state: enforcing
-          when: ansible_os_family == "RedHat"
-          register: selinux_config
-        - name: Enable AppArmor (Ubuntu)
-          ansible.builtin.service:
-            name: apparmor
-            state: started
-            enabled: true
-          when: ansible_os_family == "Debian"
-          register: apparmor_config
-        - name: Advanced kernel hardening
-          ansible.posix.sysctl:
-            name: "{{ item.name }}"
-            value: "{{ item.value }}"
-            state: present
-            reload: true
-            sysctl_file: /etc/sysctl.d/99-cis-kernel-hardening.conf
-          loop:
-            - { name: kernel.dmesg_restrict, value: "1" }
-            - { name: kernel.kptr_restrict, value: "2" }
-            - { name: kernel.yama.ptrace_scope, value: "1" }
-            - { name: fs.protected_hardlinks, value: "1" }
-            - { name: fs.protected_symlinks, value: "1" }
-            - { name: fs.suid_dumpable, value: "0" }
-          register: advanced_kernel_hardening
+    - name: Configure SELinux (RHEL)
+      ansible.posix.selinux:
+        policy: targeted
+        state: enforcing
+        when: ansible_os_family == "RedHat"
+        register: selinux_config
+    - name: Enable AppArmor (Ubuntu)
+      ansible.builtin.service:
+        name: apparmor
+        state: started
+        enabled: true
+        when: ansible_os_family == "Debian"
+        register: apparmor_config
+    - name: Advanced kernel hardening
+      ansible.posix.sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: true
+        sysctl_file: /etc/sysctl.d/99-cis-kernel-hardening.conf
+      loop:
+        - { name: kernel.dmesg_restrict, value: "1" }
+        - { name: kernel.kptr_restrict, value: "2" }
+        - { name: kernel.yama.ptrace_scope, value: "1" }
+        - { name: fs.protected_hardlinks, value: "1" }
+        - { name: fs.protected_symlinks, value: "1" }
+        - { name: fs.suid_dumpable, value: "0" }
+      register: advanced_kernel_hardening
     - name: Apply client-specific security exceptions
       when: client_security_exceptions | length > 0
       tags:
@@ -407,37 +407,37 @@
         - reporting
       loop:
         - control: CIS-1.1.1
-          status: "{{ 'IMPLEMENTED' if cis_1_1_filesystems.changed else 'COMPLIANT' }}"
-          description: Unused filesystems disabled
-          category: Filesystem
-        - control: CIS-1.1.22
-          status: "{{ 'IMPLEMENTED' if cis_1_1_22_autofs.changed else 'COMPLIANT' }}"
-          description: Automounting disabled
-          category: Filesystem
-        - control: CIS-3.1
-          status: "{{ 'IMPLEMENTED' if cis_3_network_params.changed else 'COMPLIANT' }}"
-          description: Network parameters hardened
-          category: Network
-        - control: CIS-4.1
-          status: "{{ 'IMPLEMENTED' if cis_4_1_config.changed else 'COMPLIANT' }}"
-          description: Audit daemon configured
-          category: Logging
-        - control: CIS-5.1
-          status: "{{ 'IMPLEMENTED' if cis_5_1_permissions.changed else 'COMPLIANT' }}"
-          description: Cron configured securely
-          category: Access Control
-        - control: CIS-5.2
-          status: "{{ 'IMPLEMENTED' if cis_5_2_ssh_config.changed else 'COMPLIANT' }}"
-          description: SSH daemon hardened
-          category: Network Services
-        - control: CIS-5.3
-          status: "{{ 'IMPLEMENTED' if cis_5_3_sudo.changed else 'COMPLIANT' }}"
-          description: Sudo configured securely
-          category: Access Control
-        - control: CIS-6.1
-          status: "{{ 'IMPLEMENTED' if cis_6_1_permissions.changed else 'COMPLIANT' }}"
-          description: System file permissions set
-          category: File Permissions
+      status: "{{ 'IMPLEMENTED' if cis_1_1_filesystems.changed else 'COMPLIANT' }}"
+      description: Unused filesystems disabled
+      category: Filesystem
+      - control: CIS-1.1.22
+      status: "{{ 'IMPLEMENTED' if cis_1_1_22_autofs.changed else 'COMPLIANT' }}"
+      description: Automounting disabled
+      category: Filesystem
+      - control: CIS-3.1
+      status: "{{ 'IMPLEMENTED' if cis_3_network_params.changed else 'COMPLIANT' }}"
+      description: Network parameters hardened
+      category: Network
+      - control: CIS-4.1
+      status: "{{ 'IMPLEMENTED' if cis_4_1_config.changed else 'COMPLIANT' }}"
+      description: Audit daemon configured
+      category: Logging
+      - control: CIS-5.1
+      status: "{{ 'IMPLEMENTED' if cis_5_1_permissions.changed else 'COMPLIANT' }}"
+      description: Cron configured securely
+      category: Access Control
+      - control: CIS-5.2
+      status: "{{ 'IMPLEMENTED' if cis_5_2_ssh_config.changed else 'COMPLIANT' }}"
+      description: SSH daemon hardened
+      category: Network Services
+      - control: CIS-5.3
+      status: "{{ 'IMPLEMENTED' if cis_5_3_sudo.changed else 'COMPLIANT' }}"
+      description: Sudo configured securely
+      category: Access Control
+      - control: CIS-6.1
+      status: "{{ 'IMPLEMENTED' if cis_6_1_permissions.changed else 'COMPLIANT' }}"
+      description: System file permissions set
+      category: File Permissions
       ansible.builtin.set_fact:
         hardening_results: "{{ hardening_results + [item] }}"
     - name: Generate security hardening report
@@ -459,9 +459,9 @@
         - logging
         - skip_ansible_lint
       vars:
-        msp_log_server: "{{ msp_syslog_server | default('') }}"
-        msp_log_tag: SECURITY-HARDENING
-        msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ hardening_session_id }} | Profile: {{ client_security_profile }} | Status: COMPLETED | Controls: {{ hardening_results | length }}"
+      msp_log_server: "{{ msp_syslog_server | default('') }}"
+      msp_log_tag: SECURITY-HARDENING
+      msp_log_message: "Client: {{ client_name }} | Host: {{ inventory_hostname }} | Session: {{ hardening_session_id }} | Profile: {{ client_security_profile }} | Status: COMPLETED | Controls: {{ hardening_results | length }}"
       ansible.builtin.include_role:
         name: msp-logging
   handlers:
@@ -476,5 +476,5 @@
         elif command -v update-grub >/dev/null 2>&1; then
           update-grub
         fi
-      register: grub_update_result
-      changed_when: grub_update_result.rc == 0
+        register: grub_update_result
+        changed_when: grub_update_result.rc == 0
