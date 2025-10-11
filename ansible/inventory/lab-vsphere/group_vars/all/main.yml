@@ -1,0 +1,28 @@
+---
+# Global variables for the vSphere lab environment
+
+environment: lab-vsphere
+domain_name: lab.local
+
+# SSH/connection defaults for Linux targets
+ansible_user: "labadmin"
+ansible_become: true
+ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+
+# Windows connection defaults (override in host/group vars as needed)
+windows_connection_defaults:
+  ansible_connection: winrm
+  ansible_port: 5986
+  ansible_winrm_transport: credssp
+  ansible_winrm_server_cert_validation: ignore
+
+# Internal certificate authority trust bundle path (if used)
+trust_bundle_src: "files/ca/lab-root-ca.crt"
+trust_bundle_dest: "/usr/local/share/ca-certificates/lab-root-ca.crt"
+
+# Reusable tags/folders in vCenter for dynamic inventory (optional)
+vsphere_folder: "Lab/Platform"
+vsphere_client_folder: "Lab/Clients"
+vsphere_tag_category: "Environment"
+vsphere_tag_name: "lab-vsphere"
+

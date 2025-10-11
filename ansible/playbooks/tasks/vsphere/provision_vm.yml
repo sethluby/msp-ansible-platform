@@ -1,0 +1,58 @@
+---
+# Handles provisioning of a single VM spec (vm)
+
+- name: "Provision VM {{ vm.name }}"
+  community.vmware.vmware_guest:
+    hostname: "{{ vcenter_hostname }}"
+    username: "{{ vcenter_username }}"
+    password: "{{ vcenter_password }}"
+    validate_certs: "{{ vcenter_validate_certs | default(false) }}"
+    datacenter: "{{ vcenter_datacenter }}"
+    cluster: "{{ vcenter_cluster }}"
+    resource_pool: "{{ vm.resource_pool | default(omit) }}"
+    folder: "{{ vcenter_folder }}"
+    datastore: "{{ vm.datastore | default(vcenter_datastore) }}"
+    name: "{{ vm.name }}"
+    template: "{{ vm.template }}"
+    state: "{{ (vm.power_on | default(true)) | ternary('poweredon', 'present') }}"
+    guest_id: "{{ vm.guest_id | default(omit) }}"
+    hardware:
+      num_cpus: "{{ vm.num_cpus | default(2) }}"
+      memory_mb: "{{ vm.memory_mb | default(4096) }}"
+      scsi: "{{ vm.scsi | default('paravirtual') }}"
+    disk:
+      - size_gb: "{{ vm.disk.size_gb | default(40) }}"
+        type: "{{ vm.disk.type | default('thin') }}"
+        datastore: "{{ vm.disk.datastore | default(vm.datastore | default(vcenter_datastore)) }}"
+    networks: "{{ vm.networks | default(omit) }}"
+    wait_for_ip_address: "{{ vm.wait_for_ip | default(vsphere_wait_for_ip_default) }}"
+    customization: "{{ vm.customization | default(omit) }}"
+    customization_spec: "{{ vm.customization_spec | default(omit) }}"
+  register: provision_result
+  tags:
+    - provision
+
+- name: "Attach tags to {{ vm.name }} (if defined)"
+  when: vm.tags is defined and vm.tags | length > 0
+  loop: "{{ vm.tags }}"
+  loop_control:
+    label: "{{ item.category }}:{{ item.name }}"
+  community.vmware.vmware_tag_manager:
+    hostname: "{{ vcenter_hostname }}"
+    username: "{{ vcenter_username }}"
+    password: "{{ vcenter_password }}"
+    validate_certs: "{{ vcenter_validate_certs | default(false) }}"
+    object_name: "{{ vm.name }}"
+    object_type: VirtualMachine
+    tag_name: "{{ item.name }}"
+    category_name: "{{ item.category }}"
+    state: present
+  tags:
+    - provision
+
+- name: Display provisioned VM facts
+  ansible.builtin.debug:
+    var: provision_result.instance
+  when: provision_result is defined and provision_result.instance is defined
+  tags:
+    - provision

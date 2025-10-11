@@ -1,0 +1,65 @@
+---
+# vSphere Preflight (Global Playbook)
+# Purpose: Validate connectivity and summarize requested resources before provisioning
+
+- name: vSphere Preflight
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  pre_tasks:
+    - name: Validate required vCenter connection variables
+      ansible.builtin.assert:
+        that:
+          - vcenter_hostname is defined and vcenter_hostname | length > 0
+          - vcenter_username is defined and vcenter_username | length > 0
+          - vcenter_password is defined and vcenter_password | length > 0
+        fail_msg: "Missing required vCenter connection variables (vcenter_hostname/username/password)"
+        success_msg: "vCenter connection variables present"
+
+    - name: Validate required placement variables
+      ansible.builtin.assert:
+        that:
+          - vcenter_datacenter is defined and vcenter_datacenter | length > 0
+          - vcenter_cluster is defined and vcenter_cluster | length > 0
+          - vcenter_datastore is defined and vcenter_datastore | length > 0
+          - vcenter_folder is defined and vcenter_folder | length > 0
+        fail_msg: "Missing required placement variables (datacenter/cluster/datastore/folder)"
+        success_msg: "Placement variables present"
+
+    - name: Validate VM specification list
+      ansible.builtin.assert:
+        that:
+          - vsphere_vms is defined
+          - vsphere_vms | type_debug == 'list'
+          - vsphere_vms | length > 0
+        fail_msg: "Define 'vsphere_vms' as a non-empty list of VM specs in inventory vars."
+        success_msg: "VM spec list present"
+
+  tasks:
+    - name: Test vCenter connectivity (datacenter info)
+      community.vmware.vmware_datacenter_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs | default(false) }}"
+        datacenter: "{{ vcenter_datacenter }}"
+      register: dc_info
+
+    - name: Compute requested templates and networks
+      ansible.builtin.set_fact:
+        vsphere_templates: "{{ vsphere_vms | map(attribute='template') | list | unique }}"
+        vsphere_networks: "{{ (vsphere_vms | map(attribute='networks') | select('defined') | list | flatten) | map(attribute='name') | list | unique }}"
+
+    - name: Display preflight summary
+      ansible.builtin.debug:
+        msg: |
+          Preflight Summary
+          -----------------
+          Datacenter: {{ vcenter_datacenter }}
+          Cluster:    {{ vcenter_cluster }}
+          Datastore:  {{ vcenter_datastore }}
+          Folder:     {{ vcenter_folder }}
+          Templates:  {{ vsphere_templates | join(', ') if vsphere_templates | length > 0 else 'None' }}
+          Networks:   {{ vsphere_networks | join(', ') if vsphere_networks | length > 0 else 'None' }}
+          VM Count:   {{ vsphere_vms | length }}
+

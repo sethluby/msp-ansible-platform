@@ -261,10 +261,18 @@ cp .env.example .env
   - `ansible/inventory/lab-vsphere/group_vars/vcenter/main.yml`
   - `ansible/inventory/lab-vsphere/group_vars/all/vsphere_provision.yml`
   - Copy and encrypt secrets: `ansible/inventory/lab-vsphere/vault.sample.yml` → `vault.yml`
+- Install Ansible collections/roles:
+  - `ansible-galaxy install -r requirements.yml --force`
+- Optional preflight summary (templates/networks):
+  - `ansible-playbook -i ansible/inventory/lab-vsphere/hosts.yml ansible/playbooks/vsphere-preflight.yml --ask-vault-pass`
 - Provision VMs on vCenter:
-  - `make lab-setup`
-  - `make lab-provision-vsphere`
-  - Global playbook used: `ansible/playbooks/vsphere-provision.yml`
+  - `ansible-playbook -i ansible/inventory/lab-vsphere/hosts.yml ansible/playbooks/vsphere-provision.yml --ask-vault-pass`
+  - Playbook used: `ansible/playbooks/vsphere-provision.yml`
+
+- Destroy VMs (careful):
+  - Provide list via `vsphere_destroy_names` or reuse names from `vsphere_vms`
+  - `ansible-playbook -i ansible/inventory/lab-vsphere/hosts.yml ansible/playbooks/vsphere-destroy.yml -e vsphere_destroy_confirm=true --ask-vault-pass`
+  - Playbook used: `ansible/playbooks/vsphere-destroy.yml`
 
 ### Usage Paths: Baseline vs CMMC Overlay
 

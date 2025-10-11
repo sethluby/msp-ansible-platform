@@ -1,0 +1,19 @@
+---
+# vCenter connection and placement (populate with your lab details)
+
+vcenter_hostname: vcenter.lab.local
+vcenter_datacenter: DC1
+vcenter_cluster: Cluster1
+vcenter_datastore: Datastore1
+vcenter_folder: Lab/Platform
+
+# Network port groups
+vsphere_pg_mgmt: "PG-MGMT"
+vsphere_pg_apps: "PG-APPS"
+vsphere_pg_ingress: "PG-INGRESS"
+
+# Credentials are stored in Ansible Vault (see vault.sample.yml)
+vcenter_username: "{{ vault_vcenter_username }}"
+vcenter_password: "{{ vault_vcenter_password }}"
+vcenter_validate_certs: false
+

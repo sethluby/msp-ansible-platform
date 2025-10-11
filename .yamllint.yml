@@ -59,6 +59,7 @@ ignore: |
   .github/
   molecule/
   .ansible/
+  venv/
   collections/
   *.enc
   vault.yml
@@ -71,5 +72,7 @@ ignore: |
   ansible/roles/reverse-tunnel-infrastructure/
   ansible/roles/msp-infrastructure/
   ansible/roles/graceful-disconnection/
+  # Known non-playbook reference file with YAML structure issues
+  ansible/playbooks/monitoring-alerting-original.yml
   # Ignore galaxy-installed third-party roles (vendored during CI)
   ansible/roles/ansible-lockdown.*

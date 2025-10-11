@@ -1,0 +1,25 @@
+  post_tasks:
+    - name: Collect monitoring setup results
+      tags:
+        - reporting
+      loop:
+        - component: Node Exporter
+          status: "{{ 'INSTALLED' if node_exporter_status.changed else 'RUNNING' }}"
+          description: Prometheus metrics collection
+        - component: System Health Monitoring
+          status: "{{ 'CONFIGURED' if health_check_script.changed else 'ACTIVE' }}"
+          description: Custom system metrics
+        - component: Log Forwarding
+          status: "{{ 'CONFIGURED' if rsyslog_config.changed else 'ACTIVE' }}"
+          description: Centralized log collection
+        - component: Process Monitoring
+          status: "{{ 'CONFIGURED' if process_monitoring_script.changed else 'ACTIVE' }}"
+          description: Process health tracking
+        - component: Security Monitoring
+          status: "{{ 'CONFIGURED' if security_monitoring_script.changed else 'ACTIVE' }}"
+          description: Security event detection
+        - component: Alerting Rules
+          status: "{{ 'CONFIGURED' if alerting_rules.changed else 'ACTIVE' }}"
+          description: Client-specific alert thresholds
+      ansible.builtin.set_fact:
+        monitoring_components: "{{ monitoring_components + [item] }}"

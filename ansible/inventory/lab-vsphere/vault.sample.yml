@@ -1,0 +1,13 @@
+---
+# Sample vault file for lab-vsphere (encrypt with: ansible-vault encrypt ansible/inventory/lab-vsphere/vault.yml)
+
+vault_vcenter_username: "svc-ansible@vsphere.local"
+vault_vcenter_password: "REPLACE_ME"
+
+# Optional: DB, MinIO, Harbor, and Vault secrets
+vault_postgres_admin_password: "REPLACE_ME"
+vault_minio_access_key: "REPLACE_ME"
+vault_minio_secret_key: "REPLACE_ME"
+vault_harbor_admin_password: "REPLACE_ME"
+vault_root_token: "REPLACE_ME"
+

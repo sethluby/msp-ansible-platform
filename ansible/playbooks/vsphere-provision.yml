@@ -1,0 +1,52 @@
+---
+# vSphere Provisioning (Global Playbook)
+# Purpose: Provision a set of VMs on vCenter using variable-defined, cookie-cutter specs.
+# Usage: ansible-playbook -i <inventory>/hosts.yml ansible/playbooks/vsphere-provision.yml
+
+- name: vSphere Provisioning
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    # Allow dry runs via --check; default wait for IP unless overridden per-VM
+    vsphere_wait_for_ip_default: true
+  pre_tasks:
+    - name: Validate required vCenter connection variables
+      ansible.builtin.assert:
+        that:
+          - vcenter_hostname is defined and vcenter_hostname | length > 0
+          - vcenter_username is defined and vcenter_username | length > 0
+          - vcenter_password is defined and vcenter_password | length > 0
+        fail_msg: "Missing required vCenter connection variables (vcenter_hostname/username/password)"
+        success_msg: "vCenter connection variables present"
+
+    - name: Validate required placement variables
+      ansible.builtin.assert:
+        that:
+          - vcenter_datacenter is defined and vcenter_datacenter | length > 0
+          - vcenter_cluster is defined and vcenter_cluster | length > 0
+          - vcenter_datastore is defined and vcenter_datastore | length > 0
+          - vcenter_folder is defined and vcenter_folder | length > 0
+        fail_msg: "Missing required placement variables (datacenter/cluster/datastore/folder)"
+        success_msg: "Placement variables present"
+
+    - name: Validate VM specification list
+      ansible.builtin.assert:
+        that:
+          - vsphere_vms is defined
+          - vsphere_vms | type_debug == 'list'
+          - vsphere_vms | length > 0
+        fail_msg: "Define 'vsphere_vms' as a non-empty list of VM specs in inventory vars."
+        success_msg: "VM spec list present"
+
+  tasks:
+    - name: Provision VMs from specification
+      vars:
+        vm: "{{ item }}"
+      ansible.builtin.include_tasks: tasks/vsphere/provision_vm.yml
+      loop: "{{ vsphere_vms }}"
+      loop_control:
+        label: "{{ item.name | default('unnamed') }}"
+      tags:
+        - provision
+

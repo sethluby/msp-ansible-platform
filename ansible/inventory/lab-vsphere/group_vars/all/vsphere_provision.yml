@@ -1,0 +1,6 @@
+---
+# vSphere provisioning spec for lab (fill or override per your lab)
+# See full example: ansible/inventory/examples/group_vars/vsphere_provision/main.yml
+
+vsphere_vms: []
+

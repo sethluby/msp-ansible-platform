@@ -1,0 +1,188 @@
+---
+# Example variable set for vSphere provisioning (copy and adapt per environment)
+
+# vCenter connection (use Ansible Vault for credentials)
+vcenter_hostname: vcenter.example.local
+vcenter_username: "{{ vault_vcenter_username }}"
+vcenter_password: "{{ vault_vcenter_password }}"
+vcenter_validate_certs: false
+
+# Placement
+vcenter_datacenter: DC1
+vcenter_cluster: Cluster1
+vcenter_datastore: Datastore1
+vcenter_folder: Lab/Platform
+
+# VM specification list
+vsphere_vms:
+  # k3s control plane nodes
+  - name: k3s-01.example.local
+    template: ubuntu-22.04-golden
+    num_cpus: 2
+    memory_mb: 8192
+    disk:
+      size_gb: 40
+      type: thin
+    networks:
+      - name: PG-APPS
+        type: dhcp
+        start_connected: true
+    customization:
+      hostname: k3s-01
+      domain: example.local
+      dns_servers: ["192.0.2.53"]
+      timezone: UTC
+    tags:
+      - { category: Environment, name: lab }
+      - { category: Role, name: k3s }
+
+  - name: k3s-02.example.local
+    template: ubuntu-22.04-golden
+    num_cpus: 2
+    memory_mb: 8192
+    disk: { size_gb: 40, type: thin }
+    networks:
+      - { name: PG-APPS, type: dhcp, start_connected: true }
+    customization:
+      hostname: k3s-02
+      domain: example.local
+    tags:
+      - { category: Environment, name: lab }
+      - { category: Role, name: k3s }
+
+  - name: k3s-03.example.local
+    template: ubuntu-22.04-golden
+    num_cpus: 2
+    memory_mb: 8192
+    disk: { size_gb: 40, type: thin }
+    networks:
+      - { name: PG-APPS, type: dhcp, start_connected: true }
+    customization:
+      hostname: k3s-03
+      domain: example.local
+    tags:
+      - { category: Environment, name: lab }
+      - { category: Role, name: k3s }
+
+  # Postgres VM
+  - name: pg-01.example.local
+    template: ubuntu-22.04-golden
+    num_cpus: 2
+    memory_mb: 8192
+    disk: { size_gb: 100, type: thin }
+    networks:
+      - { name: PG-APPS, type: dhcp, start_connected: true }
+    customization:
+      hostname: pg-01
+      domain: example.local
+    tags:
+      - { category: Environment, name: lab }
+      - { category: Role, name: postgres }
+
+  # Redis VM
+  - name: redis-01.example.local
+    template: ubuntu-22.04-golden
+    num_cpus: 2
+    memory_mb: 4096
+    disk: { size_gb: 40, type: thin }
+    networks:
+      - { name: PG-APPS, type: dhcp, start_connected: true }
+    customization:
+      hostname: redis-01
+      domain: example.local
+    tags:
+      - { category: Environment, name: lab }
+      - { category: Role, name: redis }
+
+  # MinIO VM
+  - name: minio-01.example.local
+    template: ubuntu-22.04-golden
+    num_cpus: 2
+    memory_mb: 8192
+    disk: { size_gb: 500, type: thin }
+    networks:
+      - { name: PG-APPS, type: dhcp, start_connected: true }
+    customization:
+      hostname: minio-01
+      domain: example.local
+    tags:
+      - { category: Environment, name: lab }
+      - { category: Role, name: minio }
+
+  # Harbor VM
+  - name: harbor-01.example.local
+    template: ubuntu-22.04-golden
+    num_cpus: 4
+    memory_mb: 8192
+    disk: { size_gb: 200, type: thin }
+    networks:
+      - { name: PG-APPS, type: dhcp, start_connected: true }
+    customization:
+      hostname: harbor-01
+      domain: example.local
+    tags:
+      - { category: Environment, name: lab }
+      - { category: Role, name: harbor }
+
+  # Vault VM
+  - name: vault-01.example.local
+    template: ubuntu-22.04-golden
+    num_cpus: 2
+    memory_mb: 4096
+    disk: { size_gb: 60, type: thin }
+    networks:
+      - { name: PG-APPS, type: dhcp, start_connected: true }
+    customization:
+      hostname: vault-01
+      domain: example.local
+    tags:
+      - { category: Environment, name: lab }
+      - { category: Role, name: vault }
+
+  # FRP brokers
+  - name: frps-01.example.local
+    template: ubuntu-22.04-golden
+    num_cpus: 2
+    memory_mb: 4096
+    disk: { size_gb: 40, type: thin }
+    networks:
+      - { name: PG-INGRESS, type: dhcp, start_connected: true }
+    customization:
+      hostname: frps-01
+      domain: example.local
+    tags:
+      - { category: Environment, name: lab }
+      - { category: Role, name: broker }
+
+  - name: frps-02.example.local
+    template: ubuntu-22.04-golden
+    num_cpus: 2
+    memory_mb: 4096
+    disk: { size_gb: 40, type: thin }
+    networks:
+      - { name: PG-INGRESS, type: dhcp, start_connected: true }
+    customization:
+      hostname: frps-02
+      domain: example.local
+    tags:
+      - { category: Environment, name: lab }
+      - { category: Role, name: broker }
+
+  # Windows Server example (use a vCenter Customization Spec for domain join)
+  - name: win-01.example.local
+    template: win-2022-golden
+    num_cpus: 2
+    memory_mb: 8192
+    disk: { size_gb: 80, type: thin }
+    networks:
+      - { name: PG-APPS, type: dhcp, start_connected: true }
+    # Preferred: reference an existing vCenter customization spec
+    customization_spec: "Windows-Server-2022-JoinDomain"
+    # If you do not have a spec, you can use minimal inline customization (hostname, dns, domain)
+    # customization:
+    #   hostname: win-01
+    #   domain: example.local
+    #   dns_servers: ["192.0.2.53"]
+    tags:
+      - { category: Environment, name: lab }
+      - { category: Role, name: windows }

@@ -1,0 +1,60 @@
+---
+# vSphere Destroy (Global Playbook)
+# Purpose: Delete VMs defined by variables from vCenter (list-driven, cookie-cutter)
+# Safety: Requires explicit confirmation via `-e vsphere_destroy_confirm=true`
+
+- name: vSphere Destroy
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    vsphere_destroy_confirm: false
+  pre_tasks:
+    - name: Validate required vCenter connection variables
+      ansible.builtin.assert:
+        that:
+          - vcenter_hostname is defined and vcenter_hostname | length > 0
+          - vcenter_username is defined and vcenter_username | length > 0
+          - vcenter_password is defined and vcenter_password | length > 0
+        fail_msg: "Missing required vCenter connection variables (vcenter_hostname/username/password)"
+        success_msg: "vCenter connection variables present"
+
+    - name: Validate required placement variables
+      ansible.builtin.assert:
+        that:
+          - vcenter_datacenter is defined and vcenter_datacenter | length > 0
+          - vcenter_folder is defined and vcenter_folder | length > 0
+        fail_msg: "Missing required placement variables (datacenter/folder)"
+        success_msg: "Placement variables present"
+
+    - name: Build destroy list from variables
+      ansible.builtin.set_fact:
+        vsphere_destroy_list: "{{ vsphere_destroy_names | default(vsphere_vms | map(attribute='name') | list | default([])) }}"
+
+    - name: Validate destroy list and confirmation
+      ansible.builtin.assert:
+        that:
+          - vsphere_destroy_list is defined
+          - vsphere_destroy_list | length > 0
+          - vsphere_destroy_confirm | bool
+        fail_msg: "Refusing to proceed. Provide non-empty 'vsphere_destroy_names' or 'vsphere_vms' and set -e vsphere_destroy_confirm=true"
+        success_msg: "Destroy list confirmed: {{ vsphere_destroy_list | length }} VMs"
+
+  tasks:
+    - name: "Delete VM {{ item }} from vCenter"
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: "{{ vcenter_validate_certs | default(false) }}"
+        datacenter: "{{ vcenter_datacenter }}"
+        folder: "{{ vcenter_folder }}"
+        name: "{{ item }}"
+        state: absent
+        force: true
+      loop: "{{ vsphere_destroy_list }}"
+      loop_control:
+        label: "{{ item }}"
+      tags:
+        - destroy
+
