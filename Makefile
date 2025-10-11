@@ -4,7 +4,24 @@
 # Copyright (c) 2025 Seth Luby
 # Licensed under the MIT License - see LICENSE file for details
 
-.PHONY: help install lint test test-roles test-integration clean setup docs deploy precommit check
+# Use virtual environment if available
+VENV := venv
+PYTHON := $(VENV)/bin/python3
+PIP := $(VENV)/bin/pip
+MOLECULE := $(VENV)/bin/molecule
+ANSIBLE_LINT := $(VENV)/bin/ansible-lint
+YAMLLINT := $(VENV)/bin/yamllint
+
+# Fallback to system binaries if venv doesn't exist
+ifeq ($(wildcard $(VENV)/bin/python3),)
+	PYTHON := python3
+	PIP := pip
+	MOLECULE := molecule
+	ANSIBLE_LINT := ansible-lint
+	YAMLLINT := yamllint
+endif
+
+.PHONY: help install lint test test-roles test-integration clean setup docs deploy precommit check venv
 
 # Default target
 help: ## Show this help message
@@ -12,10 +29,20 @@ help: ## Show this help message
 	@echo "=================================="
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
+# Virtual environment setup
+venv: ## Create Python virtual environment
+	@if [ ! -d "$(VENV)" ]; then \
+		echo "Creating virtual environment..."; \
+		python3 -m venv $(VENV); \
+		echo "✅ Virtual environment created at $(VENV)/"; \
+	else \
+		echo "Virtual environment already exists at $(VENV)/"; \
+	fi
+
 # Installation and setup
-install: ## Install all dependencies
+install: venv ## Install all dependencies
 	@echo "Installing Python dependencies..."
-	pip install -r requirements-dev.txt
+	$(PIP) install -r requirements-dev.txt
 	@echo "Installing Ansible collections and roles..."
 	ansible-galaxy install -r requirements.yml --force
 	@echo "✅ Installation complete"
@@ -31,10 +58,10 @@ setup: install ## Setup development environment
 # Code quality and linting
 lint: ## Run all linting checks
 	@echo "Running YAML lint..."
-	yamllint .
+	$(YAMLLINT) .
 	@echo "Running Ansible lint..."
 	@mkdir -p .ansible/tmp
-	ANSIBLE_LOCAL_TEMP=.ansible/tmp ANSIBLE_REMOTE_TEMP=.ansible/tmp ansible-lint -j 1 ansible/playbooks/ ansible/roles/
+	ANSIBLE_LOCAL_TEMP=.ansible/tmp ANSIBLE_REMOTE_TEMP=.ansible/tmp $(ANSIBLE_LINT) -j 1 ansible/playbooks/ ansible/roles/
 	@echo "✅ Linting complete"
 
 lint-changed: ## Lint only changed YAML/Ansible files (staged)
@@ -42,9 +69,9 @@ lint-changed: ## Lint only changed YAML/Ansible files (staged)
 	@FILES=$$(git diff --name-only --cached | tr ' ' '\n' | grep -E '^(ansible/|molecule/).*(\.yml|\.yaml)$$' || true); \
 	if [ -n "$$FILES" ]; then \
 		echo "YAML files:"; echo "$$FILES" | tr '\n' ' '; echo; \
-		yamllint $$FILES; \
+		$(YAMLLINT) $$FILES; \
 		mkdir -p .ansible/tmp; \
-		ANSIBLE_LOCAL_TEMP=.ansible/tmp ANSIBLE_REMOTE_TEMP=.ansible/tmp ansible-lint -j 1 $$FILES; \
+		ANSIBLE_LOCAL_TEMP=.ansible/tmp ANSIBLE_REMOTE_TEMP=.ansible/tmp $(ANSIBLE_LINT) -j 1 $$FILES; \
 	else \
 		echo "No changed YAML files to lint."; \
 	fi
@@ -78,8 +105,8 @@ test-integration: ## Run integration tests
 
 test-quick: ## Run quick tests (syntax + lint only)
 	@echo "Running quick tests..."
-	yamllint . --format parsable
-	ansible-lint ansible/playbooks/ ansible/roles/ --format brief
+	$(YAMLLINT) . --format parsable
+	$(ANSIBLE_LINT) ansible/playbooks/ ansible/roles/ --format brief
 	@echo "✅ Quick tests complete"
 
 # Individual role testing
@@ -254,10 +281,41 @@ platform-status: ## Show platform status
 	@echo "Documentation: $$(find docs/ -name "*.md" 2>/dev/null | wc -l) files"
 quickstart-demo: ## Run a quick local demo (Molecule converge + verify)
 	@echo "Starting quickstart demo with Molecule (default scenario)..."
-	molecule converge -s default
-	molecule verify -s default || true
+	$(MOLECULE) converge -s default
+	$(MOLECULE) verify -s default || true
 	@echo "\nDemo complete. To clean up: make quickstart-destroy"
 
 quickstart-destroy: ## Destroy quickstart Molecule resources
-	molecule destroy -s default
+	$(MOLECULE) destroy -s default
 	@echo "Cleaned up Molecule resources."
+
+# Bootstrap for new users
+bootstrap: ## First-time setup for new contributors (creates venv, installs everything)
+	@echo "🚀 Bootstrapping MSP Platform development environment..."
+	@echo ""
+	@echo "Step 1/4: Creating Python virtual environment..."
+	@python3 -m venv $(VENV)
+	@echo "✅ Virtual environment created"
+	@echo ""
+	@echo "Step 2/4: Installing Python dependencies (this may take a few minutes)..."
+	@$(PIP) install --upgrade pip setuptools wheel
+	@$(PIP) install -r requirements-dev.txt
+	@echo "✅ Python dependencies installed"
+	@echo ""
+	@echo "Step 3/4: Installing Ansible collections and roles..."
+	@ansible-galaxy install -r requirements.yml --force
+	@echo "✅ Ansible dependencies installed"
+	@echo ""
+	@echo "Step 4/4: Setting up project directories..."
+	@mkdir -p logs reports backups .ansible/tmp
+	@echo "✅ Project structure ready"
+	@echo ""
+	@echo "🎉 Bootstrap complete! Your environment is ready."
+	@echo ""
+	@echo "Quick start commands:"
+	@echo "  make help          - Show all available commands"
+	@echo "  make lint          - Run code quality checks"
+	@echo "  make test-quick    - Run fast tests (syntax + lint)"
+	@echo "  make test          - Run full test suite"
+	@echo ""
+	@echo "💡 Note: All commands automatically use the virtual environment in ./$(VENV)/"

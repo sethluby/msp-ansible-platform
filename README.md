@@ -241,13 +241,22 @@ cp .env.example .env
 
 ### Quickstart Demo
 
-Run a local Molecule demo of the default scenario (Docker required):
+⚠️ **Note**: The quickstart demo is currently in development. Some Ansible Galaxy roles referenced in `requirements.yml` are not yet available or configured. For new contributors:
 
 ```bash
-make quickstart-demo
-# Cleanup when done
-make quickstart-destroy
+# First-time setup (creates virtual environment and installs dependencies)
+make bootstrap
+
+# After bootstrap, you can run:
+make lint          # Code quality checks
+make syntax-check  # Playbook syntax validation
+make test-quick    # Fast tests (syntax + lint)
+
+# Molecule testing (requires additional configuration)
+# make quickstart-demo  # Currently in development
 ```
+
+For production deployments, see the detailed setup guide in `docs/LAB_SETUP_GUIDE.md`.
 
 ## Architecture Overview
 

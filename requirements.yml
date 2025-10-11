@@ -75,11 +75,6 @@ roles:
   # Audit and logging
   - name: willshersystems.sshd
 
-  - name: willshersystems.auditd
-
-  # User management
-  - name: debops.users
-
   # Backup solutions
   - name: geerlingguy.repo-epel
 
@@ -90,17 +85,7 @@ roles:
 
   - name: geerlingguy.pip
 
-  # Network and VPN
-  - name: githubixx.wireguard
-
-  # Database roles (for backup testing)
-  - name: geerlingguy.mysql
-
-  - name: geerlingguy.postgresql
-
   # Testing and development
   - name: geerlingguy.git
-
-  - name: geerlingguy.ansible
 
   # Note: molecule is installed via pip in CI/CD pipeline
