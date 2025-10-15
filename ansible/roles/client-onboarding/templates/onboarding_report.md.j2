@@ -1,0 +1,28 @@
+# Client Onboarding Report
+
+Client: {{ client_name }}
+Domain: {{ client_domain }}
+Tier: {{ client_tier | title }}
+Admin Email: {{ client_admin_email }}
+
+Generated: {{ ansible_date_time.iso8601 }}
+
+Summary
+-------
+- Configuration directory: `{{ client_config_dir }}`
+- Inventory directory: `{{ client_inventory_dir }}`
+- Playbooks directory: `{{ client_playbooks_dir }}`
+- Documentation directory: `{{ client_docs_dir }}`
+
+Notes
+-----
+- VPN enabled: {{ vpn_enabled | bool }}
+- Monitoring enabled: {{ monitoring_enabled | default(true) | bool }}
+- Backup enabled: {{ backup_enabled | bool }}
+
+Next Steps
+----------
+- Review generated inventory and host groups.
+- Add host SSH keys to `keys/authorized_keys`.
+- Run initial hardening and compliance playbooks as needed.
+

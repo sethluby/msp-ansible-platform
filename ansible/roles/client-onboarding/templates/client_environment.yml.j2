@@ -1,0 +1,27 @@
+---
+# Managed by MSP Platform - Client Environment
+client:
+  name: "{{ client_name }}"
+  domain: "{{ client_domain }}"
+  tier: "{{ client_tier }}"
+  admin_email: "{{ client_admin_email }}"
+
+network:
+  vpn_enabled: {{ vpn_enabled | bool }}
+  vpn_port: {{ vpn_port }}
+  vpn_server_ip: "{{ vpn_server_ip }}"
+  client_network_cidr: "{{ client_network_cidr }}"
+
+backup:
+  enabled: {{ backup_enabled | bool }}
+  retention_days: {{ backup_retention_days }}
+  schedule: "{{ backup_schedule }}"
+
+monitoring:
+  enabled: {{ monitoring_enabled | default(true) | bool }}
+
+infrastructure:
+  awx_url: "{{ msp_ansible_tower_url }}"
+  vault_url: "{{ msp_vault_url }}"
+  monitoring_url: "{{ msp_monitoring_url }}"
+

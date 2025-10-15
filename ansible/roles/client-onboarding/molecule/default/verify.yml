@@ -1,0 +1,12 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Assert facts available
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.os_family is defined
+        success_msg: "Facts OK"
+        fail_msg: "Facts missing"
+
