@@ -180,6 +180,7 @@ operation_type: "system_update"
 - Copy `.env.example` to `.env` and adjust as needed for local runs (`make setup` will create it if missing).
 - The repository uses a single root `ansible.cfg`; role/local configs are generated per‑client by onboarding.
 - The `client-onboarding` role supports a fast path via `onboarding_minimal: true` to skip heavy operations in tests.
+- Onboarding Molecule scenario runs on Ubuntu 22.04 and Rocky Linux 9 containers with verify checks for generated files.
 
 ### **MSP Infrastructure Deployment**
 ```bash

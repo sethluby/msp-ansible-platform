@@ -1,0 +1,24 @@
+FROM rockylinux:9
+
+RUN dnf -y update && dnf -y install \
+    systemd sudo python3 python3-pip python3-setuptools \
+    openssh-server curl wget git vim rsync net-tools iproute \
+    iputils iptables firewalld \
+    && dnf clean all
+
+RUN systemctl enable sshd || true
+
+RUN mkdir -p /var/run/sshd \
+    && ssh-keygen -A \
+    && sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/' /etc/ssh/sshd_config \
+    && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config || true
+
+RUN echo 'root:testpassword' | chpasswd
+
+RUN mkdir -p /opt/msp-platform/{clients,logs,backups} \
+    && mkdir -p /var/log/msp-platform/{reports,audit}
+
+VOLUME ["/sys/fs/cgroup"]
+
+CMD ["/usr/sbin/init"]
+

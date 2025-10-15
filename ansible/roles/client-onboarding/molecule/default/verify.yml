@@ -2,6 +2,9 @@
 - name: Verify
   hosts: all
   gather_facts: true
+  vars:
+    cfg_dir: "{{ client_config_dir }}"
+    inv_dir: "{{ client_inventory_dir }}"
   tasks:
     - name: Assert facts available
       ansible.builtin.assert:
@@ -10,3 +13,36 @@
         success_msg: "Facts OK"
         fail_msg: "Facts missing"
 
+    - name: Assert client directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - "{{ cfg_dir }}"
+        - "{{ inv_dir }}"
+        - "{{ cfg_dir }}/documentation"
+        - "{{ cfg_dir }}/backup"
+        - "{{ cfg_dir }}/monitoring"
+        - "{{ cfg_dir }}/compliance"
+      register: dir_check
+
+    - name: Check expected files exist (minimal mode)
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      register: st
+      loop:
+        - "{{ cfg_dir }}/ansible.cfg"
+        - "{{ cfg_dir }}/client.env"
+        - "{{ cfg_dir }}/documentation/Onboarding_Report.md"
+        - "{{ inv_dir }}/inventory.ini"
+        - "{{ inv_dir }}/inventory.yml"
+        - "{{ inv_dir }}/dynamic_inventory.py"
+        - "{{ cfg_dir }}/backup/configuration.yml"
+        - "{{ cfg_dir }}/monitoring/configuration.yml"
+        - "{{ cfg_dir }}/compliance/configuration.yml"
+
+    - name: Assert expected files exist (minimal mode)
+      ansible.builtin.assert:
+        that: "st.results | map(attribute='stat.exists') | list | min"
+        success_msg: "All expected files present"
+        fail_msg: "One or more expected files missing"

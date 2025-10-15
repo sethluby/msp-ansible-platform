@@ -26,12 +26,16 @@ As of now, the following items have been completed toward the MVP path:
 - Added minimal infra config stubs for `docker-compose` (AWX, Postgres, Redis, Vault) so CI can validate compose files.
 - Client onboarding role: introduced `onboarding_minimal` gating to skip heavy steps in tests.
 - Scaffolded a Molecule default scenario for `client-onboarding` and switched converge to include the role in minimal mode.
+- Expanded Molecule verify to assert generated files (configs, inventories, docs) exist in minimal mode.
+- Added OS matrix for onboarding scenario (Ubuntu 22.04, Rocky Linux 9) using role-local Dockerfiles.
+- Implemented monitoring deployment step (config/status/doc generation) behind gating.
 - Filled onboarding templates (inventory, tier configs, compliance/monitoring/backup configs, client playbooks, VPN/auth docs/scripts), enabling end‑to‑end role execution with minimal defaults.
 
 Next short-term targets:
 - Expand Molecule for onboarding with idempotence checks and a basic verify that inspects generated files.
-- Add OS matrix (Ubuntu + Rocky) for onboarding once idempotence is verified.
-- Implement the monitoring deployment in the onboarding role (currently placeholder) behind gating.
+- Add idempotence asserts and enable CI matrix once green locally.
+- Consider additional file permission asserts and content sanity checks.
+- Evaluate optional lightweight agent install (node_exporter) under gating in non-CI runs.
 - Tighten validations and add more RHEL/Debian‑safe guards for VPN tasks.
 
 ## Phased Plan

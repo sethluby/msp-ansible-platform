@@ -1,4 +1,25 @@
 ---
-- name: Deploy monitoring placeholder
-  ansible.builtin.debug:
-    msg: Monitoring deployment to be implemented
+- name: Ensure monitoring configuration exists
+  ansible.builtin.stat:
+    path: "{{ client_config_dir }}/monitoring/configuration.yml"
+  register: monitoring_cfg
+
+- name: Fail if monitoring configuration is missing
+  ansible.builtin.fail:
+    msg: "Monitoring configuration not found at {{ client_config_dir }}/monitoring/configuration.yml"
+  when: not monitoring_cfg.stat.exists
+
+- name: Write monitoring deployment status
+  ansible.builtin.copy:
+    content: |
+      Monitoring deployed for {{ client_name }}
+      Timestamp: {{ ansible_date_time.iso8601 }}
+      Config: {{ client_config_dir }}/monitoring/configuration.yml
+    dest: "{{ client_config_dir }}/monitoring/STATUS"
+    mode: "0644"
+
+- name: Generate monitoring overview documentation
+  ansible.builtin.template:
+    src: monitoring_overview.md.j2
+    dest: "{{ client_docs_dir }}/Monitoring_Overview.md"
+    mode: "0644"
