@@ -365,6 +365,9 @@ For a step-by-step MSP lab walk‑through (baseline and connectivity paths), see
 
 Status: Testing and validation platform; pilot-ready components.
 
+### Known Issues
+- See docs/KNOWN_ISSUES.md for current development/runtime caveats and workarounds (Molecule + ansible-core conditionals, callback plugin behavior on Python 3.13, Docker networking limits in restricted environments, etc.).
+
 ### Implemented Playbooks
 - **system-update.yml** - Multi-OS patch management (RHEL, Ubuntu, SUSE) with maintenance windows
 - **disa-stig-compliance.yml** - 10+ DISA security controls with client exceptions

@@ -31,6 +31,8 @@ As of now, the following items have been completed toward the MVP path:
 - Implemented monitoring deployment step (config/status/doc generation) behind gating.
 - Filled onboarding templates (inventory, tier configs, compliance/monitoring/backup configs, client playbooks, VPN/auth docs/scripts), enabling end‑to‑end role execution with minimal defaults.
 
+Tracking Issues: see docs/KNOWN_ISSUES.md
+
 Next short-term targets:
 - Expand Molecule for onboarding with idempotence checks and a basic verify that inspects generated files.
 - Add idempotence asserts and enable CI matrix once green locally.

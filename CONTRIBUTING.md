@@ -122,6 +122,11 @@ make validate
 
 ## Issue Reporting
 
+### Known Issues Log
+- Before filing a new issue for environment/toolchain quirks (e.g., Molecule, Docker, Ansible version pinning), check `docs/KNOWN_ISSUES.md`.
+- If you encounter a new reproducible issue, add a concise entry with: symptom, environment, root cause (if known), workaround, and impact. Keep it factual and brief.
+- When submitting a PR that addresses or depends on a workaround, link to the corresponding entry in `docs/KNOWN_ISSUES.md`.
+
 ### Security Issues
 For security vulnerabilities, please use GitHub's security advisory feature rather than public issues.
 
