@@ -41,6 +41,7 @@ provisioner:
       bin_ansible_callbacks: true
   env:
     ANSIBLE_ROLES_PATH: "../../../"
+    ANSIBLE_STDOUT_CALLBACK: default
   inventory:
     group_vars:
       all:

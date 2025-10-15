@@ -1,0 +1,28 @@
+---
+- name: Install node exporter (Debian family)
+  ansible.builtin.package:
+    name: prometheus-node-exporter
+    state: present
+  when: ansible_facts.os_family == 'Debian'
+  tags:
+    - monitoring
+    - node-exporter
+
+- name: Enable and start node exporter service (Debian family)
+  ansible.builtin.systemd:
+    name: prometheus-node-exporter
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: ansible_facts.os_family == 'Debian'
+  tags:
+    - monitoring
+    - node-exporter
+
+- name: Skip node exporter installation for unsupported OS
+  ansible.builtin.debug:
+    msg: "Skipping node_exporter installation on this OS or when package is unavailable"
+  when: ansible_facts.os_family != 'Debian'
+  tags:
+    - monitoring
+    - node-exporter

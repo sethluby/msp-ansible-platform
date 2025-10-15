@@ -1,56 +1,104 @@
 ---
-- name: Install WireGuard
+- name: Determine WireGuard package set per OS
+  ansible.builtin.set_fact:
+    wireguard_packages: >-
+      {{ ['wireguard', 'wireguard-tools'] if ansible_facts.os_family == 'Debian' else ['wireguard-tools'] }}
+  tags:
+    - vpn
+    - installation
+
+- name: Install WireGuard packages
   ansible.builtin.package:
-    name: wireguard
+    name: "{{ wireguard_packages }}"
     state: present
   tags:
     - vpn
     - installation
+
+- name: Ensure WireGuard configuration directory exists
+  ansible.builtin.file:
+    path: /etc/wireguard
+    state: directory
+    mode: "0750"
+    owner: root
+    group: root
+  tags:
+    - vpn
+    - configuration
+
+- name: Check for existing stored WireGuard keys
+  ansible.builtin.stat:
+    path: "{{ client_config_dir }}/keys/wireguard_keys"
+  register: wg_keys_file
+  tags:
+    - vpn
+    - keys
+
+- name: Load existing WireGuard keys
+  ansible.builtin.slurp:
+    path: "{{ client_config_dir }}/keys/wireguard_keys"
+  register: wg_keys_content
+  when: wg_keys_file.stat.exists | bool
+  no_log: true
+  tags:
+    - vpn
+    - keys
+
+- name: Set WireGuard key facts from stored file
+  ansible.builtin.set_fact:
+    wg_server_private_key: { stdout: "{{ (wg_keys_content.content | b64decode) | regex_search('^SERVER_PRIVATE_KEY=(.*)$', '\\1', multiline=True) }}" }
+    wg_server_public_key:  { stdout: "{{ (wg_keys_content.content | b64decode) | regex_search('^SERVER_PUBLIC_KEY=(.*)$',  '\\1', multiline=True) }}" }
+    wg_client_private_key: { stdout: "{{ (wg_keys_content.content | b64decode) | regex_search('^CLIENT_PRIVATE_KEY=(.*)$', '\\1', multiline=True) }}" }
+    wg_client_public_key:  { stdout: "{{ (wg_keys_content.content | b64decode) | regex_search('^CLIENT_PUBLIC_KEY=(.*)$',  '\\1', multiline=True) }}" }
+    wg_preshared_key:      { stdout: "{{ (wg_keys_content.content | b64decode) | regex_search('^PRESHARED_KEY=(.*)$',      '\\1', multiline=True) }}" }
+  when: wg_keys_file.stat.exists | bool
+  no_log: true
+  tags:
+    - vpn
+    - keys
+
 - name: Generate WireGuard private key for server
-  ansible.builtin.shell: "set -o pipefail\nwg genkey\n"
+  ansible.builtin.command: wg genkey
   register: wg_server_private_key
   changed_when: true
   no_log: true
+  when: not (wg_keys_file.stat.exists | bool)
   tags:
     - vpn
     - keys
 - name: Generate WireGuard public key for server
-  ansible.builtin.shell: 'set -o pipefail
-
-    echo "{{ wg_server_private_key.stdout }}" | wg pubkey
-
-    '
+  ansible.builtin.shell: "wg pubkey <<<'{{ wg_server_private_key.stdout }}'"
   register: wg_server_public_key
   changed_when: false
   no_log: true
+  when: not (wg_keys_file.stat.exists | bool)
   tags:
     - vpn
     - keys
 - name: Generate WireGuard private key for client
-  ansible.builtin.shell: "set -o pipefail\nwg genkey\n"
+  ansible.builtin.command: wg genkey
   register: wg_client_private_key
   changed_when: true
   no_log: true
+  when: not (wg_keys_file.stat.exists | bool)
   tags:
     - vpn
     - keys
 - name: Generate WireGuard public key for client
-  ansible.builtin.shell: 'set -o pipefail
-
-    echo "{{ wg_client_private_key.stdout }}" | wg pubkey
-
-    '
+  ansible.builtin.shell: "wg pubkey <<<'{{ wg_client_private_key.stdout }}'"
   register: wg_client_public_key
   changed_when: false
   no_log: true
+  when: not (wg_keys_file.stat.exists | bool)
   tags:
     - vpn
     - keys
 - name: Generate pre-shared key
-  ansible.builtin.shell: "set -o pipefail\nwg genpsk\n"
+  ansible.builtin.command: wg genpsk
   register: wg_preshared_key
   changed_when: true
   no_log: true
+  when: not (wg_keys_file.stat.exists | bool)
   tags:
     - vpn
     - keys
@@ -87,21 +135,47 @@
   tags:
     - vpn
     - keys
+- name: Check if wg-quick is available
+  ansible.builtin.command: bash -lc 'command -v wg-quick'
+  register: wg_quick_available
+  changed_when: false
+  failed_when: false
+  tags:
+    - vpn
+    - service
+
 - name: Enable and start WireGuard interface
   ansible.builtin.systemd:
     name: wg-quick@{{ client_name }}
     enabled: true
     state: started
     daemon_reload: true
+  when: wg_quick_available.rc == 0
   tags:
     - vpn
     - service
-- name: Configure firewall for WireGuard
+- name: Gather service facts
+  ansible.builtin.service_facts: {}
+  tags:
+    - vpn
+    - firewall
+
+- name: Configure firewall for WireGuard (firewalld)
   ansible.posix.firewalld:
     port: "{{ vpn_port }}/udp"
     permanent: true
     state: enabled
     immediate: true
+  when:
+    - ansible_facts.os_family == 'RedHat'
+    - ansible_facts.services['firewalld.service'] is defined
+  tags:
+    - vpn
+    - firewall
+- name: Skip firewall configuration on Debian/others or when firewalld absent
+  ansible.builtin.debug:
+    msg: "Skipping firewalld configuration: not applicable or service not present"
+  when: ansible_facts.os_family != 'RedHat' or (ansible_facts.services['firewalld.service'] is not defined)
   tags:
     - vpn
     - firewall
@@ -111,6 +185,7 @@
     value: "1"
     state: present
     reload: true
+  when: ansible_virtualization_type | default('') != 'docker'
   tags:
     - vpn
     - networking

@@ -3,6 +3,12 @@
   hosts: all
   gather_facts: true
   vars:
+    # Keep vars aligned with converge.yml for deterministic paths
+    client_name: molecule-client
+    client_domain: example.internal
+    client_admin_email: admin@example.internal
+    client_tier: foundation
+
     cfg_dir: "{{ client_config_dir }}"
     inv_dir: "{{ client_inventory_dir }}"
   tasks:
@@ -13,10 +19,9 @@
         success_msg: "Facts OK"
         fail_msg: "Facts missing"
 
-    - name: Assert client directories exist
-      ansible.builtin.file:
+    - name: Stat client directories
+      ansible.builtin.stat:
         path: "{{ item }}"
-        state: directory
       loop:
         - "{{ cfg_dir }}"
         - "{{ inv_dir }}"
@@ -24,7 +29,13 @@
         - "{{ cfg_dir }}/backup"
         - "{{ cfg_dir }}/monitoring"
         - "{{ cfg_dir }}/compliance"
-      register: dir_check
+      register: dir_stats
+
+    - name: Assert client directories exist
+      ansible.builtin.assert:
+        that: "dir_stats.results | map(attribute='stat.exists') | list | min"
+        success_msg: "All expected directories present"
+        fail_msg: "One or more expected directories missing"
 
     - name: Check expected files exist (minimal mode)
       ansible.builtin.stat:
@@ -46,3 +57,64 @@
         that: "st.results | map(attribute='stat.exists') | list | min"
         success_msg: "All expected files present"
         fail_msg: "One or more expected files missing"
+
+    - name: Stat file metadata for permission checks
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ cfg_dir }}/ansible.cfg"
+        - "{{ cfg_dir }}/client.env"
+        - "{{ cfg_dir }}/documentation/Onboarding_Report.md"
+        - "{{ cfg_dir }}/backup/configuration.yml"
+        - "{{ cfg_dir }}/monitoring/configuration.yml"
+        - "{{ cfg_dir }}/compliance/configuration.yml"
+      register: file_stats
+
+    - name: Assert file permissions and ownership are correct
+      ansible.builtin.assert:
+        that:
+          - (file_stats.results | map(attribute='stat.mode') | list) | select('match', '.*644$') | length == 6
+          - (file_stats.results | map(attribute='stat.pw_name') | list) | select('equalto', 'root') | length == 6
+          - (file_stats.results | map(attribute='stat.gr_name') | list) | select('equalto', 'root') | length == 6
+        success_msg: "File modes and ownership as expected"
+        fail_msg: "File modes or ownership incorrect"
+
+    - name: Read client.env for content checks
+      ansible.builtin.slurp:
+        path: "{{ cfg_dir }}/client.env"
+      register: client_env_file
+
+    - name: Assert client.env contains expected keys
+      ansible.builtin.assert:
+        that:
+          - (client_env_file.content | b64decode) is search('^CLIENT_NAME=' + client_name, multiline=True)
+          - (client_env_file.content | b64decode) is search('^CLIENT_DOMAIN=' + client_domain, multiline=True)
+          - (client_env_file.content | b64decode) is search('^CLIENT_TIER=' + client_tier, multiline=True)
+        success_msg: "client.env content OK"
+        fail_msg: "client.env missing expected values"
+
+    - name: Read ansible.cfg for content checks
+      ansible.builtin.slurp:
+        path: "{{ cfg_dir }}/ansible.cfg"
+      register: ansible_cfg_file
+
+    - name: Assert ansible.cfg includes required sections
+      ansible.builtin.assert:
+        that:
+          - (ansible_cfg_file.content | b64decode) is search('^\[defaults\]', multiline=True)
+          - (ansible_cfg_file.content | b64decode) is search('^inventory\s*=\s*' ~ inv_dir ~ '/inventory.yml', multiline=True)
+        success_msg: "ansible.cfg content OK"
+        fail_msg: "ansible.cfg missing required settings"
+
+    - name: Read Onboarding Report for content checks
+      ansible.builtin.slurp:
+        path: "{{ cfg_dir }}/documentation/Onboarding_Report.md"
+      register: report_file
+
+    - name: Assert Onboarding Report contains client details
+      ansible.builtin.assert:
+        that:
+          - (report_file.content | b64decode) is search('^Client:\s+' + client_name, multiline=True)
+          - (report_file.content | b64decode) is search('^Domain:\s+' + client_domain, multiline=True)
+        success_msg: "Onboarding report content OK"
+        fail_msg: "Onboarding report missing expected content"

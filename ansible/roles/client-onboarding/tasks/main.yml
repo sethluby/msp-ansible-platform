@@ -37,6 +37,17 @@
   tags:
     - monitoring
     - observability
+
+- name: Install node exporter (optional)
+  ansible.builtin.include_tasks: install_node_exporter.yml
+  when:
+    - monitoring_enabled | default(true)
+    - install_node_exporter | default(false) | bool
+    - not onboarding_minimal | bool
+    - (lookup('ansible.builtin.env', 'CI') | default('') | lower) != 'true'
+  tags:
+    - monitoring
+    - observability
 - name: Generate client documentation
   ansible.builtin.include_tasks: generate_documentation.yml
   tags:

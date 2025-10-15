@@ -72,3 +72,6 @@ enterprise_settings:
 
 # Minimal mode: skip heavy operations for tests/scaffolding
 onboarding_minimal: false
+
+# Optional lightweight agent installation (non-CI, non-minimal only)
+install_node_exporter: false
