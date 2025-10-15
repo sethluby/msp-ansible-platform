@@ -1,0 +1,12 @@
+---
+- name: Converge
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    update_packages: false
+    install_essential_packages: true
+    configure_log_rotation: true
+    timezone: UTC
+  roles:
+    - role: common

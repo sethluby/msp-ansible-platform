@@ -1,0 +1,38 @@
+---
+- name: Gather passwd and group entries
+  ansible.builtin.getent:
+    database: "{{ item }}"
+  loop:
+    - passwd
+    - group
+
+- name: Determine admin primary group
+  ansible.builtin.set_fact:
+    admin_primary_group: "{{ 'wheel' if ansible_facts.os_family == 'RedHat' else 'sudo' }}"
+
+- name: Assert admin group exists
+  ansible.builtin.assert:
+    that:
+      - getent_group[admin_primary_group] is defined
+    success_msg: "Admin primary group exists"
+    fail_msg: "Admin primary group missing"
+
+- name: Assert msp-admins group exists
+  ansible.builtin.assert:
+    that:
+      - getent_group['msp-admins'] is defined
+    success_msg: "msp-admins group exists"
+    fail_msg: "msp-admins group missing"
+
+- name: Assert sudoers drop-in exists
+  ansible.builtin.stat:
+    path: /etc/sudoers.d/msp-admins
+  register: sudoers_drop
+
+- name: Validate sudoers drop-in
+  ansible.builtin.assert:
+    that:
+      - sudoers_drop.stat.exists
+      - sudoers_drop.stat.mode is defined and sudoers_drop.stat.mode | regex_search('.*440$')
+    success_msg: "sudoers drop-in present with correct mode"
+    fail_msg: "sudoers drop-in missing or wrong mode"

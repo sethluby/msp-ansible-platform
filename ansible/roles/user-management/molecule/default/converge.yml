@@ -4,17 +4,22 @@
   become: true
   gather_facts: true
   vars:
-    # Disable all behavior that relies on missing include files
-    manage_users: false
-    manage_groups: false
+    # Minimal path: create groups + admin user + sudoers
+    manage_groups: true
+    setup_sudo_access: true
     enforce_password_policy: false
-    setup_sudo_access: false
+    manage_users: true
     manage_ssh_keys: false
     configure_pam: false
     audit_user_access: false
     disable_unused_accounts: false
-    admin_users: []
     service_accounts: []
     client_users: []
+    admin_users:
+      - name: molecule-admin
+        comment: Molecule Admin
+        groups: ["msp-admins"]
+        sudo_access: true
+        state: present
   roles:
     - role: user-management

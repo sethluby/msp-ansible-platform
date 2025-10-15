@@ -1,0 +1,52 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: true
+  vars:
+    expected_timezone: UTC
+  tasks:
+    - name: Assert facts available
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.os_family is defined
+        success_msg: "Facts OK"
+        fail_msg: "Facts missing"
+
+    - name: Check current timezone
+      ansible.builtin.command: timedatectl show -p Timezone --value
+      changed_when: false
+      register: tz
+
+    - name: Assert timezone is configured
+      ansible.builtin.assert:
+        that:
+          - tz.stdout | trim == expected_timezone
+        success_msg: "Timezone correctly set"
+        fail_msg: "Timezone not set as expected"
+
+    - name: Determine chrony service name
+      ansible.builtin.set_fact:
+        chrony_service: "{{ 'chronyd' if ansible_facts.os_family == 'RedHat' else 'chrony' }}"
+
+    - name: Gather service facts
+      ansible.builtin.service_facts: {}
+
+    - name: Assert NTP service is present
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services[chrony_service + '.service'] is defined
+        success_msg: "Chrony service present"
+        fail_msg: "Chrony service not found"
+
+    - name: Check logrotate policy file
+      ansible.builtin.stat:
+        path: /etc/logrotate.d/msp-platform
+      register: lr
+
+    - name: Assert logrotate policy exists
+      ansible.builtin.assert:
+        that:
+          - lr.stat.exists
+          - lr.stat.mode is defined and lr.stat.mode | regex_search('.*644$')
+        success_msg: "Logrotate config present with correct mode"
+        fail_msg: "Logrotate config missing or wrong mode"

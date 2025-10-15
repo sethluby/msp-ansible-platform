@@ -1,0 +1,16 @@
+---
+- name: Determine admin group per OS
+  ansible.builtin.set_fact:
+    admin_primary_group: "{{ 'wheel' if ansible_facts.os_family == 'RedHat' else 'sudo' }}"
+
+- name: Create sudoers drop-in for MSP admins
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/msp-admins
+    mode: "0440"
+    owner: root
+    group: root
+    validate: 'visudo -cf %s'
+    content: |
+      %{{ admin_primary_group }} ALL=(ALL) NOPASSWD:ALL
+      %msp-admins ALL=(ALL) NOPASSWD:ALL
+  tags: [users, sudo]

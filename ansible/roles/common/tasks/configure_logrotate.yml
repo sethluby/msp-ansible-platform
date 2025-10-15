@@ -1,0 +1,29 @@
+---
+- name: Ensure logrotate is installed
+  ansible.builtin.package:
+    name: logrotate
+    state: present
+  tags:
+    - logging
+    - maintenance
+
+- name: Install MSP platform logrotate policy
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/msp-platform
+    mode: "0644"
+    owner: root
+    group: root
+    content: |
+      # MSP Platform logrotate policy
+      /var/log/syslog /var/log/messages {
+          weekly
+          rotate 4
+          compress
+          delaycompress
+          missingok
+          notifempty
+          copytruncate
+      }
+  tags:
+    - logging
+    - maintenance

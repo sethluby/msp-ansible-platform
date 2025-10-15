@@ -1,0 +1,44 @@
+---
+- name: Determine admin group per OS
+  ansible.builtin.set_fact:
+    admin_primary_group: "{{ 'wheel' if ansible_facts.os_family == 'RedHat' else 'sudo' }}"
+
+- name: Build admin groups list (normalized)
+  ansible.builtin.set_fact:
+    admin_users_normalized: >-
+      {{ admin_users | map('combine', {
+          'normalized_groups': (item.groups | default([])) | map('regex_replace', '^wheel$', admin_primary_group) | list
+        }) | list }}
+  vars:
+    item: "{{ item }}"
+  with_items: "{{ admin_users | default([]) }}"
+  loop_control:
+    loop_var: item
+
+- name: Ensure groups referenced by admin users exist
+  ansible.builtin.group:
+    name: "{{ item }}"
+    state: present
+    system: true
+  loop: "{{ (admin_users_normalized | default([])) | map(attribute='normalized_groups') | list | flatten | unique }}"
+  when: (admin_users_normalized | default([])) | length > 0
+
+- name: Ensure msp-admins group exists
+  ansible.builtin.group:
+    name: msp-admins
+    state: present
+    system: true
+
+- name: Create administrative users
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    comment: "{{ item.comment | default('') }}"
+    shell: "{{ item.shell | default(default_shell) }}"
+    groups: "{{ (item.normalized_groups | default([])) + ['msp-admins', admin_primary_group] | unique | join(',') }}"
+    append: true
+    create_home: "{{ create_home_directories | bool }}"
+    state: "{{ item.state | default('present') }}"
+  loop: "{{ admin_users_normalized | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+  tags: [users, admin]

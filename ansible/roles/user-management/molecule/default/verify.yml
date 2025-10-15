@@ -9,3 +9,41 @@
           - ansible_facts.os_family is defined
         success_msg: "Facts gathered successfully"
         fail_msg: "Facts not available"
+
+    - name: Gather passwd and group entries
+      ansible.builtin.getent:
+        database: "{{ item }}"
+      loop:
+        - passwd
+        - group
+
+    - name: Determine admin group
+      ansible.builtin.set_fact:
+        admin_primary_group: "{{ 'wheel' if ansible_facts.os_family == 'RedHat' else 'sudo' }}"
+
+    - name: Assert admin groups exist
+      ansible.builtin.assert:
+        that:
+          - getent_group['msp-admins'] is defined
+        success_msg: "msp-admins group exists"
+        fail_msg: "msp-admins group missing"
+
+    - name: Assert molecule-admin user exists
+      ansible.builtin.assert:
+        that:
+          - getent_passwd['molecule-admin'] is defined
+        success_msg: "molecule-admin user present"
+        fail_msg: "molecule-admin user missing"
+
+    - name: Check sudoers drop-in
+      ansible.builtin.stat:
+        path: /etc/sudoers.d/msp-admins
+      register: sudoers_drop
+
+    - name: Assert sudoers drop-in exists with correct mode
+      ansible.builtin.assert:
+        that:
+          - sudoers_drop.stat.exists
+          - sudoers_drop.stat.mode is defined and sudoers_drop.stat.mode | regex_search('.*440$')
+        success_msg: "sudoers drop-in OK"
+        fail_msg: "sudoers drop-in missing or wrong mode"
