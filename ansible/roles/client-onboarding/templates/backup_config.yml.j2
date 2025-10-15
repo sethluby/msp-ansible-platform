@@ -1,0 +1,7 @@
+---
+enabled: {{ backup_enabled | bool }}
+retention_days: {{ backup_retention_days }}
+schedule: "{{ backup_schedule }}"
+paths:
+  - "{{ client_config_dir }}"
+

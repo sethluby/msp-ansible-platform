@@ -1,0 +1,8 @@
+---
+- name: Client Compliance Implementation
+  hosts: all
+  become: true
+  gather_facts: true
+  roles:
+    - role: compliance-frameworks
+

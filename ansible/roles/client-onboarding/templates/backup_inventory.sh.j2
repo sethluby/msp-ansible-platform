@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DEST="${1:-$SCRIPT_DIR/../backup/inventory_$(date +%Y%m%d%H%M%S).tar.gz}"
+
+tar -czf "$DEST" -C "$SCRIPT_DIR" inventory.ini inventory.yml || true
+echo "Inventory backed up to $DEST"
+

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+HOSTNAME="${1:-}"
+if [[ -z "$HOSTNAME" ]]; then
+  echo "Usage: $0 <hostname>" >&2
+  exit 1
+fi
+
+grep -v "^$HOSTNAME\b" "$SCRIPT_DIR/inventory.ini" > "$SCRIPT_DIR/inventory.ini.tmp" || true
+mv "$SCRIPT_DIR/inventory.ini.tmp" "$SCRIPT_DIR/inventory.ini"
+echo "Removed $HOSTNAME from inventory.ini"
+

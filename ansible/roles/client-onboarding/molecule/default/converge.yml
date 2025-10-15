@@ -4,20 +4,15 @@
   become: true
   gather_facts: true
   vars:
-    # Provide required vars for validation but disable heavy features
     client_name: molecule-client
     client_domain: example.internal
     client_admin_email: admin@example.internal
     client_tier: foundation
-
-    # Skip features that require extra templates/services during scaffolding
+    onboarding_minimal: true
     vpn_enabled: false
     generate_ssh_keys: false
     monitoring_enabled: false
     notification_enabled: false
 
-  tasks:
-    - name: No-op converge for scaffolding
-      ansible.builtin.debug:
-        msg: "client-onboarding role scenario scaffold"
-
+  roles:
+    - role: client-onboarding

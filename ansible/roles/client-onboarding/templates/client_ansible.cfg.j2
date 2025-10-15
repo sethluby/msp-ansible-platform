@@ -1,0 +1,10 @@
+[defaults]
+inventory = {{ client_inventory_dir }}/inventory.yml
+roles_path = {{ client_playbooks_dir }}/custom/roles:{{ ansible_env.HOME | default('~') }}/.ansible/roles
+collections_paths = {{ ansible_env.HOME | default('~') }}/.ansible/collections
+stdout_callback = yaml
+bin_ansible_callbacks = True
+retry_files_enabled = False
+
+interpreter_python = auto_silent
+

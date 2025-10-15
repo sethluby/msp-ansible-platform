@@ -1,0 +1,7 @@
+---
+enabled: {{ monitoring_enabled | default(true) | bool }}
+endpoints:
+  prometheus: "{{ msp_monitoring_url }}"
+alerts:
+  email: "{{ client_admin_email }}"
+

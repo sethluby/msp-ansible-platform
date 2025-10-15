@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+IF="{{ client_name }}"
+systemctl stop "wg-quick@${IF}" || true
+systemctl disable "wg-quick@${IF}" || true
+echo "VPN stopped: ${IF}"
+

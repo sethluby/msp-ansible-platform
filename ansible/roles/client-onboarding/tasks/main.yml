@@ -11,13 +11,13 @@
     - setup
 - name: Generate client authentication keys
   ansible.builtin.include_tasks: generate_authentication.yml
-  when: generate_ssh_keys | bool
+  when: (generate_ssh_keys | bool) and (not onboarding_minimal | bool)
   tags:
     - authentication
     - ssh
 - name: Configure WireGuard VPN
   ansible.builtin.include_tasks: configure_vpn.yml
-  when: vpn_enabled | bool
+  when: (vpn_enabled | bool) and (not onboarding_minimal | bool)
   tags:
     - vpn
     - network
@@ -33,7 +33,7 @@
     - setup
 - name: Deploy client monitoring
   ansible.builtin.include_tasks: deploy_monitoring.yml
-  when: monitoring_enabled | default(true)
+  when: (monitoring_enabled | default(true)) and (not onboarding_minimal | bool)
   tags:
     - monitoring
     - observability
@@ -44,12 +44,13 @@
     - handover
 - name: Validate client setup
   ansible.builtin.include_tasks: validate_setup.yml
+  when: not onboarding_minimal | bool
   tags:
     - validation
     - testing
 - name: Send onboarding notifications
   ansible.builtin.include_tasks: send_notifications.yml
-  when: notification_enabled | default(true)
+  when: (notification_enabled | default(true)) and (not onboarding_minimal | bool)
   tags:
     - notification
     - communication

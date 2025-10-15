@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+IF="{{ client_name }}"
+systemctl enable --now "wg-quick@${IF}"
+systemctl is-active "wg-quick@${IF}" && echo "VPN started: ${IF}"
+

@@ -69,3 +69,6 @@ enterprise_settings:
   custom_playbooks_enabled: true
   dedicated_support: true
   cmmc_level: 2
+
+# Minimal mode: skip heavy operations for tests/scaffolding
+onboarding_minimal: false

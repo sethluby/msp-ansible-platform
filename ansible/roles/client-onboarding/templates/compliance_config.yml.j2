@@ -1,0 +1,8 @@
+---
+# Compliance configuration
+frameworks:
+{% for fw in compliance_frameworks %}
+  - name: {{ fw.name | to_json }}
+    enabled: {{ (fw.enabled | bool) | to_json }}
+{% endfor %}
+

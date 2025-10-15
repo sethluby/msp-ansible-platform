@@ -1,0 +1,8 @@
+---
+tier: professional
+settings:
+  monitoring_interval: {{ professional_settings.monitoring_interval }}
+  backup_frequency: {{ professional_settings.backup_frequency | to_json }}
+  compliance_scan_frequency: {{ professional_settings.compliance_scan_frequency | to_json }}
+  custom_playbooks_enabled: {{ professional_settings.custom_playbooks_enabled | bool }}
+

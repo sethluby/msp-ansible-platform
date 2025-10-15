@@ -18,14 +18,32 @@ Primary failure types observed (yamllint):
 - Enforce style on newly touched/added files while allowing a structured, incremental cleanup of legacy files.
 - Incrementally implement role functionality (common, user-management, monitoring, backup, compliance, connectivity).
 
+## Progress Update
+
+As of now, the following items have been completed toward the MVP path:
+- Added `.env.example` to support `make setup` and local runs.
+- Consolidated to a single root `ansible.cfg` (removed `ansible/ansible.cfg`).
+- Added minimal infra config stubs for `docker-compose` (AWX, Postgres, Redis, Vault) so CI can validate compose files.
+- Client onboarding role: introduced `onboarding_minimal` gating to skip heavy steps in tests.
+- Scaffolded a Molecule default scenario for `client-onboarding` and switched converge to include the role in minimal mode.
+- Filled onboarding templates (inventory, tier configs, compliance/monitoring/backup configs, client playbooks, VPN/auth docs/scripts), enabling end‑to‑end role execution with minimal defaults.
+
+Next short-term targets:
+- Expand Molecule for onboarding with idempotence checks and a basic verify that inspects generated files.
+- Add OS matrix (Ubuntu + Rocky) for onboarding once idempotence is verified.
+- Implement the monitoring deployment in the onboarding role (currently placeholder) behind gating.
+- Tighten validations and add more RHEL/Debian‑safe guards for VPN tasks.
+
 ## Phased Plan
 
 ### Phase 1 — Stabilize Skeleton and Onboarding (1–2 weeks)
-- Fill missing templates for client-onboarding (client.env, onboarding report, authorized_keys, inventory helpers, etc.).
-- Ensure molecule/default converge + verify pass for onboarding + minimal common tasks.
-- Consolidate Ansible config to the root `ansible.cfg` only.
-- Add `.env.example` to satisfy `make setup`.
-- CI: gate PRs on linting only for changed files; keep full-repo lint on schedule/non-blocking until cleanup is complete.
+- [done] Fill missing templates for client-onboarding (client.env, onboarding report, authorized_keys, inventory helpers, etc.).
+- [in progress] Ensure Molecule converge + idempotence + verify pass for onboarding + minimal common tasks.
+- [done] Consolidate Ansible config to the root `ansible.cfg` only.
+- [done] Add `.env.example` to satisfy `make setup`.
+- [done] CI policy present: changed-file linting in PRs; full-repo lint non-blocking on schedule.
+- [done] Add infra config stubs for compose validation (AWX, Postgres, Redis, Vault).
+- [done] Add `onboarding_minimal` gating to enable fast test runs.
 
 ### Phase 2 — MVP Role Implementations + Idempotence (2–4 weeks)
 - Common: implement minimal, safe tasks (timezone, NTP, logrotate, essentials) with strong gating.
@@ -55,4 +73,3 @@ Primary failure types observed (yamllint):
 ## Transitional Lint Strategy
 - Pre-commit enforces YAML/Ansible style on changed files (auto-fix YAML indent on `tags:`/`that:`/task lists; run yamllint + ansible-lint).
 - CI: For PRs, lint only changed files; run full-repo lint on a schedule (or as a non-blocking job) until legacy content is remediated.
-

@@ -48,18 +48,21 @@
     timeout: 10
   register: tower_connectivity
   failed_when: false
+  when: not onboarding_minimal | bool
   tags:
     - validation
     - connectivity
 - name: Log connectivity status
   ansible.builtin.debug:
     msg: "MSP infrastructure connectivity: {{ 'OK' if tower_connectivity.status == 200 else 'Failed' }}"
+  when: not onboarding_minimal | bool
   tags:
     - validation
 - name: Check available disk space
   ansible.builtin.shell: "set -o pipefail\ndf {{ client_base_dir | dirname }} --output=avail | tail -1\n"
   register: available_space
   changed_when: false
+  when: not onboarding_minimal | bool
   tags:
     - validation
     - resources
@@ -69,6 +72,7 @@
       - available_space.stdout | int > 1048576
     fail_msg: Insufficient disk space. Need at least 1GB available
     success_msg: Disk space validation passed
+  when: not onboarding_minimal | bool
   tags:
     - validation
 - name: Check network port availability

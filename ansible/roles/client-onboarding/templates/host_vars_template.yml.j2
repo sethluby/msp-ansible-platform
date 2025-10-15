@@ -1,0 +1,11 @@
+---
+# Managed by MSP Platform - Host vars template
+# Copy to host_vars/<hostname>.yml and customize
+
+roles: []
+environment: dev
+owner: {{ client_admin_email | default('admin@' ~ client_domain) }}
+
+tags:
+  - base
+

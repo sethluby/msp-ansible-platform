@@ -1,0 +1,11 @@
+---
+client: {{ client_name }}
+domain: {{ client_domain }}
+admin_email: {{ client_admin_email }}
+ssh_key:
+  type: {{ ssh_key_type }}
+  private_key: {{ client_config_dir }}/keys/{{ client_name }}_id_{{ ssh_key_type }}
+  public_key: {{ client_config_dir }}/keys/{{ client_name }}_id_{{ ssh_key_type }}.pub
+vault:
+  password_file: {{ client_config_dir }}/.vault_pass
+

@@ -1,0 +1,10 @@
+---
+tier: enterprise
+settings:
+  monitoring_interval: {{ enterprise_settings.monitoring_interval }}
+  backup_frequency: {{ enterprise_settings.backup_frequency | to_json }}
+  compliance_scan_frequency: {{ enterprise_settings.compliance_scan_frequency | to_json }}
+  custom_playbooks_enabled: {{ enterprise_settings.custom_playbooks_enabled | bool }}
+  dedicated_support: {{ enterprise_settings.dedicated_support | bool }}
+  cmmc_level: {{ enterprise_settings.cmmc_level }}
+

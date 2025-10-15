@@ -1,0 +1,18 @@
+# VPN Configuration
+
+Client: {{ client_name }}
+Interface: {{ client_name }}
+Server IP: {{ vpn_server_ip }}
+Port: {{ vpn_port }}
+
+Files
+- Server: `/etc/wireguard/{{ client_name }}.conf`
+- Client: `{{ client_config_dir }}/certificates/{{ client_name }}-vpn.conf`
+- Keys: `{{ client_config_dir }}/keys/wireguard_keys`
+
+Commands
+- Start: `./start-vpn.sh`
+- Stop: `./stop-vpn.sh`
+- Status: `./status-vpn.sh`
+- Test: `./test-vpn.sh`
+

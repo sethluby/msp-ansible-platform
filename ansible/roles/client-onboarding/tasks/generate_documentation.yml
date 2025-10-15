@@ -1,4 +1,10 @@
 ---
-- name: Generate client documentation placeholder
+- name: Generate onboarding report
+  ansible.builtin.template:
+    src: onboarding_report.md.j2
+    dest: "{{ client_docs_dir }}/Onboarding_Report.md"
+    mode: "0644"
+
+- name: Note documentation generation status
   ansible.builtin.debug:
-    msg: Documentation generation to be implemented for {{ client_name | default('client') }}
+    msg: "Generated onboarding report for {{ client_name | default('client') }}"
