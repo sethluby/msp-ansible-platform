@@ -50,3 +50,26 @@
           - lr.stat.mode is defined and lr.stat.mode | regex_search('.*644$')
         success_msg: "Logrotate config present with correct mode"
         fail_msg: "Logrotate config missing or wrong mode"
+
+    - name: Gather service facts
+      ansible.builtin.service_facts: {}
+
+    - name: Assert rsyslog service is present
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['rsyslog.service'] is defined
+        success_msg: "rsyslog service present"
+        fail_msg: "rsyslog service missing"
+
+    - name: Check rsyslog drop-in
+      ansible.builtin.stat:
+        path: /etc/rsyslog.d/00-msp-platform.conf
+      register: rsc
+
+    - name: Assert rsyslog drop-in exists with correct mode
+      ansible.builtin.assert:
+        that:
+          - rsc.stat.exists
+          - rsc.stat.mode is defined and rsc.stat.mode | regex_search('.*644$')
+        success_msg: "rsyslog drop-in present with correct mode"
+        fail_msg: "rsyslog drop-in missing or wrong mode"

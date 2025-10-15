@@ -1,0 +1,10 @@
+FROM rockylinux:9
+
+RUN dnf -y update \
+    && dnf -y install systemd systemd-udev dbus sudo iproute \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf
+
+VOLUME ["/sys/fs/cgroup"]
+
+CMD ["/usr/sbin/init"]

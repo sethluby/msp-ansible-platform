@@ -15,11 +15,13 @@
     disable_unused_accounts: false
     service_accounts: []
     client_users: []
+    manage_ssh_keys: true
     admin_users:
       - name: molecule-admin
         comment: Molecule Admin
         groups: ["msp-admins"]
         sudo_access: true
+        ssh_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMSPMoleculeTestKey molecule@test"
         state: present
   roles:
     - role: user-management

@@ -19,10 +19,54 @@
     - monitoring
     - node-exporter
 
-- name: Skip node exporter installation for unsupported OS
+- name: Attempt install node exporter (RedHat family)
+  ansible.builtin.package:
+    name: prometheus-node-exporter
+    state: present
+  register: rhel_install
+  ignore_errors: true
+  when: ansible_facts.os_family == 'RedHat'
+  tags:
+    - monitoring
+    - node-exporter
+
+- name: Gather service facts
+  ansible.builtin.service_facts: {}
+  when: ansible_facts.os_family == 'RedHat'
+  tags:
+    - monitoring
+    - node-exporter
+
+- name: Enable and start node exporter service (RHEL family, prometheus-node-exporter)
+  ansible.builtin.systemd:
+    name: prometheus-node-exporter
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - ansible_facts.os_family == 'RedHat'
+    - ansible_facts.services['prometheus-node-exporter.service'] is defined
+  tags:
+    - monitoring
+    - node-exporter
+
+- name: Enable and start node exporter service (RHEL family, node_exporter)
+  ansible.builtin.systemd:
+    name: node_exporter
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - ansible_facts.os_family == 'RedHat'
+    - ansible_facts.services['node_exporter.service'] is defined
+  tags:
+    - monitoring
+    - node-exporter
+
+- name: Skip node exporter installation for unsupported OS or unavailable package
   ansible.builtin.debug:
-    msg: "Skipping node_exporter installation on this OS or when package is unavailable"
-  when: ansible_facts.os_family != 'Debian'
+    msg: "Skipping node_exporter installation: unsupported OS or package not available"
+  when: ansible_facts.os_family not in ['Debian', 'RedHat'] or (ansible_facts.os_family == 'RedHat' and (rhel_install is failed))
   tags:
     - monitoring
     - node-exporter

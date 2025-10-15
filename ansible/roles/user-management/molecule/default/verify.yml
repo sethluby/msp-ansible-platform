@@ -35,6 +35,35 @@
         success_msg: "molecule-admin user present"
         fail_msg: "molecule-admin user missing"
 
+    - name: Determine molecule-admin home
+      ansible.builtin.set_fact:
+        molecule_admin_home: "{{ getent_passwd['molecule-admin'][4] }}"
+
+    - name: Check authorized_keys for molecule-admin
+      ansible.builtin.stat:
+        path: "{{ molecule_admin_home }}/.ssh/authorized_keys"
+      register: ak
+
+    - name: Assert authorized_keys exists with correct mode
+      ansible.builtin.assert:
+        that:
+          - ak.stat.exists
+          - ak.stat.mode is defined and ak.stat.mode | regex_search('.*600$')
+        success_msg: "authorized_keys present with correct mode"
+        fail_msg: "authorized_keys missing or wrong mode"
+
+    - name: Read authorized_keys
+      ansible.builtin.slurp:
+        path: "{{ molecule_admin_home }}/.ssh/authorized_keys"
+      register: ak_file
+
+    - name: Assert authorized_keys contains expected key
+      ansible.builtin.assert:
+        that:
+          - (ak_file.content | b64decode) is search('MSPMoleculeTestKey')
+        success_msg: "authorized_keys contains test key"
+        fail_msg: "authorized_keys missing test key"
+
     - name: Check sudoers drop-in
       ansible.builtin.stat:
         path: /etc/sudoers.d/msp-admins

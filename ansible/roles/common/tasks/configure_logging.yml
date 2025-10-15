@@ -1,0 +1,32 @@
+---
+- name: Ensure rsyslog is installed
+  ansible.builtin.package:
+    name: rsyslog
+    state: present
+  tags:
+    - logging
+    - system
+
+- name: Enable and start rsyslog
+  ansible.builtin.systemd:
+    name: rsyslog
+    enabled: true
+    state: started
+    daemon_reload: true
+  tags:
+    - logging
+    - system
+
+- name: Install MSP rsyslog drop-in config
+  ansible.builtin.copy:
+    dest: /etc/rsyslog.d/00-msp-platform.conf
+    mode: "0644"
+    owner: root
+    group: root
+    content: |
+      # MSP Platform rsyslog settings
+      # Keep default journald forwarding; add safe template if needed
+      $IMJournalStateFile imjournal.state
+  tags:
+    - logging
+    - system

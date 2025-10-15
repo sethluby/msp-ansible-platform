@@ -118,3 +118,63 @@
           - (report_file.content | b64decode) is search('^Domain:\s+' + client_domain, multiline=True)
         success_msg: "Onboarding report content OK"
         fail_msg: "Onboarding report missing expected content"
+
+    - name: Read inventory.yml for content checks
+      ansible.builtin.slurp:
+        path: "{{ inv_dir }}/inventory.yml"
+      register: invyml
+
+    - name: Assert inventory.yml contains expected structure
+      ansible.builtin.assert:
+        that:
+          - (invyml.content | b64decode) is search('^all:', multiline=True)
+          - (invyml.content | b64decode) is search('client_name:\\s*' ~ client_name, multiline=True)
+          - (invyml.content | b64decode) is search('client_domain:\\s*' ~ client_domain, multiline=True)
+        success_msg: "inventory.yml content OK"
+        fail_msg: "inventory.yml missing expected values"
+
+    - name: Read inventory.ini for content checks
+      ansible.builtin.slurp:
+        path: "{{ inv_dir }}/inventory.ini"
+      register: invini
+
+    - name: Assert inventory.ini contains expected sections
+      ansible.builtin.assert:
+        that:
+          - (invini.content | b64decode) is search('^\\[msp_infrastructure\\]', multiline=True)
+          - (invini.content | b64decode) is search('^\\[all:vars\\]', multiline=True)
+        success_msg: "inventory.ini content OK"
+        fail_msg: "inventory.ini missing expected sections"
+
+    - name: Check vault password file
+      ansible.builtin.stat:
+        path: "{{ cfg_dir }}/.vault_pass"
+      register: vaultpass
+
+    - name: Assert vault password file permissions
+      ansible.builtin.assert:
+        that:
+          - vaultpass.stat.exists
+          - vaultpass.stat.mode is defined and vaultpass.stat.mode | regex_search('.*600$')
+        success_msg: ".vault_pass present with correct mode"
+        fail_msg: ".vault_pass missing or wrong mode"
+
+    - name: Gather service facts for node_exporter check
+      ansible.builtin.service_facts: {}
+      when: install_node_exporter | default(false) | bool
+
+    - name: Assert node exporter service present when requested
+      ansible.builtin.assert:
+        that:
+          - (ansible_facts.services['prometheus-node-exporter.service'] is defined) or (ansible_facts.services['node_exporter.service'] is defined)
+        success_msg: "node_exporter service present"
+        fail_msg: "node_exporter service missing"
+      when: install_node_exporter | default(false) | bool
+
+    - name: Assert ansible.cfg includes tags section and correct run setting
+      ansible.builtin.assert:
+        that:
+          - (ansible_cfg_file.content | b64decode) is search('^\\[tags\\]', multiline=True)
+          - (ansible_cfg_file.content | b64decode) is search('^run\\s*=\\s*.*' ~ client_tier, multiline=True)
+        success_msg: "ansible.cfg tags/run settings OK"
+        fail_msg: "ansible.cfg tags/run settings missing"
