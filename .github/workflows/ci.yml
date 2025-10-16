@@ -169,8 +169,11 @@ jobs:
       matrix:
         os:
           - ubuntu22
+          - rockylinux9
         role:
           - client-onboarding
+          - common
+          - user-management
 
     steps:
       - name: Checkout code

@@ -64,6 +64,23 @@
         success_msg: "authorized_keys contains test key"
         fail_msg: "authorized_keys missing test key"
 
+    - name: Get molecule-admin groups
+      ansible.builtin.command: id -nG molecule-admin
+      register: mgroups
+      changed_when: false
+
+    - name: Determine admin group
+      ansible.builtin.set_fact:
+        admin_primary_group: "{{ 'wheel' if ansible_facts.os_family == 'RedHat' else 'sudo' }}"
+
+    - name: Assert molecule-admin is in required groups
+      ansible.builtin.assert:
+        that:
+          - mgroups.stdout is search('(^|\s)msp-admins(\s|$)')
+          - mgroups.stdout is search('(^|\s)' ~ admin_primary_group ~ '(\s|$)')
+        success_msg: "molecule-admin group membership OK"
+        fail_msg: "molecule-admin missing required group membership"
+
     - name: Check sudoers drop-in
       ansible.builtin.stat:
         path: /etc/sudoers.d/msp-admins

@@ -61,6 +61,13 @@
         success_msg: "rsyslog service present"
         fail_msg: "rsyslog service missing"
 
+    - name: Assert journald service is present
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['systemd-journald.service'] is defined
+        success_msg: "systemd-journald service present"
+        fail_msg: "systemd-journald service missing"
+
     - name: Check rsyslog drop-in
       ansible.builtin.stat:
         path: /etc/rsyslog.d/00-msp-platform.conf

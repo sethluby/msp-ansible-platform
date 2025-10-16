@@ -507,6 +507,10 @@ See project wiki for complete integration details and implementation guides.
 - Overview doc: `docs/TERRAFORM_OVERVIEW.md`
 - Live examples (safe to plan): `msp-infrastructure/terraform/live/clients/exampleco/dev/`
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a human-readable summary of recent changes across roles, CI, and documentation.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

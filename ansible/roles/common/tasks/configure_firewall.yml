@@ -1,0 +1,49 @@
+---
+- name: Detect container environment
+  ansible.builtin.set_fact:
+    is_container: "{{ (ansible_virtualization_type | default('')) in ['docker', 'container'] }}"
+
+- name: Skip firewall configuration in containers (no-op)
+  ansible.builtin.debug:
+    msg: "Skipping firewall configuration in container environment"
+  when: is_container | bool
+
+- name: Install firewalld on RedHat family when enabled
+  ansible.builtin.package:
+    name: firewalld
+    state: present
+  when:
+    - not is_container | bool
+    - enable_firewall | bool
+    - ansible_facts.os_family == 'RedHat'
+  tags: [security, firewall]
+
+- name: Ensure firewalld service started on RedHat family when enabled
+  ansible.builtin.systemd:
+    name: firewalld
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - not is_container | bool
+    - enable_firewall | bool
+    - ansible_facts.os_family == 'RedHat'
+  tags: [security, firewall]
+
+- name: Install ufw on Debian family when enabled (do not enable)
+  ansible.builtin.package:
+    name: ufw
+    state: present
+  when:
+    - not is_container | bool
+    - enable_firewall | bool
+    - ansible_facts.os_family == 'Debian'
+  tags: [security, firewall]
+
+- name: Note ufw present but not enabled (manual policy management)
+  ansible.builtin.debug:
+    msg: "ufw is installed but not enabled by this minimal role"
+  when:
+    - not is_container | bool
+    - enable_firewall | bool
+    - ansible_facts.os_family == 'Debian'

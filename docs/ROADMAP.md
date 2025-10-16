@@ -31,29 +31,40 @@ As of now, the following items have been completed toward the MVP path:
 - Implemented monitoring deployment step (config/status/doc generation) behind gating.
 - Filled onboarding templates (inventory, tier configs, compliance/monitoring/backup configs, client playbooks, VPN/auth docs/scripts), enabling end‑to‑end role execution with minimal defaults.
 
+Recent work:
+- Hardened VPN tasks with OS guards, container-safe behavior, and idempotent key handling (reuse stored keys on reruns).
+- Expanded onboarding Molecule verify with file permission/ownership and content assertions (ansible.cfg, client.env, inventories, reports).
+- Added optional, gated node_exporter install (non-CI) with Debian + RedHat service handling and a reusable verify task.
+- Implemented minimal common role (timezone, chrony/ntp, logrotate, minimal firewall no-op in containers) with Molecule converge/verify and OS images.
+- Implemented user-management core (system groups, admin users, sudo drop-in, SSH authorized_keys) with Molecule converge/verify on Ubuntu 22.04 and Rocky 9.
+- Updated CI Molecule matrix to include `client-onboarding`, `common`, and `user-management` on Ubuntu 22.04 and Rocky Linux 9; lint/syntax gating remains.
+
 Tracking Issues: see docs/KNOWN_ISSUES.md
 
 Next short-term targets:
-- Expand Molecule for onboarding with idempotence checks and a basic verify that inspects generated files.
-- Add idempotence asserts and enable CI matrix once green locally.
-- Consider additional file permission asserts and content sanity checks.
-- Evaluate optional lightweight agent install (node_exporter) under gating in non-CI runs.
-- Tighten validations and add more RHEL/Debian‑safe guards for VPN tasks.
+- Ensure Molecule idempotence + verify are green in CI for onboarding/common/user-management.
+- Add journald persistence tuning in `common` (gated) and extend verify for config/state.
+- Improve RHEL node_exporter handling (fallback or explicit install path) and assert running service when enabled.
+- Incrementally broaden CI Molecule coverage (other roles/OS) once stable; keep changed-file lint gating.
+- Continue YAML/Ansible cleanup on touched files to reduce lint noise in PRs.
 
 ## Phased Plan
 
 ### Phase 1 — Stabilize Skeleton and Onboarding (1–2 weeks)
 - [done] Fill missing templates for client-onboarding (client.env, onboarding report, authorized_keys, inventory helpers, etc.).
-- [in progress] Ensure Molecule converge + idempotence + verify pass for onboarding + minimal common tasks.
+- [in progress] Ensure Molecule converge + idempotence + verify pass for onboarding + minimal common tasks (verify expanded; CI validation ongoing).
 - [done] Consolidate Ansible config to the root `ansible.cfg` only.
 - [done] Add `.env.example` to satisfy `make setup`.
 - [done] CI policy present: changed-file linting in PRs; full-repo lint non-blocking on schedule.
 - [done] Add infra config stubs for compose validation (AWX, Postgres, Redis, Vault).
 - [done] Add `onboarding_minimal` gating to enable fast test runs.
+- [done] Harden VPN tasks with OS guards, container-safe behavior, and idempotent key handling.
+- [done] Optional, gated node_exporter flow for non-CI runs.
+- [done] Onboarding Molecule verify includes permissions and content assertions.
 
 ### Phase 2 — MVP Role Implementations + Idempotence (2–4 weeks)
-- Common: implement minimal, safe tasks (timezone, NTP, logrotate, essentials) with strong gating.
-- User-management: implement core (groups, admin users, sudo) with Molecule.
+- [done] Common: minimal, safe tasks (timezone, NTP/chrony, logrotate, minimal firewall) with Molecule converge/verify and OS images.
+- [done] User-management: core (system groups, admin users, sudo, SSH authorized_keys) with Molecule converge/verify and OS matrix.
 - Monitoring: wrap cloudalchemy roles for a minimal Prometheus/Grafana/Alertmanager setup or config-only in containers.
 - Backup: rsync-based local backups with cron + simple validation.
 - Compliance frameworks: add required handlers/templates to support AC controls; expand families incrementally.

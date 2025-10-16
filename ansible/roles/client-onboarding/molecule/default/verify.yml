@@ -159,16 +159,8 @@
         success_msg: ".vault_pass present with correct mode"
         fail_msg: ".vault_pass missing or wrong mode"
 
-    - name: Gather service facts for node_exporter check
-      ansible.builtin.service_facts: {}
-      when: install_node_exporter | default(false) | bool
-
-    - name: Assert node exporter service present when requested
-      ansible.builtin.assert:
-        that:
-          - (ansible_facts.services['prometheus-node-exporter.service'] is defined) or (ansible_facts.services['node_exporter.service'] is defined)
-        success_msg: "node_exporter service present"
-        fail_msg: "node_exporter service missing"
+    - name: Include node_exporter service checks
+      ansible.builtin.include_tasks: tasks/check_node_exporter.yml
       when: install_node_exporter | default(false) | bool
 
     - name: Assert ansible.cfg includes tags section and correct run setting
